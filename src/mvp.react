@@ -1,0 +1,692 @@
+import React, { useMemo, useState } from "react";
+import { motion } from "framer-motion";
+import { Plus, RotateCw, Trash2, AlertTriangle, CheckCircle2, Move } from "lucide-react";
+
+/**
+ * Kartslalom Streckenplaner - MVP mock/prototype
+ *
+ * Focus of this first version:
+ * - Enter field size in meters
+ * - Add predefined formations
+ * - Position and rotate formations on a scaled field
+ * - Live validation for basic ADAC rule checks
+ * - Display violations in a readable side panel
+ *
+ * This is intentionally self-contained in one file for rapid iteration.
+ */
+
+type FormationType =
+  | "singlePylon"
+  | "gate"
+  | "wechseltor"
+  | "zielgasse"
+  | "kreisel";
+
+type Direction = "up" | "right" | "down" | "left";
+
+type FormationDefinition = {
+  type: FormationType;
+  label: string;
+  widthM: number;
+  heightM: number;
+  requiresDirection: boolean;
+  defaultParams?: Record<string, number>;
+  notes: string[];
+};
+
+type PlacedFormation = {
+  id: string;
+  type: FormationType;
+  xM: number;
+  yM: number;
+  rotation: 0 | 90 | 180 | 270;
+  direction?: Direction;
+  params: Record<string, number>;
+};
+
+type ValidationIssue = {
+  id: string;
+  severity: "error" | "warning";
+  title: string;
+  details: string;
+  formationId?: string;
+};
+
+const FORMATIONS: FormationDefinition[] = [
+  {
+    type: "singlePylon",
+    label: "Einzelpylone",
+    widthM: 0.8,
+    heightM: 0.8,
+    requiresDirection: true,
+    notes: [
+      "Fahrtrichtung muss angegeben werden.",
+      "Richtungspylone als Pflichtkennzeichnung vorgesehen.",
+    ],
+  },
+  {
+    type: "gate",
+    label: "Pylonentor",
+    widthM: 2.0,
+    heightM: 0.8,
+    requiresDirection: false,
+    defaultParams: { gateWidth: 2.0 },
+    notes: ["Torbreite pruefen gegen Spurbreite + 40 cm."],
+  },
+  {
+    type: "wechseltor",
+    label: "Wechseltor",
+    widthM: 4.5,
+    heightM: 1.2,
+    requiresDirection: false,
+    defaultParams: { gateDistance: 2.5 },
+    notes: ["Abstand der Tore 1.5 m bis 4.0 m."],
+  },
+  {
+    type: "zielgasse",
+    label: "Zielgasse",
+    widthM: 2.5,
+    heightM: 9,
+    requiresDirection: true,
+    defaultParams: { width: 2.5, length: 9 },
+    notes: ["Breite 2.5 m, Laenge 8-10 m."],
+  },
+  {
+    type: "kreisel",
+    label: "Kreisel",
+    widthM: 12,
+    heightM: 12,
+    requiresDirection: true,
+    defaultParams: { innerDiameter: 10 },
+    notes: ["Innendurchmesser 10 m laut Reglement-Grundmass."],
+  },
+];
+
+const PYLON_FOOT_DIAMETER_M = 0.35;
+const DEFAULT_TRACK_WIDTH_M = 1.4;
+const SAFETY_MARGIN_M = 3.0;
+const MIN_TASK_DISTANCE_M = 4.0;
+const MAX_TASK_DISTANCE_M = 10.0;
+
+function rotateSize(width: number, height: number, rotation: number) {
+  return rotation % 180 === 0
+    ? { width, height }
+    : { width: height, height: width };
+}
+
+function rectDistance(a: { x: number; y: number; w: number; h: number }, b: { x: number; y: number; w: number; h: number }) {
+  const dx = Math.max(a.x - (b.x + b.w), b.x - (a.x + a.w), 0);
+  const dy = Math.max(a.y - (b.y + b.h), b.y - (a.y + a.h), 0);
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function getFormationDefinition(type: FormationType) {
+  return FORMATIONS.find((f) => f.type === type)!;
+}
+
+function getBounds(item: PlacedFormation) {
+  const def = getFormationDefinition(item.type);
+  const s = rotateSize(def.widthM, def.heightM, item.rotation);
+  return { x: item.xM, y: item.yM, w: s.widthM, h: s.heightM };
+}
+
+function fmt(v: number) {
+  return `${v.toFixed(2)} m`;
+}
+
+function App() {
+  const [fieldWidth, setFieldWidth] = useState(18);
+  const [fieldLength, setFieldLength] = useState(36);
+  const [trackWidth, setTrackWidth] = useState(DEFAULT_TRACK_WIDTH_M);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [items, setItems] = useState<PlacedFormation[]>([]);
+
+  const canvasWidthPx = 820;
+  const scale = canvasWidthPx / fieldWidth;
+  const canvasHeightPx = fieldLength * scale;
+
+  const addFormation = (type: FormationType) => {
+    const def = getFormationDefinition(type);
+    const newItem: PlacedFormation = {
+      id: Math.random().toString(36).slice(2, 9),
+      type,
+      xM: 1,
+      yM: 1,
+      rotation: 0,
+      direction: def.requiresDirection ? "up" : undefined,
+      params: { ...(def.defaultParams || {}) },
+    };
+    setItems((prev) => [...prev, newItem]);
+    setSelectedId(newItem.id);
+  };
+
+  const updateItem = (id: string, patch: Partial<PlacedFormation>) => {
+    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, ...patch } : item)));
+  };
+
+  const selectedItem = items.find((i) => i.id === selectedId) || null;
+
+  const issues = useMemo<ValidationIssue[]>(() => {
+    const out: ValidationIssue[] = [];
+
+    items.forEach((item) => {
+      const def = getFormationDefinition(item.type);
+      const b = getBounds(item);
+
+      if (b.x < 0 || b.y < 0 || b.x + b.w > fieldWidth || b.y + b.h > fieldLength) {
+        out.push({
+          id: `bounds-${item.id}`,
+          severity: "error",
+          title: `${def.label} ausserhalb des Platzes`,
+          details: "Das Hindernis bzw. die Formation liegt nicht vollstaendig innerhalb der Flaeche.",
+          formationId: item.id,
+        });
+      }
+
+      const left = b.x;
+      const right = fieldWidth - (b.x + b.w);
+      const top = b.y;
+      const bottom = fieldLength - (b.y + b.h);
+      const minEdge = Math.min(left, right, top, bottom);
+
+      if (minEdge < 2) {
+        out.push({
+          id: `edge-hard-${item.id}`,
+          severity: "error",
+          title: `${def.label}: Sicherheitsabstand zu klein`,
+          details: `Zur Aussenlinie sind nur ${fmt(minEdge)} vorhanden. Unter 2.00 m ist unzulaessig.`,
+          formationId: item.id,
+        });
+      } else if (minEdge < SAFETY_MARGIN_M) {
+        out.push({
+          id: `edge-soft-${item.id}`,
+          severity: "warning",
+          title: `${def.label}: Sicherheitsabstand knapp`,
+          details: `Zur Aussenlinie sind ${fmt(minEdge)} vorhanden. Zielwert laut Reglement: 3.00 m.`,
+          formationId: item.id,
+        });
+      }
+
+      if (def.requiresDirection && !item.direction) {
+        out.push({
+          id: `dir-${item.id}`,
+          severity: "error",
+          title: `${def.label}: Fahrtrichtung fehlt`,
+          details: "Diese Formation benoetigt eine definierte Fahrtrichtung.",
+          formationId: item.id,
+        });
+      }
+
+      if (item.type === "gate") {
+        const maxGate = trackWidth + 0.4;
+        const gateWidth = item.params.gateWidth ?? 2.0;
+        if (gateWidth > maxGate) {
+          out.push({
+            id: `gate-${item.id}`,
+            severity: "error",
+            title: "Pylonentor zu breit",
+            details: `Aktuell ${fmt(gateWidth)}. Zulaessig sind maximal ${fmt(maxGate)} bei Spurbreite ${fmt(trackWidth)}.`,
+            formationId: item.id,
+          });
+        }
+      }
+
+      if (item.type === "wechseltor") {
+        const d = item.params.gateDistance ?? 2.5;
+        if (d < 1.5 || d > 4.0) {
+          out.push({
+            id: `wechseltor-${item.id}`,
+            severity: "error",
+            title: "Wechseltor-Abstand ungueltig",
+            details: `Der Abstand zwischen den Toren betraegt ${fmt(d)}. Erlaubt sind 1.50 m bis 4.00 m.`,
+            formationId: item.id,
+          });
+        }
+      }
+
+      if (item.type === "zielgasse") {
+        const width = item.params.width ?? 2.5;
+        const length = item.params.length ?? 9;
+        if (Math.abs(width - 2.5) > 0.001) {
+          out.push({
+            id: `zielgasse-width-${item.id}`,
+            severity: "error",
+            title: "Zielgasse: Breite ungueltig",
+            details: `Die Zielgasse muss 2.50 m breit sein, aktuell ${fmt(width)}.`,
+            formationId: item.id,
+          });
+        }
+        if (length < 8 || length > 10) {
+          out.push({
+            id: `zielgasse-length-${item.id}`,
+            severity: "error",
+            title: "Zielgasse: Laenge ungueltig",
+            details: `Die Zielgasse muss 8.00 m bis 10.00 m lang sein, aktuell ${fmt(length)}.`,
+            formationId: item.id,
+          });
+        }
+      }
+
+      if (item.type === "kreisel") {
+        const inner = item.params.innerDiameter ?? 10;
+        if (Math.abs(inner - 10) > 0.001) {
+          out.push({
+            id: `kreisel-${item.id}`,
+            severity: "error",
+            title: "Kreisel: Innendurchmesser ungueltig",
+            details: `Der Innendurchmesser muss 10.00 m betragen, aktuell ${fmt(inner)}.`,
+            formationId: item.id,
+          });
+        }
+      }
+    });
+
+    for (let i = 0; i < items.length; i++) {
+      for (let j = i + 1; j < items.length; j++) {
+        const a = items[i];
+        const b = items[j];
+        const ba = getBounds(a);
+        const bb = getBounds(b);
+        const d = rectDistance(ba, bb);
+
+        if (d < PYLON_FOOT_DIAMETER_M) {
+          out.push({
+            id: `overlap-${a.id}-${b.id}`,
+            severity: "error",
+            title: "Formationen ueberlappen",
+            details: `${getFormationDefinition(a.type).label} und ${getFormationDefinition(b.type).label} kollidieren oder stehen zu eng.`,
+            formationId: a.id,
+          });
+        }
+
+        if (d < MIN_TASK_DISTANCE_M) {
+          out.push({
+            id: `mindist-${a.id}-${b.id}`,
+            severity: "warning",
+            title: "Aufgabenabstand unterschritten",
+            details: `Zwischen zwei Aufgaben liegen nur ${fmt(d)}. Zielbereich laut Grundregel: mindestens ${fmt(MIN_TASK_DISTANCE_M)}.`,
+          });
+        }
+
+        if (d > MAX_TASK_DISTANCE_M) {
+          out.push({
+            id: `maxdist-${a.id}-${b.id}`,
+            severity: "warning",
+            title: "Aufgabenabstand sehr gross",
+            details: `Zwischen zwei Aufgaben liegen ${fmt(d)}. Grundregel: nicht mehr als ${fmt(MAX_TASK_DISTANCE_M)}.`,
+          });
+        }
+      }
+    }
+
+    return out;
+  }, [items, fieldWidth, fieldLength, trackWidth]);
+
+  const errors = issues.filter((i) => i.severity === "error").length;
+  const warnings = issues.filter((i) => i.severity === "warning").length;
+
+  return (
+    <div className="min-h-screen bg-slate-100 text-slate-900">
+      <div className="mx-auto max-w-[1600px] p-4 md:p-6">
+        <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Kartslalom Streckenplaner</h1>
+            <p className="mt-1 text-sm text-slate-600">
+              MVP fuer Platzgroesse, Formationen, Positionierung und grundlegende Reglement-Pruefung.
+            </p>
+          </div>
+          <div className="rounded-2xl bg-white px-4 py-3 shadow-sm">
+            <div className="flex items-center gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                {errors === 0 ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+                <span>{errors} Fehler</span>
+              </div>
+              <div>{warnings} Hinweise</div>
+              <div>{items.length} Formationen</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[320px_minmax(700px,1fr)_360px]">
+          <section className="rounded-3xl bg-white p-4 shadow-sm">
+            <h2 className="text-lg font-semibold">Platzdaten</h2>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <label className="text-sm">
+                <div className="mb-1 text-slate-600">Breite (m)</div>
+                <input
+                  type="number"
+                  value={fieldWidth}
+                  onChange={(e) => setFieldWidth(Math.max(8, Number(e.target.value) || 0))}
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2"
+                />
+              </label>
+              <label className="text-sm">
+                <div className="mb-1 text-slate-600">Laenge (m)</div>
+                <input
+                  type="number"
+                  value={fieldLength}
+                  onChange={(e) => setFieldLength(Math.max(8, Number(e.target.value) || 0))}
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2"
+                />
+              </label>
+            </div>
+
+            <label className="mt-3 block text-sm">
+              <div className="mb-1 text-slate-600">Maximale Spurbreite Kart (m)</div>
+              <input
+                type="number"
+                step="0.01"
+                value={trackWidth}
+                onChange={(e) => setTrackWidth(Math.max(0.5, Number(e.target.value) || 0))}
+                className="w-full rounded-xl border border-slate-300 px-3 py-2"
+              />
+            </label>
+
+            <div className="mt-6">
+              <h3 className="text-sm font-semibold text-slate-700">Formationen</h3>
+              <div className="mt-3 space-y-3">
+                {FORMATIONS.map((f) => (
+                  <button
+                    key={f.type}
+                    onClick={() => addFormation(f.type)}
+                    className="w-full rounded-2xl border border-slate-200 p-3 text-left transition hover:border-slate-400 hover:bg-slate-50"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium">{f.label}</div>
+                        <div className="text-xs text-slate-500">
+                          {f.widthM} m x {f.heightM} m
+                        </div>
+                      </div>
+                      <Plus className="h-4 w-4" />
+                    </div>
+                    <div className="mt-2 text-xs text-slate-500">{f.notes[0]}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-3xl bg-white p-4 shadow-sm">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Streckenflaeche</h2>
+              <div className="text-sm text-slate-500">1 m = {scale.toFixed(1)} px</div>
+            </div>
+
+            <div className="overflow-auto rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <div
+                className="relative overflow-hidden rounded-2xl border-4 border-slate-800 bg-white"
+                style={{ width: canvasWidthPx, height: canvasHeightPx }}
+              >
+                <div className="absolute inset-0 opacity-40"
+                  style={{
+                    backgroundImage:
+                      "linear-gradient(to right, #cbd5e1 1px, transparent 1px), linear-gradient(to bottom, #cbd5e1 1px, transparent 1px)",
+                    backgroundSize: `${scale}px ${scale}px`,
+                  }}
+                />
+
+                <div
+                  className="absolute border-2 border-dashed border-emerald-400/60"
+                  style={{
+                    left: SAFETY_MARGIN_M * scale,
+                    top: SAFETY_MARGIN_M * scale,
+                    width: (fieldWidth - SAFETY_MARGIN_M * 2) * scale,
+                    height: (fieldLength - SAFETY_MARGIN_M * 2) * scale,
+                  }}
+                />
+
+                {items.map((item) => {
+                  const def = getFormationDefinition(item.type);
+                  const size = rotateSize(def.widthM, def.heightM, item.rotation);
+                  const relatedIssues = issues.filter((i) => i.formationId === item.id);
+                  const hasError = relatedIssues.some((i) => i.severity === "error");
+                  const hasWarning = !hasError && relatedIssues.some((i) => i.severity === "warning");
+
+                  return (
+                    <motion.div
+                      key={item.id}
+                      drag
+                      dragMomentum={false}
+                      onDragEnd={(_, info) => {
+                        const nextX = Math.max(0, Math.min(fieldWidth - size.widthM, item.xM + info.offset.x / scale));
+                        const nextY = Math.max(0, Math.min(fieldLength - size.heightM, item.yM + info.offset.y / scale));
+                        updateItem(item.id, { xM: nextX, yM: nextY });
+                      }}
+                      onClick={() => setSelectedId(item.id)}
+                      className={`absolute cursor-move rounded-2xl border-2 p-2 shadow-md ${
+                        selectedId === item.id
+                          ? "z-20 border-sky-600 bg-sky-100"
+                          : hasError
+                            ? "border-rose-600 bg-rose-100"
+                            : hasWarning
+                              ? "border-amber-500 bg-amber-100"
+                              : "border-slate-400 bg-white"
+                      }`}
+                      style={{
+                        left: item.xM * scale,
+                        top: item.yM * scale,
+                        width: size.widthM * scale,
+                        height: size.heightM * scale,
+                      }}
+                    >
+                      <div className="flex h-full flex-col justify-between">
+                        <div className="flex items-center justify-between gap-2 text-xs font-semibold">
+                          <span>{def.label}</span>
+                          <Move className="h-3 w-3 shrink-0" />
+                        </div>
+                        <div className="text-[10px] text-slate-600">
+                          {fmt(item.xM)} / {fmt(item.yM)}
+                        </div>
+                        {item.direction && (
+                          <div className="text-[10px] font-medium uppercase text-slate-700">Richtung: {item.direction}</div>
+                        )}
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-3xl bg-white p-4 shadow-sm">
+            <h2 className="text-lg font-semibold">Eigenschaften & Pruefung</h2>
+
+            {selectedItem ? (
+              <div className="mt-4 space-y-4">
+                <div className="rounded-2xl border border-slate-200 p-3">
+                  <div className="font-medium">{getFormationDefinition(selectedItem.type).label}</div>
+                  <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                    <label>
+                      <div className="mb-1 text-slate-600">X (m)</div>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={selectedItem.xM}
+                        onChange={(e) => updateItem(selectedItem.id, { xM: Number(e.target.value) || 0 })}
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2"
+                      />
+                    </label>
+                    <label>
+                      <div className="mb-1 text-slate-600">Y (m)</div>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={selectedItem.yM}
+                        onChange={(e) => updateItem(selectedItem.id, { yM: Number(e.target.value) || 0 })}
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2"
+                      />
+                    </label>
+                  </div>
+
+                  <label className="mt-3 block text-sm">
+                    <div className="mb-1 text-slate-600">Rotation</div>
+                    <select
+                      value={selectedItem.rotation}
+                      onChange={(e) => updateItem(selectedItem.id, { rotation: Number(e.target.value) as 0 | 90 | 180 | 270 })}
+                      className="w-full rounded-xl border border-slate-300 px-3 py-2"
+                    >
+                      <option value={0}>0°</option>
+                      <option value={90}>90°</option>
+                      <option value={180}>180°</option>
+                      <option value={270}>270°</option>
+                    </select>
+                  </label>
+
+                  {getFormationDefinition(selectedItem.type).requiresDirection && (
+                    <label className="mt-3 block text-sm">
+                      <div className="mb-1 text-slate-600">Fahrtrichtung</div>
+                      <select
+                        value={selectedItem.direction}
+                        onChange={(e) => updateItem(selectedItem.id, { direction: e.target.value as Direction })}
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2"
+                      >
+                        <option value="up">up</option>
+                        <option value="right">right</option>
+                        <option value="down">down</option>
+                        <option value="left">left</option>
+                      </select>
+                    </label>
+                  )}
+
+                  {selectedItem.type === "gate" && (
+                    <label className="mt-3 block text-sm">
+                      <div className="mb-1 text-slate-600">Torbreite (m)</div>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={selectedItem.params.gateWidth ?? 2}
+                        onChange={(e) =>
+                          updateItem(selectedItem.id, {
+                            params: { ...selectedItem.params, gateWidth: Number(e.target.value) || 0 },
+                          })
+                        }
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2"
+                      />
+                    </label>
+                  )}
+
+                  {selectedItem.type === "wechseltor" && (
+                    <label className="mt-3 block text-sm">
+                      <div className="mb-1 text-slate-600">Torabstand (m)</div>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={selectedItem.params.gateDistance ?? 2.5}
+                        onChange={(e) =>
+                          updateItem(selectedItem.id, {
+                            params: { ...selectedItem.params, gateDistance: Number(e.target.value) || 0 },
+                          })
+                        }
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2"
+                      />
+                    </label>
+                  )}
+
+                  {selectedItem.type === "zielgasse" && (
+                    <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                      <label>
+                        <div className="mb-1 text-slate-600">Breite (m)</div>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={selectedItem.params.width ?? 2.5}
+                          onChange={(e) =>
+                            updateItem(selectedItem.id, {
+                              params: { ...selectedItem.params, width: Number(e.target.value) || 0 },
+                            })
+                          }
+                          className="w-full rounded-xl border border-slate-300 px-3 py-2"
+                        />
+                      </label>
+                      <label>
+                        <div className="mb-1 text-slate-600">Laenge (m)</div>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={selectedItem.params.length ?? 9}
+                          onChange={(e) =>
+                            updateItem(selectedItem.id, {
+                              params: { ...selectedItem.params, length: Number(e.target.value) || 0 },
+                            })
+                          }
+                          className="w-full rounded-xl border border-slate-300 px-3 py-2"
+                        />
+                      </label>
+                    </div>
+                  )}
+
+                  {selectedItem.type === "kreisel" && (
+                    <label className="mt-3 block text-sm">
+                      <div className="mb-1 text-slate-600">Innendurchmesser (m)</div>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={selectedItem.params.innerDiameter ?? 10}
+                        onChange={(e) =>
+                          updateItem(selectedItem.id, {
+                            params: { ...selectedItem.params, innerDiameter: Number(e.target.value) || 0 },
+                          })
+                        }
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2"
+                      />
+                    </label>
+                  )}
+
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      onClick={() => updateItem(selectedItem.id, { rotation: (((selectedItem.rotation + 90) % 360) as 0 | 90 | 180 | 270) })}
+                      className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50"
+                    >
+                      <RotateCw className="h-4 w-4" /> Drehen
+                    </button>
+                    <button
+                      onClick={() => {
+                        setItems((prev) => prev.filter((i) => i.id !== selectedItem.id));
+                        setSelectedId(null);
+                      }}
+                      className="inline-flex items-center gap-2 rounded-xl border border-rose-300 px-3 py-2 text-sm text-rose-700 hover:bg-rose-50"
+                    >
+                      <Trash2 className="h-4 w-4" /> Loeschen
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-4 rounded-2xl border border-dashed border-slate-300 p-4 text-sm text-slate-500">
+                Noch keine Formation ausgewaehlt.
+              </div>
+            )}
+
+            <div className="mt-6">
+              <h3 className="text-sm font-semibold text-slate-700">Pruefprotokoll</h3>
+              <div className="mt-3 space-y-2">
+                {issues.length === 0 ? (
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+                    Keine Regelverletzungen in den aktuell implementierten Basispruefungen.
+                  </div>
+                ) : (
+                  issues.map((issue) => (
+                    <div
+                      key={issue.id}
+                      className={`rounded-2xl border p-3 text-sm ${
+                        issue.severity === "error"
+                          ? "border-rose-200 bg-rose-50 text-rose-900"
+                          : "border-amber-200 bg-amber-50 text-amber-900"
+                      }`}
+                    >
+                      <div className="font-medium">{issue.title}</div>
+                      <div className="mt-1 text-xs opacity-90">{issue.details}</div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default App;
