@@ -7,5 +7,16 @@ export default defineConfig({
     host: true,
     port: 5173,
     allowedHosts: ["kart.cheezuscraizt.de"]
-  }
+  },
+  build: {
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ["react", "react-dom"],
+          vendor: ["framer-motion", "lucide-react"],
+        },
+      },
+    },
+  },
 })

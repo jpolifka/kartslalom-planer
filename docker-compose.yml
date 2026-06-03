@@ -2,7 +2,5 @@ services:
   kartslalom:
     build: .
     ports:
-      - "5173:5173"
-    volumes:
-      - .:/app
-      - /app/node_modules
+      - "5173:80"
+    restart: unless-stopped

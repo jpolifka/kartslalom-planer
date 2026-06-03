@@ -339,14 +339,6 @@ export default function TrackCanvas(props: TrackCanvasProps) {
             else if (severity === "error") { border = "2px solid #ef4444"; bg = "rgba(239,68,68,0.05)"; }
             else if (severity === "warning") { border = "2px solid #f59e0b"; bg = "rgba(245,158,11,0.05)"; }
 
-            const nonSensorCones = normalized.filter((c) => c.kind !== "sensor");
-            const finishLineY = nonSensorCones.length > 0
-              ? Math.max(...nonSensorCones.map((c) => c.y)) * scale
-              : null;
-            const startLineY = nonSensorCones.length > 0
-              ? Math.min(...nonSensorCones.map((c) => c.y)) * scale
-              : null;
-
             return (
               <div
                 key={item.id}

@@ -27,11 +27,12 @@ export const normalCornerAlt: FormationDefinition = {
   cones: normalizeCones(
       builder()
         .at(0,0).standing()
-        .move_pylon(0, 1).standing()
-        .move_pylon(0.5, 1).standing()
-        .move_pylon(1, 0.5).standing()
-        .move_pylon(1, 0).standing()
-        .at(0, 0).move_lane(1, 0).standing()
+        .move_lane(1,0).standing()
+        .move_lane(-1,0)
+        .move_pylon(0, 1.35).standing()
+        .move_pylon(0.6, 1.35).standing()
+        .move_pylon(1.35, 0.6).standing()
+        .move_pylon(1.35, 0).standing()
         .points()
     ),
 };

@@ -1,6 +1,6 @@
 import type { FormationDefinition } from "../../types";
 import { normalizeCones } from "../geometry";
-import { builder, standing } from "./common";
+import { builder } from "./common";
 
 export const ypsilon: FormationDefinition = {
   key: "ypsilon",

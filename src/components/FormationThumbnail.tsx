@@ -1,4 +1,3 @@
-import React from "react";
 import { boundsFromCones } from "../lib/geometry";
 import type { FormationDefinition } from "../types";
 
@@ -12,8 +11,9 @@ export default function FormationThumbnail({
   rotationDeg?: number;
 }) {
   const { cones, key } = formation;
+  // Physical radius of a Type-2 Leitkegel (36 cm base diameter)
+  const CONE_RADIUS_M = 0.18;
   const pad = size * 0.13;
-  const pylonR = Math.max(2.5, size * 0.065);
   const markerId = `th-arr-${key}-${rotationDeg}`;
   const mid = size / 2;
 
@@ -38,15 +38,17 @@ export default function FormationThumbnail({
   }
 
   const b = boundsFromCones(cones);
-  const bw = Math.max(b.width, 0.01);
-  const bh = Math.max(b.height, 0.01);
+  // Expand bounds by one cone radius on each side so physically touching cones appear touching
+  const bw = Math.max(b.width + 2 * CONE_RADIUS_M, 2 * CONE_RADIUS_M);
+  const bh = Math.max(b.height + 2 * CONE_RADIUS_M, 2 * CONE_RADIUS_M);
   const usable = size - 2 * pad;
   const s = Math.min(usable / bw, usable / bh);
+  const pylonR = Math.max(1.5, CONE_RADIUS_M * s);
   const ox = pad + (usable - bw * s) / 2;
   const oy = pad + (usable - bh * s) / 2;
 
-  const px = (x: number) => ox + (x - b.minX) * s;
-  const py = (y: number) => oy + (y - b.minY) * s;
+  const px = (x: number) => ox + (x - b.minX + CONE_RADIUS_M) * s;
+  const py = (y: number) => oy + (y - b.minY + CONE_RADIUS_M) * s;
 
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ display: "block" }}>

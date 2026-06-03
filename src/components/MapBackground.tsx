@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { lngToGlobalX, latToGlobalY } from "../lib/geo";
 import { areaSelectionToBounds } from "../lib/areaSelection";
 import type { AreaSelection } from "../lib/areaSelection";

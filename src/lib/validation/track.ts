@@ -230,19 +230,6 @@ export function validateTrack(ctx: ValidationContext): ValidationIssue[] {
     });
   }
 
-  const hasCircle = tasks.some((item) => item.key === "circle");
-  const hasChicane = tasks.some((item) => item.key === "chicane");
-  const hasTurn = tasks.some((item) => item.key === "turn90to180");
-
-  // if (!hasCircle && !hasChicane && !hasTurn) {
-  //   issues.push({
-  //     id: "track-low-variety",
-  //     severity: "info",
-  //     scope: "track",
-  //     message: "Die Strecke enthaelt bisher nur wenig Abwechslung bei den Aufgaben.",
-  //   });
-  // }
-
   const hasVorstart = ctx.items.some((item) => item.key === "vorstartbereich");
   if (!hasVorstart) {
     issues.push({
