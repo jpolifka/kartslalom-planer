@@ -233,28 +233,24 @@ Dokumenten.
 
 ## 13. Lizenz
 
-Das Projekt steht unter der **GNU General Public License v3.0 (GPLv3)**, siehe
-[LICENSE](LICENSE). Hinweise zu offenen Punkten bei der Lizenz-Konformität
-finden sich im Abschnitt „Lizenz-Konformität“ weiter unten in diesem
-Dokument bzw. wurden im Rahmen der Analyse separat mitgeteilt.
+Das Projekt ist **proprietär** — alle Rechte vorbehalten, siehe [LICENSE](LICENSE):
 
-### 13.1 Offene Punkte zur GPLv3-Konformität
+```
+Copyright (c) Jens Polifka
+All rights reserved.
+```
 
-- ~~**Lizenzhinweis im Quellcode**~~ — *erledigt*: Jede Datei in `src/`
-  trägt jetzt den von der GPL empfohlenen Copyright-/Lizenzkopf (siehe
-  Abschnitt „How to Apply These Terms“ am Ende der [LICENSE](LICENSE)-Datei).
-- **Quellcode-Zugriff für Nutzer:innen der gehosteten Version**: Die App wird
-  als statisches JavaScript an Browser ausgeliefert. Nach verbreiteter
-  Auslegung gilt das Ausliefern von Quellcode/Bundles an Nutzer:innen als
-  „Conveying“ im Sinne der GPLv3 (anders als bei der AGPL geht es hier nicht
-  um „Network Use“, sondern um die Übertragung des (transpilierten/gebündelten)
-  Programms an den Browser). Damit greift die Pflicht aus §6, den
-  Empfänger:innen Zugang zum „Corresponding Source“ zu verschaffen — z. B.
-  durch einen sichtbaren Link zum öffentlichen Repository inkl. Lizenztext
-  in der Anwendung selbst.
-- **Copyright-/Lizenzangabe in der Anwendung**: Es gibt aktuell keine
-  „About“-Information in der App, die Lizenz, Copyright-Inhaber:in und einen
-  Link zum Quellcode nennt.
+Es steht **nicht** unter einer Open-Source-Lizenz. Eine frühere Version dieses
+Repositories stand testweise unter der GPLv3; das wurde zurückgenommen, bevor
+das Repository öffentlich gemacht wurde — es gibt daher keine Altlasten aus
+einer Veröffentlichung unter GPL-Bedingungen zu beachten (kein Conveying an
+Dritte, keine Drittbeiträge). Jede Quelldatei in `src/` trägt einen kurzen
+Copyright-Hinweis entsprechend dieser Lizenz.
 
-Konkrete Empfehlungen siehe Abschnitt „GPLv3-Konformität“ der
-Konversation/des Übergabeprotokolls (To-dos für die Lizenzkonformität).
+Da der Quellcode nicht unter einer freien Lizenz steht, bestehen — anders als
+zuvor bei der GPLv3 — **keine** Pflichten zur Quellcode-Offenlegung gegenüber
+Nutzer:innen der gehosteten Anwendung. Für eine spätere SaaS-Vermarktung
+(siehe [SAAS_PLAN.md](SAAS_PLAN.md)) ist diese proprietäre Lizenzierung die
+unkompliziertere Ausgangslage; eine Veröffentlichung unter einer
+Open-Source-Lizenz (z. B. im Rahmen eines „Open Core“-Modells) bliebe als
+spätere, bewusste Entscheidung jederzeit möglich.
