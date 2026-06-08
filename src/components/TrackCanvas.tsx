@@ -154,6 +154,21 @@ export default function TrackCanvas(props: TrackCanvasProps) {
   const pylonPx = Math.max(PYLON_MIN_PX, PYLON_SIZE_M * scale);
   const canvasRef = useRef<HTMLDivElement>(null);
   const [drawState, setDrawState] = useState<DrawState | null>(null);
+  const formationRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const lastScrolledIdRef = useRef<string | null>(null);
+
+  // Beim Anklicken eines Prüfergebnisses wird genau eine Formation selektiert —
+  // dann zur Formation scrollen, damit sie auch außerhalb des sichtbaren Bereichs sichtbar wird.
+  useEffect(() => {
+    if (selectedIds.size !== 1) {
+      lastScrolledIdRef.current = null;
+      return;
+    }
+    const id = [...selectedIds][0];
+    if (id === lastScrolledIdRef.current) return;
+    lastScrolledIdRef.current = id;
+    formationRefs.current.get(id)?.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+  }, [selectedIds]);
 
   const prepared = useMemo<PreparedItem[]>(() => items.map((item) => {
     const formation = getFormation(item.key);
