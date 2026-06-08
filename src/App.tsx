@@ -507,10 +507,10 @@ export default function App() {
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <button
               onClick={() => setShowImprint(true)}
-              style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", fontSize: 12, textDecoration: "underline", padding: 4 }}
+              style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", fontSize: 12, textDecoration: "underline", padding: 4, whiteSpace: "nowrap" }}
               title="Impressum / Datenschutzerklärung öffnen"
             >
-              Impressum / Datenschutzerklärung
+              {isMobile ? "Impressum" : "Impressum / Datenschutzerklärung"}
             </button>
             <button
               onClick={() => setShowHelp(true)}
