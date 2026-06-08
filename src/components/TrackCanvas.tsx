@@ -361,6 +361,10 @@ export default function TrackCanvas(props: TrackCanvasProps) {
             return (
               <div
                 key={item.id}
+                ref={(el) => {
+                  if (el) formationRefs.current.set(item.id, el);
+                  else formationRefs.current.delete(item.id);
+                }}
                 onPointerDown={(e) => startFormationDrag(e, item.id)}
                 onClick={(e) => e.stopPropagation()}
                 style={{
