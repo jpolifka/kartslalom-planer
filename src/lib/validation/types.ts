@@ -15,6 +15,9 @@ export type ValidationIssue = {
   formationKey?: FormationKey;
   message: string;
   details?: string;
+  /** Gruppen von Formation-IDs, die jeweils einen zusammenhaengenden Streckenbereich bilden
+   *  (z.B. bei "Strecke zerfaellt in getrennte Bereiche" — eine Gruppe pro Bereich). */
+  formationGroups?: string[][];
 };
 
 export type WorldCone = {
