@@ -470,14 +470,14 @@ export default function App() {
           <div
             style={{
               background: "white", borderRadius: 20, padding: 22,
-              width: "min(560px, 96vw)", maxHeight: "90vh", overflow: "auto",
+              width: "min(720px, 96vw)", maxHeight: "90vh", overflow: "auto",
               boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
               boxSizing: "border-box",
             }}
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-              <h3 style={{ margin: 0 }}>Impressum</h3>
+              <h3 style={{ margin: 0 }}>Impressum / Datenschutzerklärung</h3>
               <button
                 onClick={() => setShowImprint(false)}
                 style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", display: "flex", padding: 4 }}
@@ -508,9 +508,9 @@ export default function App() {
             <button
               onClick={() => setShowImprint(true)}
               style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", fontSize: 12, textDecoration: "underline", padding: 4 }}
-              title="Impressum öffnen"
+              title="Impressum / Datenschutzerklärung öffnen"
             >
-              Impressum
+              Impressum / Datenschutzerklärung
             </button>
             <button
               onClick={() => setShowHelp(true)}
