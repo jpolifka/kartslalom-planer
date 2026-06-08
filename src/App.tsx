@@ -2,6 +2,7 @@ import React, { useMemo, useReducer, useRef, useEffect, useState } from "react";
 import {
   RotateCw, Trash2, AlertTriangle, Info, Pencil, Map, Satellite,
   ChevronDown, ChevronRight, MousePointer, Undo2, Redo2, X, FileDown,
+  Menu, SlidersHorizontal,
 } from "lucide-react";
 import TrackCanvas from "./components/TrackCanvas";
 import type { MapConfig } from "./components/TrackCanvas";
@@ -16,6 +17,20 @@ import { saveState, loadState, clearSavedState, exportAsFile, parseImportFile } 
 
 // Load once at startup, shared across all useState lazy initializers
 let _initialSaved = loadState();
+
+const MOBILE_BREAKPOINT = 860;
+
+function useIsMobile(): boolean {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < MOBILE_BREAKPOINT);
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
+    const onChange = () => setIsMobile(mq.matches);
+    onChange();
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  return isMobile;
+}
 
 // ── Track state + history reducer ───────────────────────────────────
 type TrackState = { items: PlacedFormation[]; arrows: PlacedArrow[] };
@@ -140,9 +155,9 @@ function trackReducer(s: HistState, action: TrackAction): HistState {
 // ── Formation groups ─────────────────────────────────────────────────
 const FORMATION_GROUPS: Array<{ key: string; label: string; formations: FormationKey[]; rotationSubMenu?: boolean }> = [
   { key: "startziel", label: "Start / Ziel", formations: ["startGate", "finishLane", "vorstartbereich", "wechselzone"] },
-  { key: "basis", label: "Basis", formations: ["singlePylon", "tor", "gasse", "swissSlalom", "switchGate"] },
-  { key: "kurven", label: "Kurven", formations: ["normalCorner", "normalCornerAlt", "germanCorner", "turn90to180", "circle", "ypsilon"], rotationSubMenu: true },
-  { key: "komplex", label: "Komplex", formations: ["sLane", "zLane", "boxStraight", "boxTurn", "snail", "cross", "pretzel", "chicane"] },
+  { key: "basis", label: "Basis", formations: ["singlePylon", "turn90to180", "tor", "gasse", "swissSlalom", "switchGate", "sLane"] },
+  { key: "kurven", label: "Kurven", formations: ["normalCorner", "normalCornerAlt", "germanCorner", "circle"], rotationSubMenu: true },
+  { key: "komplex", label: "Komplex", formations: ["zLane", "boxStraight", "boxTurn", "snail", "cross", "pretzel", "chicane", "ypsilon"] },
 ];
 
 // ── App ──────────────────────────────────────────────────────────────
