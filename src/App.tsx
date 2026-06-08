@@ -1157,7 +1157,7 @@ function ImprintContent() {
   const link: React.CSSProperties = { color: "#0284c7" };
   return (
     <div>
-      <HelpSection title="Angaben gemäß § 5 TMG">
+      <HelpSection title="Angaben gemäß § 5 DDG / Verantwortlicher nach § 18 Abs. 2 MStV">
         Jens Polifka<br />
         In der Maar 31<br />
         56598 Rheinbrohl<br />
