@@ -48,8 +48,12 @@ Typfehlern ab, bevor `vite build` den eigentlichen Produktions-Bundle erzeugt.
 - **Security-Header**: `X-Frame-Options`, `X-Content-Type-Options`,
   `Referrer-Policy`, `Permissions-Policy`.
 
-[`docker-compose.yml`](../docker-compose.yml) startet den Produktions-
-Container und mappt Port `5173` (Host) auf `80` (Container).
+[`docker/docker-compose.yml`](../docker/docker-compose.yml) startet den
+Produktions-Container und mappt Port `5173` (Host) auf `80` (Container):
+
+```bash
+docker compose -f docker/docker-compose.yml up -d --build
+```
 
 > **Hinweis:** Die App ist aktuell eine echte Single-Page-Anwendung ohne
 > Client-seitiges Routing (kein `react-router` o. Ä., siehe `main.tsx`). Die
