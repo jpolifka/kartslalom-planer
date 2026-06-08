@@ -1,3 +1,7 @@
+// Kartslalom Streckenplaner
+// Copyright (c) Jens Polifka
+// All rights reserved.
+
 import type { ConePoint, FormationDefinition } from "../../types";
 import { normalizeCones } from "../geometry";
 import { TASK_LANE_WIDTH, lying, standing } from "./common";

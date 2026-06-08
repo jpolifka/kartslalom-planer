@@ -1,3 +1,7 @@
+// Kartslalom Streckenplaner
+// Copyright (c) Jens Polifka
+// All rights reserved.
+
 export type GeoBounds = {
   lat1: number; lng1: number; // NW corner (top-left, higher lat)
   lat2: number; lng2: number; // SE corner (bottom-right, lower lat)

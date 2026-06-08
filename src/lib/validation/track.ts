@@ -1,3 +1,7 @@
+// Kartslalom Streckenplaner
+// Copyright (c) Jens Polifka
+// All rights reserved.
+
 import { getFormation } from "../formationRegistry";
 import type { ValidationContext, ValidationIssue } from "./types";
 

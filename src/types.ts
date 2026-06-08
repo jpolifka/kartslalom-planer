@@ -1,3 +1,7 @@
+// Kartslalom Streckenplaner
+// Copyright (c) Jens Polifka
+// All rights reserved.
+
 export type DirectionMode = "cw" | "ccw" | "none";
 
 export type ConeKind = "standing" | "lying" | "sensor";

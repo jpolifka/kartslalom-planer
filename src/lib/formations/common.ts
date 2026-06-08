@@ -1,3 +1,7 @@
+// Kartslalom Streckenplaner
+// Copyright (c) Jens Polifka
+// All rights reserved.
+
 import type { ConePoint } from "../../types";
 
 export const PYLON_HEIGHT = 0.5;

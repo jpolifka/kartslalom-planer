@@ -1,3 +1,7 @@
+// Kartslalom Streckenplaner
+// Copyright (c) Jens Polifka
+// All rights reserved.
+
 import { useMemo } from "react";
 import { lngToGlobalX, latToGlobalY } from "../lib/geo";
 import { areaSelectionToBounds } from "../lib/areaSelection";

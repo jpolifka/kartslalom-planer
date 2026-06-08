@@ -1,3 +1,7 @@
+// Kartslalom Streckenplaner
+// Copyright (c) Jens Polifka
+// All rights reserved.
+
 import React, { useMemo, useRef, useState } from "react";
 import { ZoomIn, ZoomOut, Check, X, Pentagon, Square, RotateCcw, RotateCw } from "lucide-react";
 import { lngToGlobalX, latToGlobalY, globalXToLng, globalYToLat } from "../lib/geo";

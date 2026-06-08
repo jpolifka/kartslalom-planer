@@ -1,3 +1,7 @@
+// Kartslalom Streckenplaner
+// Copyright (c) Jens Polifka
+// All rights reserved.
+
 import React, { useMemo, useRef, useState } from "react";
 import type { PlacedArrow, PlacedFormation } from "../types";
 import type { ValidationIssue } from "../lib/validation/types";

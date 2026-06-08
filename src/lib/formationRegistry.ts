@@ -1,3 +1,7 @@
+// Kartslalom Streckenplaner
+// Copyright (c) Jens Polifka
+// All rights reserved.
+
 import type { FormationDefinition, FormationKey } from "../types";
 import { normalizeCones } from "./geometry";
 import { meter, standing } from "./formations/common";
