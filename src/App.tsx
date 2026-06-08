@@ -2,7 +2,7 @@ import React, { useMemo, useReducer, useRef, useEffect, useState } from "react";
 import {
   RotateCw, Trash2, AlertTriangle, Info, Pencil, Map, Satellite,
   ChevronDown, ChevronRight, MousePointer, Undo2, Redo2, X, FileDown,
-  Menu, SlidersHorizontal,
+  Menu, SlidersHorizontal, HelpCircle,
 } from "lucide-react";
 import TrackCanvas from "./components/TrackCanvas";
 import type { MapConfig } from "./components/TrackCanvas";
@@ -165,6 +165,7 @@ export default function App() {
   // Area / map
   const [areaSel, setAreaSel] = useState<AreaSelection | null>(() => _initialSaved?.areaSel ?? null);
   const [showMapSelector, setShowMapSelector] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const [manualWidth, setManualWidth] = useState(() => _initialSaved?.manualWidth ?? 18);
   const [manualLength, setManualLength] = useState(() => _initialSaved?.manualLength ?? 36);
   const [manualWidthInput, setManualWidthInput] = useState(() => String(_initialSaved?.manualWidth ?? 18));
@@ -411,6 +412,44 @@ export default function App() {
         </div>
       )}
 
+      {/* ── Modal: Hilfe ────────────────────────────────────────────── */}
+      {showHelp && (
+        <div
+          style={{
+            position: "fixed", inset: 0,
+            background: "rgba(0,0,0,0.55)",
+            zIndex: 200,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 16, boxSizing: "border-box",
+          }}
+          onClick={() => setShowHelp(false)}
+        >
+          <div
+            style={{
+              background: "white", borderRadius: 20, padding: 22,
+              width: "min(720px, 96vw)", maxHeight: "90vh", overflow: "auto",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
+              boxSizing: "border-box",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+              <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                <HelpCircle size={20} color="#0284c7" /> Hilfe
+              </h3>
+              <button
+                onClick={() => setShowHelp(false)}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", display: "flex", padding: 4 }}
+                title="Schließen"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <HelpContent />
+          </div>
+        </div>
+      )}
+
       {/* ── Mobile drawer backdrop ──────────────────────────────────── */}
       {isMobile && mobilePanel && (
         <div
@@ -420,9 +459,19 @@ export default function App() {
       )}
 
       <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", maxWidth: 1600, width: "100%", margin: "0 auto", padding: isMobile ? "10px 10px" : "16px 20px", boxSizing: "border-box" }}>
-        <h1 style={{ marginTop: 0, marginBottom: isMobile ? 8 : 16, fontSize: isMobile ? 17 : 21, fontWeight: 800, flexShrink: 0 }}>
-          Kartslalom Streckenplaner
-        </h1>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: isMobile ? 8 : 16, flexShrink: 0 }}>
+          <h1 style={{ margin: 0, fontSize: isMobile ? 17 : 21, fontWeight: 800 }}>
+            Kartslalom Streckenplaner
+          </h1>
+          <button
+            onClick={() => setShowHelp(true)}
+            style={{ ...iconBtnLabel, color: "#0284c7", borderColor: "#bae6fd" }}
+            title="Hilfe öffnen"
+          >
+            <HelpCircle size={14} />
+            <span>Hilfe</span>
+          </button>
+        </div>
 
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "276px 1fr 296px", gap: 14, flex: 1, minHeight: 0, overflow: "hidden" }}>
 
@@ -711,8 +760,9 @@ export default function App() {
             </div>
           </section>
 
-          {/* ── Right Panel ───────────────────────────────────────────── */}
-          <aside style={{ display: "grid", gap: 12, alignContent: "start", overflowY: "auto", minHeight: 0 }}>
+          {/* ── Right Panel (Eigenschaften) ──────────────────────────── */}
+          <aside style={isMobile ? mobileDrawerStyle("right", mobilePanel === "properties") : { display: "grid", gap: 12, alignContent: "start", overflowY: "auto", minHeight: 0 }}>
+            {isMobile && <DrawerHeader title="Eigenschaften" onClose={() => setMobilePanel(null)} />}
 
             {/* Properties */}
             <section style={card}>
@@ -915,6 +965,21 @@ export default function App() {
 
 // ── Sub-components ───────────────────────────────────────────────────
 
+function DrawerHeader({ title, onClose }: { title: string; onClose: () => void }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+      <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>{title}</h2>
+      <button
+        onClick={onClose}
+        style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", display: "flex", padding: 4 }}
+        title="Schließen"
+      >
+        <X size={20} />
+      </button>
+    </div>
+  );
+}
+
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div style={{
@@ -1030,6 +1095,20 @@ function PaletteCard({
 }
 
 // ── Shared styles ────────────────────────────────────────────────────
+
+function mobileDrawerStyle(side: "left" | "right", open: boolean): React.CSSProperties {
+  return {
+    position: "fixed", top: 0, bottom: 0, [side]: 0,
+    width: "min(85vw, 320px)",
+    background: "#f1f5f9", zIndex: 160,
+    overflowY: "auto", minHeight: 0,
+    display: "grid", gap: 12, alignContent: "start",
+    padding: 14, boxSizing: "border-box",
+    boxShadow: side === "left" ? "4px 0 24px rgba(0,0,0,0.18)" : "-4px 0 24px rgba(0,0,0,0.18)",
+    transform: open ? "translateX(0)" : `translateX(${side === "left" ? "-110%" : "110%"})`,
+    transition: "transform 0.25s ease",
+  };
+}
 
 const card: React.CSSProperties = {
   background: "white",
