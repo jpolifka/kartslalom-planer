@@ -38,7 +38,7 @@ Typfehlern ab, bevor `vite build` den eigentlichen Produktions-Bundle erzeugt.
 2. **Serve-Stage** (`nginx:1.27-alpine`): nur das Build-Ergebnis (`dist/`)
    sowie die nginx-Konfiguration werden in das finale Image übernommen.
 
-[`nginx.conf`](../nginx.conf) konfiguriert:
+[`docker/nginx.conf`](../docker/nginx.conf) konfiguriert:
 
 - **SPA-Routing**: `try_files $uri $uri/ /index.html` — alle Pfade landen auf
   `index.html`, das clientseitige Routing übernimmt React (aktuell gibt es
