@@ -455,7 +455,7 @@ export default function App() {
         </div>
       )}
 
-      {/* ── Modal: Impressum ────────────────────────────────────────── */}
+      {/* ── Modal: Impressum / Datenschutzerklärung ─────────────────── */}
       {showImprint && (
         <div
           style={{
