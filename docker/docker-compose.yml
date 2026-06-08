@@ -1,6 +1,8 @@
 services:
   kartslalom:
-    build: .
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
     ports:
       - "5173:80"
     restart: unless-stopped
