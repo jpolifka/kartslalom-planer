@@ -1,6 +1,6 @@
 import type { FormationDefinition } from "../../types";
 import { normalizeCones } from "../geometry";
-import { builder, lying } from "./common";
+import { builder } from "./common";
 
 export const zLane: FormationDefinition = {
   key: "zLane",
