@@ -19,6 +19,12 @@ Siehe [`docker/Dockerfile.dev`](../docker/Dockerfile.dev) /
 zuverlässiges File-Watching in Containern; `context: ..` zeigt auf das
 Projekt-Wurzelverzeichnis, da die Compose-/Docker-Dateien in `docker/` liegen).
 
+> **Hinweis zu `.dockerignore`:** Die Datei liegt bewusst im
+> Projekt-Wurzelverzeichnis (`.dockerignore`, nicht in `docker/`) — Docker
+> sucht sie ausschließlich im Build-Context-Root. Da `context: ..` auf das
+> Projekt-Wurzelverzeichnis zeigt, muss `.dockerignore` dort liegen, damit
+> z. B. `node_modules` beim Build nicht mit übertragen wird.
+
 ## Produktions-Build
 
 ```bash
