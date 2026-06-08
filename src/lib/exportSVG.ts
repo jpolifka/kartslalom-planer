@@ -148,11 +148,14 @@ export function generateTrackSVG(
         );
       } else {
         // Standing pylon: correct size (pylonPx, not pylonPx*2)
+        const angleDeg = (cone.angleDeg ?? 0);
         out.push(
           `<rect` +
           ` x="${fmt(cpx - pylonPx / 2)}" y="${fmt(cpy - pylonPx / 2)}"` +
           ` width="${fmt(pylonPx)}" height="${fmt(pylonPx)}"` +
-          ` rx="2" fill="#f97316" stroke="#9a3412" stroke-width="1"/>`
+          ` rx="2" fill="#f97316" stroke="#9a3412" stroke-width="1"` +
+          (angleDeg ? ` transform="rotate(${angleDeg},${fmt(cpx)},${fmt(cpy)})"` : "") +
+          `/>`
         );
       }
     }
