@@ -455,6 +455,42 @@ export default function App() {
         </div>
       )}
 
+      {/* ── Modal: Impressum ────────────────────────────────────────── */}
+      {showImprint && (
+        <div
+          style={{
+            position: "fixed", inset: 0,
+            background: "rgba(0,0,0,0.55)",
+            zIndex: 200,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 16, boxSizing: "border-box",
+          }}
+          onClick={() => setShowImprint(false)}
+        >
+          <div
+            style={{
+              background: "white", borderRadius: 20, padding: 22,
+              width: "min(560px, 96vw)", maxHeight: "90vh", overflow: "auto",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
+              boxSizing: "border-box",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+              <h3 style={{ margin: 0 }}>Impressum</h3>
+              <button
+                onClick={() => setShowImprint(false)}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", display: "flex", padding: 4 }}
+                title="Schließen"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <ImprintContent />
+          </div>
+        </div>
+      )}
+
       {/* ── Mobile drawer backdrop ──────────────────────────────────── */}
       {isMobile && mobilePanel && (
         <div
