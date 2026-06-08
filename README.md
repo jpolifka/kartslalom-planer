@@ -58,7 +58,8 @@ Für eine containerisierte Dev-Umgebung mit HMR siehe
 
 ## Geplante Weiterentwicklung
 
-[SAAS_PLAN.md](SAAS_PLAN.md) und [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)
+[docs/planning/SAAS_PLAN.md](docs/planning/SAAS_PLAN.md) und
+[docs/planning/IMPLEMENTATION_PLAN.md](docs/planning/IMPLEMENTATION_PLAN.md)
 beschreiben die geplante Transformation des aktuellen MVP (rein clientseitig,
 ohne Backend) in eine SaaS-Anwendung mit Login, Cloud-Speicherung und
 Bezahlfunktionen (Supabase, Stripe, Resend, Hetzner/Coolify). Der aktuelle
