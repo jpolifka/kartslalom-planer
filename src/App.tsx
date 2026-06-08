@@ -504,14 +504,23 @@ export default function App() {
           <h1 style={{ margin: 0, fontSize: isMobile ? 17 : 21, fontWeight: 800 }}>
             Kartslalom Streckenplaner
           </h1>
-          <button
-            onClick={() => setShowHelp(true)}
-            style={{ ...iconBtnLabel, color: "#0284c7", borderColor: "#bae6fd" }}
-            title="Hilfe öffnen"
-          >
-            <HelpCircle size={14} />
-            <span>Hilfe</span>
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button
+              onClick={() => setShowImprint(true)}
+              style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", fontSize: 12, textDecoration: "underline", padding: 4 }}
+              title="Impressum öffnen"
+            >
+              Impressum
+            </button>
+            <button
+              onClick={() => setShowHelp(true)}
+              style={{ ...iconBtnLabel, color: "#0284c7", borderColor: "#bae6fd" }}
+              title="Hilfe öffnen"
+            >
+              <HelpCircle size={14} />
+              <span>Hilfe</span>
+            </button>
+          </div>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "276px 1fr 296px", gap: 14, flex: 1, minHeight: 0, overflow: "hidden" }}>
@@ -1139,6 +1148,28 @@ function HelpContent() {
         in der Werkzeugleiste blendest du die jeweiligen Bereiche als seitliche
         Schublade ein und aus.
       </HelpSection>
+    </div>
+  );
+}
+
+function ImprintContent() {
+  return (
+    <div style={{ fontSize: 13, color: "#334155", lineHeight: 1.7 }}>
+      <p style={{ margin: "10px 0 4px" }}>
+        <strong>Angaben gemäß § 5 TMG</strong>
+      </p>
+      <p style={{ margin: "4px 0" }}>
+        Jens Polifka<br />
+        In der Maar 31<br />
+        56598 Rheinbrohl
+      </p>
+
+      <p style={{ margin: "16px 0 4px" }}>
+        <strong>Kontakt</strong>
+      </p>
+      <p style={{ margin: "4px 0" }}>
+        E-Mail: <a href="mailto:jens@polifka.info" style={{ color: "#0284c7" }}>jens@polifka.info</a>
+      </p>
     </div>
   );
 }
