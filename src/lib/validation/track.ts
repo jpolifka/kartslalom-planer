@@ -190,7 +190,6 @@ export function validateTrack(ctx: ValidationContext): ValidationIssue[] {
       scope: "track",
       message: "Die Strecke zerfaellt in mehrere voneinander getrennte Aufgabenbereiche.",
       details: `${components.length} getrennte Bereiche erkannt.`,
-      formationGroups: components,
     });
   }
 
