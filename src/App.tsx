@@ -202,6 +202,9 @@ export default function App() {
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
   const [subMenuKey, setSubMenuKey] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "pending" | "saved">("idle");
+  const isMobile = useIsMobile();
+  const [mobilePanel, setMobilePanel] = useState<"formations" | "properties" | null>(null);
+  useEffect(() => { if (!isMobile) setMobilePanel(null); }, [isMobile]);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedFadeRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -408,15 +411,24 @@ export default function App() {
         </div>
       )}
 
-      <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", maxWidth: 1600, width: "100%", margin: "0 auto", padding: "16px 20px", boxSizing: "border-box" }}>
-        <h1 style={{ marginTop: 0, marginBottom: 16, fontSize: 21, fontWeight: 800, flexShrink: 0 }}>
+      {/* ── Mobile drawer backdrop ──────────────────────────────────── */}
+      {isMobile && mobilePanel && (
+        <div
+          style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", zIndex: 150 }}
+          onClick={() => setMobilePanel(null)}
+        />
+      )}
+
+      <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", maxWidth: 1600, width: "100%", margin: "0 auto", padding: isMobile ? "10px 10px" : "16px 20px", boxSizing: "border-box" }}>
+        <h1 style={{ marginTop: 0, marginBottom: isMobile ? 8 : 16, fontSize: isMobile ? 17 : 21, fontWeight: 800, flexShrink: 0 }}>
           Kartslalom Streckenplaner
         </h1>
 
-        <div style={{ display: "grid", gridTemplateColumns: "276px 1fr 296px", gap: 14, flex: 1, minHeight: 0, overflow: "hidden" }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "276px 1fr 296px", gap: 14, flex: 1, minHeight: 0, overflow: "hidden" }}>
 
-          {/* ── Left Sidebar ─────────────────────────────────────────── */}
-          <aside style={{ display: "grid", gap: 12, alignContent: "start", overflowY: "auto", minHeight: 0 }}>
+          {/* ── Left Sidebar (Formationen) ───────────────────────────── */}
+          <aside style={isMobile ? mobileDrawerStyle("left", mobilePanel === "formations") : { display: "grid", gap: 12, alignContent: "start", overflowY: "auto", minHeight: 0 }}>
+            {isMobile && <DrawerHeader title="Formationen" onClose={() => setMobilePanel(null)} />}
 
             {/* Area section */}
             <section style={card}>
