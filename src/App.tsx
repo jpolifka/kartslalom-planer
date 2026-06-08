@@ -547,7 +547,29 @@ export default function App() {
               display: "flex", alignItems: "center", gap: 8,
               boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
               flexShrink: 0,
+              overflowX: "auto", WebkitOverflowScrolling: "touch",
             }}>
+              {isMobile && (
+                <>
+                  <button
+                    onClick={() => setMobilePanel(mobilePanel === "formations" ? null : "formations")}
+                    style={toolBtn(mobilePanel === "formations")}
+                    title="Formationen ein-/ausblenden"
+                  >
+                    <Menu size={14} />
+                    <span>Formationen</span>
+                  </button>
+                  <button
+                    onClick={() => setMobilePanel(mobilePanel === "properties" ? null : "properties")}
+                    style={toolBtn(mobilePanel === "properties")}
+                    title="Eigenschaften ein-/ausblenden"
+                  >
+                    <SlidersHorizontal size={14} />
+                    <span>Eigenschaften</span>
+                  </button>
+                  <div style={divider} />
+                </>
+              )}
               <button onClick={() => setMode("select")} style={toolBtn(mode === "select")} title="Auswählen (Esc)">
                 <MousePointer size={14} />
                 <span>Auswählen</span>
