@@ -2,7 +2,7 @@
 // Copyright (c) Jens Polifka
 // All rights reserved.
 
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { PlacedArrow, PlacedFormation } from "../types";
 import type { ValidationIssue } from "../lib/validation/types";
 import { boundsFromCones, rotateConesAroundOwnCenter } from "../lib/geometry";
