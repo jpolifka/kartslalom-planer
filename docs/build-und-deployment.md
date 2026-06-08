@@ -10,12 +10,14 @@ npm run type-check   # tsc --noEmit
 Für eine containerisierte Dev-Umgebung mit Hot-Module-Replacement:
 
 ```bash
-docker compose -f docker-compose.dev.yml up
+docker compose -f docker/docker-compose.dev.yml up
 ```
 
-Siehe [`Dockerfile.dev`](../Dockerfile.dev) / [`docker-compose.dev.yml`](../docker-compose.dev.yml)
+Siehe [`docker/Dockerfile.dev`](../docker/Dockerfile.dev) /
+[`docker/docker-compose.dev.yml`](../docker/docker-compose.dev.yml)
 (Bind-Mount des Projektverzeichnisses, `CHOKIDAR_USEPOLLING` für
-zuverlässiges File-Watching in Containern).
+zuverlässiges File-Watching in Containern; `context: ..` zeigt auf das
+Projekt-Wurzelverzeichnis, da die Compose-/Docker-Dateien in `docker/` liegen).
 
 ## Produktions-Build
 
@@ -29,7 +31,7 @@ Typfehlern ab, bevor `vite build` den eigentlichen Produktions-Bundle erzeugt.
 
 ## Produktions-Deployment (Docker + nginx)
 
-[`Dockerfile`](../Dockerfile) beschreibt einen zweistufigen Build:
+[`docker/Dockerfile`](../docker/Dockerfile) beschreibt einen zweistufigen Build:
 
 1. **Builder-Stage** (`node:20-alpine`): Abhängigkeiten installieren
    (`npm ci --ignore-scripts`), `npm run build` ausführen.
