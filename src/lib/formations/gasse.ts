@@ -10,11 +10,11 @@ export const gasse: FormationDefinition = {
   cones: normalizeCones(
     builder()
       .at(0, 0).standing()
-      .move_pylon(0, 0.6).standing()
-      .move_pylon(0, 0.6).standing()
+      .move_pylon(0, 0.35).standing()
+      .move_pylon(0, 0.35).standing()
       .at(0, 0).move_lane(1, 0).standing()
-      .move_pylon(0, 0.6).standing()
-      .move_pylon(0, 0.6).standing()
+      .move_pylon(0, 0.35).standing()
+      .move_pylon(0, 0.35).standing()
       .points()
   ),
 };

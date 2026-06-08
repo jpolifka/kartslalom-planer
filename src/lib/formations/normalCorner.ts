@@ -10,11 +10,11 @@ export const normalCorner: FormationDefinition = {
   cones: normalizeCones(
       builder()
         .at(0,0).standing()
-        .move_pylon(1.6,0).standing()
-        .move_pylon(1.6,0).standing()        
+        .move_pylon(1.2,0).standing()
+        .move_pylon(1.2,0).standing()        
         .move_lane(0,1).standing()
         .move_lane(-1,0).standing()
-        .move_pylon(0,-1.6).standing()        
+        .move_pylon(0,-1.2).standing()        
         .points()
     ),
 };
@@ -26,13 +26,11 @@ export const normalCornerAlt: FormationDefinition = {
   defaultDirection: "none",
   cones: normalizeCones(
       builder()
-        .at(0,0).standing()
-        .move_lane(1,0).standing()
-        .move_lane(-1,0)
-        .move_pylon(0, 1.35).standing()
-        .move_pylon(0.6, 1.35).standing()
-        .move_pylon(1.35, 0.6).standing()
-        .move_pylon(1.35, 0).standing()
+        .at(0,0).standing().move_lane(1,0).standing()
+        .at(0,0).move_lane(0,1).standing()
+        .move_pylon(0.9,-0.25).standing("normal",55)
+        .move_pylon(0.9,-0.55).standing("normal",45)
+        .move_pylon(0.5,-0.9).standing("normal",25)        
         .points()
     ),
 };

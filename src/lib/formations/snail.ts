@@ -29,7 +29,7 @@ export const snail: FormationDefinition = {
 
       .at(0,0).move_lane(2,0).move_pylon(1,0).standing()
       .move_pylon(1,0).standing()
-      .move_pylon(1,0).standing()
+      .move_pylon(1,0).standing()   
       .move_pylon(1,0).standing()
       .move_pylon(1,0).standing()
       .move_pylon(0,1).standing()

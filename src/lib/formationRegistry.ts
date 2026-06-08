@@ -43,51 +43,6 @@ export const singlePylon: FormationDefinition = {
   cones: normalizeCones([standing(meter(0), meter(0))]),
 };
 
-export const arrowStraight: FormationDefinition = {
-  key: "arrowStraight",
-  label: "Pfeil gerade",
-  description: "Gerader Fahrtrichtungspfeil mit abgerundeten Ecken.",
-  defaultDirection: "none",
-  cones: [],
-  arrow: {
-    kind: "straight",
-    width: 3.2,
-    height: 1.2,
-    strokeWidth: 0.28,
-    headSize: 0.9,
-  },
-};
-
-export const arrow90: FormationDefinition = {
-  key: "arrow90",
-  label: "Pfeil 90 Grad",
-  description: "Abgerundeter 90-Grad-Fahrtrichtungspfeil.",
-  defaultDirection: "none",
-  cones: [],
-  arrow: {
-    kind: "turn90",
-    width: 3.2,
-    height: 3.2,
-    strokeWidth: 0.28,
-    headSize: 0.9,
-  },
-};
-
-export const arrow180: FormationDefinition = {
-  key: "arrow180",
-  label: "Pfeil 180 Grad",
-  description: "Abgerundeter 180-Grad-Wendepfeil.",
-  defaultDirection: "none",
-  cones: [],
-  arrow: {
-    kind: "turn180",
-    width: 3.8,
-    height: 3.4,
-    strokeWidth: 0.28,
-    headSize: 0.9,
-  },
-};
-
 const RAW_FORMATIONS: FormationDefinition[] = [
   startGate,
   finishLane,

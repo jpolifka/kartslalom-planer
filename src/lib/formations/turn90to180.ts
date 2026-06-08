@@ -10,8 +10,8 @@ export const turn90to180: FormationDefinition = {
   cones: normalizeCones(
     builder()
       .at(0, 0).standing()
-      .move_meter(0.36, 0).standing()
-      .at(0.18, 0.31).standing()
+      .move_pylon(0.4,0).standing()
+      .at(0,0).move_pylon(0.2,0.4).standing()
       .points()
   ),
 };

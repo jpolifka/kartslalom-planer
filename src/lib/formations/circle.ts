@@ -58,18 +58,18 @@ export const circle: FormationDefinition = {
       const outerRadius = innerRadius + laneWidth;
       const targetSpacing = 1.0;
 
-      // etwas Platz links für Pfeile/Beschriftung
+      // etwas Platz links fuer Pfeile/Beschriftung
       const centerX = outerRadius + 4.0;
       const centerY = outerRadius + 2.0;
 
-      // Öffnungen links:
-      // außen nur kleine Lücken, weil die Torpylonen zusätzlich gesetzt werden
+      // Oeffnungen links:
+      // aussen nur kleine Luecken, weil die Torpylonen zusaetzlich gesetzt werden
       const outerGap: Array<[number, number]> = [
         [164, 176], // Einfahrt A oben links
         [184, 196], // Ausfahrt B unten links
       ];
 
-      // innen größere Öffnung für die Fahrspur / Ausfahrt
+      // innen groessere Oeffnung fuer die Fahrspur / Ausfahrt
       const innerGap: Array<[number, number]> = [[165, 195]];
 
       const cones: ConePoint[] = [
@@ -77,7 +77,7 @@ export const circle: FormationDefinition = {
         ...buildRing(centerX, centerY, innerRadius, targetSpacing, innerGap),
       ];
 
-      // Außenkreis: zusätzliche Torpylonen für Einfahrt A = 3 m
+      // Aussenkreis: zusaetzliche Torpylonen fuer Einfahrt A = 3 m
       const outerGateX = centerX - outerRadius;
       const entryTopY = centerY + 1.5;
       const entryBottomY = centerY - 1.5;
@@ -87,7 +87,7 @@ export const circle: FormationDefinition = {
         standing(Number(outerGateX.toFixed(3)), Number(entryBottomY.toFixed(3)))
       );
 
-      // Innenkreis: zusätzliche Torpylonen für Ausfahrt B = Fahrspurbreite
+      // Innenkreis: zusaetzliche Torpylonen fuer Ausfahrt B = Fahrspurbreite
       const innerGateX = centerX - innerRadius;
       const exitTopY = centerY + laneWidth / 2;
       const exitBottomY = centerY - laneWidth / 2;
@@ -105,7 +105,7 @@ export const circle: FormationDefinition = {
         lying(Number(arrowX.toFixed(3)), Number((centerY - 2.4).toFixed(3)), "direction", 90)
       );
 
-      // Dubletten/Nachbarn entschärfen
+      // Dubletten/Nachbarn entschaerfen
       const deduped: ConePoint[] = [];
       for (const cone of cones) {
         const exists = deduped.some((existing) => {

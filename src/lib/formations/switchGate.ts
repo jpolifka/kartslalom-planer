@@ -11,8 +11,8 @@ export const switchGate: FormationDefinition = {
     builder()
       .at(0, 0).standing()
       .move_lane(1,0).standing()
-      .move_pylon(2,0).lying(90)
-      .move_pylon(2,0).standing()
+      .move_pylon(1.25,0).lying(90)
+      .move_pylon(1.25,0).standing()
       .move_lane(1,0).standing()
       .points()
   ),

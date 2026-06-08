@@ -9,7 +9,8 @@ export const swissSlalom: FormationDefinition = {
   defaultDirection: "none",
   cones: normalizeCones(
     builder()
-      .at(0, 0).standing().move_pylon_height(-1, 0).lying(90)
+      .at(0, 0).standing()
+      .move_pylon_height(-1, 0).lying(90)
       .points()
   ),
 };

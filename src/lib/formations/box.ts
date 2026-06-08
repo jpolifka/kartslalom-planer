@@ -36,23 +36,19 @@ export const boxTurn: FormationDefinition = {
   cones: normalizeCones(
     builder()
       .at(0,0).standing()
+      .move_pylon(1.1,0).standing()
+      .move_pylon(1.1,0).standing()
+      .move_pylon(1.1,0).standing()
+      .move_pylon(1.1,0).standing()
+      .move_lane(0,1).standing()
       .move_pylon(0,1).standing()
       .move_pylon(0,1).standing()
-      .move_pylon(0,1).standing()
-      .move_pylon(0,1).standing()
-
-      .move_lane(1,0).standing()
-      .move_pylon(1,0).standing()
-      .move_pylon(1,0).standing()
-      .move_pylon(0,-1).standing()
-      .move_pylon(0,-1).standing()
-
-      .move_lane(0,-1).standing()
-      .move_pylon(-1.3,0).standing()
-      .move_pylon(-1.3,0).standing()
-      .move_pylon(-1.3,0).standing()
-      .move_pylon(-1.3,0).standing()
-     
+      .move_pylon(-1,0).standing()
+      .move_pylon(-1,0).standing()
+      .move_lane(-1,0).standing()
+      .move_pylon(0,-1.1).standing()
+      .move_pylon(0,-1.1).standing()
+      .move_pylon(0,-1.1).standing()     
       .points()
   ),
 };
