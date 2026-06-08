@@ -1,18 +1,26 @@
 import type { ConePoint } from "../../types";
 
 export const PYLON_HEIGHT = 0.5;
-export const PYLON_SPACING = 0.5;
+// Pylonenfuß: 30 x 30 cm. Alle Streckenmaße (Pylonenabstand, lichte Torbreite) werden laut
+// DMSB-Reglement Kante-zu-Kante bzw. an der Innenkante des Fußes gemessen, nicht Mittelpunkt-zu-Mittelpunkt.
+// Da die Cone-Koordinaten den Mittelpunkt des Pylonen darstellen, muss der Pylon-Durchmesser
+// auf den offiziellen Kantenabstand aufaddiert werden, um den Mittelpunktabstand zu erhalten.
+export const PYLON_FOOT_SIZE = 0.30;
+export const PYLON_GAP = 0.5; // offizieller Pylonenabstand, Kante zu Kante
+export const PYLON_SPACING = PYLON_GAP + PYLON_FOOT_SIZE; // Mittelpunktabstand = 0,80 m
 export const SLICK_TRACK_WIDTH = 1.25;
-export const TASK_LANE_WIDTH = SLICK_TRACK_WIDTH + 0.4; // 1.65 m
-export const HALF_LANE_WIDTH = TASK_LANE_WIDTH / 2;
-export const ONE_AND_HALF_LANE_WIDTH = TASK_LANE_WIDTH * 1.5;
+export const TASK_LANE_WIDTH = SLICK_TRACK_WIDTH + 0.4; // 1,65 m lichte Breite (Innenkante zu Innenkante)
+export const LANE_SPACING = TASK_LANE_WIDTH + PYLON_FOOT_SIZE; // Mittelpunktabstand der Torpylonen = 1,95 m
+export const HALF_LANE_WIDTH = LANE_SPACING / 2;
+export const ONE_AND_HALF_LANE_WIDTH = LANE_SPACING * 1.5;
 
 export function standing(
   x: number,
   y: number,
-  role: ConePoint["role"] = "normal"
+  role: ConePoint["role"] = "normal",
+  angleDeg = 0
 ): ConePoint {
-  return { x, y, kind: "standing", role };
+  return { x, y, kind: "standing", role, angleDeg };
 }
 
 export function lying(
@@ -41,7 +49,7 @@ export function pylon_height(value = 1) {
 }
 
 export function lane(value = 1) {
-  return value * TASK_LANE_WIDTH;
+  return value * LANE_SPACING;
 }
 
 export function half_lane(value = 1) {
@@ -93,8 +101,8 @@ export class FormationBuilder {
     return this;
   }
 
-  standing(role: ConePoint["role"] = "normal") {
-    this.cones.push(standing(this.x, this.y, role));
+  standing(role: ConePoint["role"] = "normal", angleDeg = 0) {
+    this.cones.push(standing(this.x, this.y, role, angleDeg));
     return this;
   }
 

@@ -11,8 +11,8 @@ export default function FormationThumbnail({
   rotationDeg?: number;
 }) {
   const { cones, key } = formation;
-  // Physical radius of a Type-2 Leitkegel (36 cm base diameter)
-  const CONE_RADIUS_M = 0.18;
+  // Physical radius of the pylon foot (30 x 30 cm base)
+  const CONE_RADIUS_M = 0.15;
   const pad = size * 0.13;
   const markerId = `th-arr-${key}-${rotationDeg}`;
   const mid = size / 2;

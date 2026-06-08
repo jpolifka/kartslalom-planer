@@ -505,6 +505,8 @@ export default function TrackCanvas(props: TrackCanvasProps) {
                       border: "1px solid #9a3412",
                       boxSizing: "border-box",
                       pointerEvents: "none",
+                      transform: cone.angleDeg ? `rotate(${cone.angleDeg}deg)` : undefined,
+                      transformOrigin: "center center",
                     }} />
                   );
                 })}
