@@ -1,11 +1,22 @@
 # Persistenz
 
-Die App hat keinen Server-Anteil — sämtliche Persistenz läuft über
-[`lib/storage.ts`](../src/lib/storage.ts) im Browser bzw. über Dateien.
+Seit Phase 1 gibt es zwei Persistenz-Modi, je nachdem ob ein Nutzer
+angemeldet ist (`useAuthStore().session`):
 
-## Autosave (localStorage)
+- **Gast-Modus** (keine Session): wie bisher reines Browser-`localStorage`
+  über [`lib/storage.ts`](../src/lib/storage.ts).
+- **Cloud-Modus** (Session vorhanden): Speichern/Laden über Supabase-RPCs
+  (`create_track`, `save_track`, siehe [`lib/api/tracks.ts`](../src/lib/api/tracks.ts)),
+  serverseitige Tier-Limits und Ownership-Prüfung via RLS.
 
-`App.tsx` speichert den kompletten Zustand (platzierte Formationen, Pfeile,
+`SavedState` aus `storage.ts` bleibt in beiden Fällen die gemeinsame
+Datenform — im Cloud-Modus wird sie 1:1 in die RPC-Parameter
+(`p_state_json`, `p_area_sel`, `p_width`, `p_length`, `p_satellite`,
+`p_opacity`) abgebildet.
+
+## Autosave (localStorage, Gast-Modus)
+
+`EditorPage.tsx` speichert den kompletten Zustand (platzierte Formationen, Pfeile,
 Feldmaße, Kartenausschnitt, Kartenoptionen) **debounced** — 1 Sekunde nach
 der letzten Änderung — über `saveState(...)` in `localStorage` unter dem
 Schlüssel `kartslalom_autosave`.
@@ -17,6 +28,31 @@ Initializer denselben geladenen Stand verwenden.
 Über den „Neu“-Button (`clearSavedState()`) lässt sich der gespeicherte Stand
 verwerfen und die App in den Ausgangszustand zurücksetzen (mit
 Sicherheitsabfrage).
+
+## Autosave (Cloud, eingeloggte Nutzer)
+
+Bei vorhandener Session ruft `EditorPage.tsx` denselben debounced
+1-Sekunden-Timer auf, speichert aber statt `saveState(...)` per
+`useSaveTrack()`-Mutation den Zustand über die `save_track()`-RPC.
+
+- **Neue Strecke** (`/editor/new`): Beim Mount wird sofort `create_track()`
+  aufgerufen und zu `/editor/:id` weitergeleitet. Schlägt das wegen
+  `TRACK_LIMIT_REACHED` fehl, geht es zurück zum Dashboard mit Hinweis.
+- **Bestehende Strecke** (`/editor/:trackId`): `useTrack(trackId)` lädt den
+  Datensatz einmalig in den lokalen State (`cloudAppliedRef`), danach greift
+  der normale Autosave.
+- **Fehlerbehandlung**: Liefert `save_track()` `SATELLITE_REQUIRES_PRO`
+  (Free-Tarif + `map_satellite=true`), setzt das Frontend `mapSatellite`
+  automatisch zurück und zeigt einen Hinweis. `NOT_OWNER` (fremder Track)
+  wird als generischer Fehler behandelt.
+
+## localStorage-Migration beim ersten Login
+
+`AuthCallbackPage.tsx` prüft nach erfolgreichem Magic-Link-Login, ob im
+Browser noch ein Gast-Stand (`loadState()`) existiert und der Nutzer noch
+keine Cloud-Tracks hat (`count` auf `tracks`). Falls ja, wird per
+`create_track("Meine Strecke (migriert)")` + `saveTrack(...)` ein neuer
+Cloud-Track angelegt und anschließend `clearSavedState()` aufgerufen.
 
 ## Versionierung
 
