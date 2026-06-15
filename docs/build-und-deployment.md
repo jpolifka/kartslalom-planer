@@ -1,5 +1,45 @@
 # Build & Deployment
 
+## Lokales Supabase (Docker)
+
+Supabase laeuft lokal als self-hosted Docker-Compose-Stack unter
+[`docker/supabase/`](../docker/supabase/) (Postgres, Auth, PostgREST,
+Realtime, Storage, Studio, Kong, Supavisor, Mailpit).
+
+```bash
+cd docker/supabase
+docker compose up -d      # Stack starten
+docker compose down       # Stack stoppen (Daten bleiben erhalten)
+sh reset.sh                # Stack stoppen + alle Daten loeschen (Neustart bei leerem Schema)
+```
+
+- **Studio (Dashboard):** http://localhost:8000 (Login siehe
+  `DASHBOARD_USERNAME` / `DASHBOARD_PASSWORD` in `docker/supabase/.env`)
+- **API/Kong:** http://localhost:8000
+- **Postgres (via Supavisor):** `localhost:54322`
+- **Mailpit (Magic-Link-Mails abfangen):** http://localhost:8025
+
+`docker/supabase/.env` enthaelt generierte Secrets fuer die lokale
+Entwicklung (gitignored). `docker/supabase/.env.example` zeigt die
+Vorlage von Supabase. `ENABLE_EMAIL_AUTOCONFIRM=true` und `SMTP_HOST=mailpit`
+sind fuer lokale Entwicklung vorkonfiguriert — Magic-Link-Mails landen in
+Mailpit statt an eine echte Adresse.
+
+Das App-Schema (Phase 0.5–0.7: `profiles`, `tracks`, `track_versions`, RLS,
+`create_track()`, `save_track()`, `touch_last_active()`) wird beim ersten
+Start automatisch ueber Init-Skripte in
+[`docker/supabase/volumes/db/init/`](../docker/supabase/volumes/db/init/)
+angelegt. Diese laufen nur bei **leerem** Datenverzeichnis
+(`docker/supabase/volumes/db/data/`) — fuer Schemaaenderungen entweder
+`sh reset.sh` (Daten weg) oder die SQL manuell ueber Studio/`psql` nachziehen.
+
+`.env.local` im Projekt-Root verweist die App auf die lokale Instanz:
+
+```
+VITE_SUPABASE_URL=http://localhost:8000
+VITE_SUPABASE_ANON_KEY=<ANON_KEY aus docker/supabase/.env>
+```
+
 ## Entwicklung
 
 ```bash
