@@ -48,6 +48,10 @@ alter table public.profiles
   add column username text unique,        -- nullable; Pflicht-Onboarding nach Login
   add column role text not null default 'user'
     check (role in ('user', 'admin'));
+
+-- Case-Insensitivity: "Ralf" und "ralf" dürfen nicht parallel existieren.
+-- Die UI normalisiert auf lowercase, dieser Index erzwingt es zusätzlich serverseitig.
+create unique index profiles_username_lower_idx on public.profiles (lower(username));
 ```
 
 `username` ist *nullable*, damit bestehende/neue Profile zunächst ohne Username
@@ -577,6 +581,10 @@ begin
     raise exception 'not_authenticated';
   end if;
 
+  if length(trim(p_name)) < 1 or length(p_name) > 80 then
+    raise exception 'invalid_name';
+  end if;
+
   if p_category not in ('start_ziel', 'basis', 'kurven', 'komplex', 'individuell') then
     raise exception 'invalid_category';
   end if;
@@ -586,6 +594,9 @@ begin
   end if;
   if jsonb_typeof(p_arrows_json) <> 'array' then
     raise exception 'invalid_arrows_json';
+  end if;
+  if jsonb_array_length(p_cones_json) > 40 then
+    raise exception 'too_many_cones';
   end if;
 
   select role into v_role from public.profiles where id = auth.uid();
