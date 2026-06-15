@@ -65,8 +65,9 @@ zu halten.
 ### Track-State mit Undo/Redo
 
 Der zentrale Streckenzustand (`TrackState = { items, arrows }`) wird über
-`useReducer` (siehe `trackReducer` in [App.tsx](../src/App.tsx)) verwaltet und
-in einem History-Objekt `{ past, present, future }` gehalten (max. 30 Schritte).
+`useReducer` (siehe `trackReducer` in [EditorPage.tsx](../src/pages/EditorPage.tsx))
+verwaltet und in einem History-Objekt `{ past, present, future }` gehalten
+(max. 30 Schritte).
 
 Es gibt zwei Arten von Aktionen:
 
