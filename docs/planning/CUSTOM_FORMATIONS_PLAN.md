@@ -106,6 +106,9 @@ create table public.formation_shares (
   created_at      timestamptz not null default now(),
   unique (formation_id, shared_with_id)
 );
+
+create index formation_shares_shared_with_idx on public.formation_shares(shared_with_id);
+create index formation_shares_formation_idx   on public.formation_shares(formation_id);
 ```
 
 ### 2.4 `app_config` — Premium-Vorbereitung ohne Tarif-Modell
@@ -196,6 +199,21 @@ declare
   v_pylon_count   integer;
   v_new_id        uuid;
 begin
+  if auth.uid() is null then
+    raise exception 'not_authenticated';
+  end if;
+
+  if p_category not in ('start_ziel', 'basis', 'kurven', 'komplex', 'individuell') then
+    raise exception 'invalid_category';
+  end if;
+
+  if jsonb_typeof(p_cones_json) <> 'array' then
+    raise exception 'invalid_cones_json';
+  end if;
+  if jsonb_typeof(p_arrows_json) <> 'array' then
+    raise exception 'invalid_arrows_json';
+  end if;
+
   -- Premium-Gate: heute null -> kein Limit
   select value into v_required_tier from public.app_config
     where key = 'custom_formations_required_tier';
@@ -263,6 +281,21 @@ declare
   v_pylon_count integer;
   v_can_edit    boolean;
 begin
+  if auth.uid() is null then
+    raise exception 'not_authenticated';
+  end if;
+
+  if p_category not in ('start_ziel', 'basis', 'kurven', 'komplex', 'individuell') then
+    raise exception 'invalid_category';
+  end if;
+
+  if jsonb_typeof(p_cones_json) <> 'array' then
+    raise exception 'invalid_cones_json';
+  end if;
+  if jsonb_typeof(p_arrows_json) <> 'array' then
+    raise exception 'invalid_arrows_json';
+  end if;
+
   select
     (owner_id = auth.uid())
     or exists (
@@ -305,6 +338,10 @@ grant execute on function public.update_custom_formation(
 create or replace function public.delete_custom_formation(p_id uuid)
 returns void language plpgsql security definer set search_path = public as $$
 begin
+  if auth.uid() is null then
+    raise exception 'not_authenticated';
+  end if;
+
   delete from public.custom_formations where id = p_id and owner_id = auth.uid();
   if not found then
     raise exception 'not_authorized';
@@ -322,6 +359,10 @@ create or replace function public.find_shareable_user(p_query text)
 returns table(id uuid, username text)
 language plpgsql security definer set search_path = public as $$
 begin
+  if auth.uid() is null then
+    raise exception 'not_authenticated';
+  end if;
+
   return query
     select p.id, p.username from public.profiles p
     where (p.username = p_query or p.email = p_query)
