@@ -210,6 +210,10 @@ begin
     raise exception 'not_authenticated';
   end if;
 
+  if length(trim(p_name)) < 1 or length(p_name) > 80 then
+    raise exception 'invalid_name';
+  end if;
+
   if p_category not in ('start_ziel', 'basis', 'kurven', 'komplex', 'individuell') then
     raise exception 'invalid_category';
   end if;
@@ -290,6 +294,10 @@ declare
 begin
   if auth.uid() is null then
     raise exception 'not_authenticated';
+  end if;
+
+  if length(trim(p_name)) < 1 or length(p_name) > 80 then
+    raise exception 'invalid_name';
   end if;
 
   if p_category not in ('start_ziel', 'basis', 'kurven', 'komplex', 'individuell') then
