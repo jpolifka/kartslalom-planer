@@ -461,6 +461,10 @@ begin
   where id = p_formation_id
   returning id into v_new_id;
 
+  if v_new_id is null then
+    raise exception 'not_found';
+  end if;
+
   return v_new_id;
 end;
 $$;
