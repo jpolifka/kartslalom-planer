@@ -3,23 +3,26 @@
 // All rights reserved.
 
 import React, { useMemo, useReducer, useRef, useEffect, useState } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   RotateCw, Trash2, AlertTriangle, Info, Pencil, Map, Satellite,
   ChevronDown, ChevronRight, MousePointer, Undo2, Redo2, X, FileDown,
-  Menu, SlidersHorizontal, HelpCircle,
+  Menu, SlidersHorizontal, HelpCircle, LayoutDashboard, LogIn,
 } from "lucide-react";
-import TrackCanvas from "./components/TrackCanvas";
-import type { MapConfig } from "./components/TrackCanvas";
-import MapSelector from "./components/MapSelector";
-import FormationThumbnail from "./components/FormationThumbnail";
-import { getFormation, getEffectiveDuration } from "./lib/formationRegistry";
-import { runValidation } from "./lib/validation";
-import { generateTrackSVG, downloadSVG, printAsPDF } from "./lib/exportSVG";
-import type { AreaSelection } from "./lib/areaSelection";
-import type { FormationKey, PlacedArrow, PlacedFormation } from "./types";
-import { saveState, loadState, clearSavedState, exportAsFile, parseImportFile } from "./lib/storage";
+import TrackCanvas from "../components/TrackCanvas";
+import type { MapConfig } from "../components/TrackCanvas";
+import MapSelector from "../components/MapSelector";
+import FormationThumbnail from "../components/FormationThumbnail";
+import { getFormation, getEffectiveDuration } from "../lib/formationRegistry";
+import { runValidation } from "../lib/validation";
+import { generateTrackSVG, downloadSVG, printAsPDF } from "../lib/exportSVG";
+import type { AreaSelection } from "../lib/areaSelection";
+import type { FormationKey, PlacedArrow, PlacedFormation } from "../types";
+import { saveState, loadState, clearSavedState, exportAsFile, parseImportFile } from "../lib/storage";
+import { useAuthStore } from "../store/authStore";
+import { useTrack, useCreateTrack, useSaveTrack } from "../hooks/useTracks";
 
-// Load once at startup, shared across all useState lazy initializers
+// Load once at startup, shared across all useState lazy initializers (Gast-Modus)
 let _initialSaved = loadState();
 
 const MOBILE_BREAKPOINT = 860;
@@ -165,7 +168,21 @@ const FORMATION_GROUPS: Array<{ key: string; label: string; formations: Formatio
 ];
 
 // ── App ──────────────────────────────────────────────────────────────
-export default function App() {
+export default function EditorPage() {
+  const { trackId: trackIdParam } = useParams<{ trackId: string }>();
+  const navigate = useNavigate();
+  const { session } = useAuthStore();
+  const isCloudMode = !!session;
+  const isNewTrack = !trackIdParam || trackIdParam === "new";
+  const trackId = isNewTrack ? null : trackIdParam!;
+
+  const trackQuery = useTrack(isCloudMode && !isNewTrack ? trackId! : undefined);
+  const createTrackMutation = useCreateTrack();
+  const saveTrackMutation = useSaveTrack();
+  const createCalledRef = useRef(false);
+  const cloudAppliedRef = useRef(false);
+  const [cloudLoaded, setCloudLoaded] = useState(!isCloudMode);
+
   // Area / map
   const [areaSel, setAreaSel] = useState<AreaSelection | null>(() => _initialSaved?.areaSel ?? null);
   const [showMapSelector, setShowMapSelector] = useState(false);
