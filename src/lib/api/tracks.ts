@@ -1,0 +1,79 @@
+// Kartslalom Streckenplaner
+// Copyright (c) Jens Polifka
+// All rights reserved.
+
+import { supabase } from "../supabase";
+import type { SavedState } from "../storage";
+
+export type TrackRow = {
+  id: string;
+  name: string;
+  updated_at: string;
+  manual_width: number;
+  manual_length: number;
+};
+
+export type TrackDetail = TrackRow & {
+  state_json: { items: unknown[]; arrows: unknown[] };
+  area_sel_json: unknown;
+  map_satellite: boolean;
+  map_opacity: number;
+};
+
+export async function fetchTracks(): Promise<TrackRow[]> {
+  const { data, error } = await supabase
+    .from("tracks")
+    .select("id, name, updated_at, manual_width, manual_length")
+    .order("updated_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+export async function fetchTrack(id: string): Promise<TrackDetail> {
+  const { data, error } = await supabase
+    .from("tracks")
+    .select("*")
+    .eq("id", id)
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+// Erstellen via RPC — serverseitiges Limit-Check
+export async function createTrack(name = "Neue Strecke"): Promise<string> {
+  const { data, error } = await supabase.rpc("create_track", { track_name: name });
+  if (error) {
+    if (error.message.includes("track_limit_reached")) throw new Error("TRACK_LIMIT_REACHED");
+    throw error;
+  }
+  return data as string;
+}
+
+// Speichern via RPC — Ownership + Tier-Validierung serverseitig
+// Kein direktes .from("tracks").update() — das wäre am Server vorbei
+export async function saveTrack(
+  id: string,
+  state: Omit<SavedState, "version">
+): Promise<void> {
+  const { error } = await supabase.rpc("save_track", {
+    p_track_id:   id,
+    p_state_json: { items: state.items, arrows: state.arrows },
+    p_area_sel:   state.areaSel,
+    p_width:      state.manualWidth,
+    p_length:     state.manualLength,
+    p_satellite:  state.mapSatellite,
+    p_opacity:    state.mapOpacity,
+  });
+  if (error) {
+    if (error.message.includes("satellite_requires_pro")) throw new Error("SATELLITE_REQUIRES_PRO");
+    if (error.message.includes("not_owner"))              throw new Error("NOT_OWNER");
+    throw error;
+  }
+  // last_active_at wird in save_track() serverseitig gesetzt — kein separater touch_last_active() nötig
+}
+
+// Löschen: RLS reicht (kein Feature-Bypass möglich)
+export async function deleteTrack(id: string): Promise<void> {
+  const { error } = await supabase.from("tracks").delete().eq("id", id);
+  if (error) throw error;
+}
