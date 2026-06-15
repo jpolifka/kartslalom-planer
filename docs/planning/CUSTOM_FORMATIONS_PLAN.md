@@ -428,8 +428,16 @@ declare
   v_role   text;
   v_new_id uuid;
 begin
+  if auth.uid() is null then
+    raise exception 'not_authenticated';
+  end if;
+
+  if p_category not in ('start_ziel', 'basis', 'kurven', 'komplex', 'individuell') then
+    raise exception 'invalid_category';
+  end if;
+
   select role into v_role from public.profiles where id = auth.uid();
-  if v_role <> 'admin' then
+  if v_role is distinct from 'admin' then
     raise exception 'not_authorized';
   end if;
 
@@ -455,8 +463,12 @@ returns void language plpgsql security definer set search_path = public as $$
 declare
   v_role text;
 begin
+  if auth.uid() is null then
+    raise exception 'not_authenticated';
+  end if;
+
   select role into v_role from public.profiles where id = auth.uid();
-  if v_role <> 'admin' then
+  if v_role is distinct from 'admin' then
     raise exception 'not_authorized';
   end if;
 
@@ -464,27 +476,119 @@ begin
 end;
 $$;
 
-create or replace function public.admin_update_custom_formation(
-  p_id          uuid,
-  p_name        text,
-  p_description text,
-  p_category    text,
-  p_cones_json  jsonb,
-  p_arrows_json jsonb
-) returns void language plpgsql security definer set search_path = public as $$
+-- Admin-Read-Pfad: RLS (2.5) lässt Admins nur eigene/geteilte/Library-Formationen
+-- sehen. Für /admin/formations (6) wird daher ein eigener Read-RPC benötigt,
+-- der die Rolle prüft und anschließend RLS via SECURITY DEFINER umgeht.
+create or replace function public.admin_list_custom_formations(
+  p_status   text default null,
+  p_category text default null
+) returns setof public.custom_formations
+language plpgsql security definer set search_path = public as $$
 declare
   v_role text;
 begin
+  if auth.uid() is null then
+    raise exception 'not_authenticated';
+  end if;
+
   select role into v_role from public.profiles where id = auth.uid();
-  if v_role <> 'admin' then
+  if v_role is distinct from 'admin' then
     raise exception 'not_authorized';
   end if;
+
+  if p_status is not null
+     and p_status not in ('private', 'shared', 'submitted', 'library', 'rejected') then
+    raise exception 'invalid_status';
+  end if;
+  if p_category is not null
+     and p_category not in ('start_ziel', 'basis', 'kurven', 'komplex', 'individuell') then
+    raise exception 'invalid_category';
+  end if;
+
+  return query
+    select * from public.custom_formations cf
+    where (p_status is null or cf.status = p_status)
+      and (p_category is null or cf.category = p_category)
+    order by cf.created_at desc;
+end;
+$$;
+
+-- Admin-Read für eine einzelne Formation (z. B. zum Öffnen im Editor, 6 "Weiterbearbeiten")
+create or replace function public.admin_get_custom_formation(p_id uuid)
+returns public.custom_formations
+language plpgsql security definer set search_path = public as $$
+declare
+  v_role  text;
+  v_row   public.custom_formations;
+begin
+  if auth.uid() is null then
+    raise exception 'not_authenticated';
+  end if;
+
+  select role into v_role from public.profiles where id = auth.uid();
+  if v_role is distinct from 'admin' then
+    raise exception 'not_authorized';
+  end if;
+
+  select * into v_row from public.custom_formations where id = p_id;
+  if not found then
+    raise exception 'not_found';
+  end if;
+
+  return v_row;
+end;
+$$;
+
+create or replace function public.admin_update_custom_formation(
+  p_id                uuid,
+  p_name              text,
+  p_description       text,
+  p_category          text,
+  p_cones_json        jsonb,
+  p_arrows_json       jsonb,
+  p_default_direction text,
+  p_lichte_breite     numeric,
+  p_duration_seconds  numeric
+) returns void language plpgsql security definer set search_path = public as $$
+declare
+  v_role        text;
+  v_pylon_count integer;
+begin
+  if auth.uid() is null then
+    raise exception 'not_authenticated';
+  end if;
+
+  if p_category not in ('start_ziel', 'basis', 'kurven', 'komplex', 'individuell') then
+    raise exception 'invalid_category';
+  end if;
+
+  if jsonb_typeof(p_cones_json) <> 'array' then
+    raise exception 'invalid_cones_json';
+  end if;
+  if jsonb_typeof(p_arrows_json) <> 'array' then
+    raise exception 'invalid_arrows_json';
+  end if;
+
+  select role into v_role from public.profiles where id = auth.uid();
+  if v_role is distinct from 'admin' then
+    raise exception 'not_authorized';
+  end if;
+
+  -- pylon_count wird wie in create/update_custom_formation serverseitig neu
+  -- berechnet, damit Metadaten nach einer Admin-Bearbeitung konsistent bleiben.
+  select count(*) into v_pylon_count
+    from jsonb_array_elements(p_cones_json) c
+    where c->>'kind' in ('standing', 'lying');
 
   update public.custom_formations set
     previous_cones_json  = cones_json,
     previous_arrows_json = arrows_json,
     name = p_name, description = p_description, category = p_category,
     cones_json = p_cones_json, arrows_json = p_arrows_json,
+    pylon_count = v_pylon_count,
+    default_direction = p_default_direction,
+    lichte_breite = p_lichte_breite,
+    duration_seconds = p_duration_seconds,
     edited_by_admin_id = auth.uid(), edited_by_admin_at = now()
   where id = p_id;
 end;
@@ -492,7 +596,11 @@ $$;
 
 grant execute on function public.admin_promote_to_library(uuid, text) to authenticated;
 grant execute on function public.admin_delete_custom_formation(uuid) to authenticated;
-grant execute on function public.admin_update_custom_formation(uuid, text, text, text, jsonb, jsonb) to authenticated;
+grant execute on function public.admin_list_custom_formations(text, text) to authenticated;
+grant execute on function public.admin_get_custom_formation(uuid) to authenticated;
+grant execute on function public.admin_update_custom_formation(
+  uuid, text, text, text, jsonb, jsonb, text, numeric, numeric
+) to authenticated;
 ```
 
 ---
