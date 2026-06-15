@@ -41,3 +41,8 @@ pnpm-debug.log*
 
 # TypeScript
 *.tsbuildinfo
+
+# Supabase (lokaler Docker-Stack)
+docker/supabase/volumes/db/data/
+docker/supabase/volumes/storage/
+docker/supabase/.env.bak
