@@ -1,6 +1,6 @@
 # Kartslalom Streckenplaner — Custom-Hindernis-Editor (Community-Formationen)
 
-**Dokument-Version:** 1.1
+**Dokument-Version:** 1.2
 **Erstellt:** 2026-06-15
 **Zuletzt geändert:** 2026-06-15
 **Änderungen v1.1:** Review-Feedback eingearbeitet — `profiles.email`-Bezug
@@ -9,6 +9,11 @@ neue Admin-Read-RPCs (`admin_list_custom_formations`,
 `admin_get_custom_formation`), `admin_update_custom_formation` aktualisiert
 Metadaten (Pylonenzahl, lichte Breite, Dauer, Richtung) konsistent, Indizes
 ergänzt.
+**Änderungen v1.2:** Kleinere Härtungen — `admin_promote_to_library` prüft
+`not_found`, `too_many_cones`-Check auch in `admin_update_custom_formation`,
+serverseitige `name`-Validierung (1–80 Zeichen) in allen Schreib-RPCs,
+`username`-Eindeutigkeit case-insensitiv (`lower(username)`-Index), neue RPC
+`unshare_custom_formation` inkl. Status-Reset auf `private`.
 **Autor:** Claude Sonnet 4.6 (Analyse-Agent)
 **Referenz:** `SAAS_PLAN.md` v1.2, `IMPLEMENTATION_PLAN.md` v2.1
 **Zweck:** Maschinenlesbares Planungsdokument für das Feature "Nutzer bauen eigene
@@ -434,7 +439,43 @@ begin
 end;
 $$;
 
+-- Gegenstück zu share_custom_formation: entfernt einen einzelnen Share und
+-- setzt status zurück auf 'private', falls keine Shares mehr bestehen.
+-- status in ('submitted','library','rejected') wird NICHT verändert, da diese
+-- unabhängig vom Sharing-Status sind (Admin-Workflow, siehe 6).
+create or replace function public.unshare_custom_formation(
+  p_formation_id uuid,
+  p_target_id    uuid
+) returns void language plpgsql security definer set search_path = public as $$
+declare
+  v_remaining integer;
+begin
+  if auth.uid() is null then
+    raise exception 'not_authenticated';
+  end if;
+
+  if not exists (
+    select 1 from public.custom_formations
+    where id = p_formation_id and owner_id = auth.uid()
+  ) then
+    raise exception 'not_owner';
+  end if;
+
+  delete from public.formation_shares
+    where formation_id = p_formation_id and shared_with_id = p_target_id;
+
+  select count(*) into v_remaining from public.formation_shares
+    where formation_id = p_formation_id;
+
+  if v_remaining = 0 then
+    update public.custom_formations set status = 'private'
+      where id = p_formation_id and status = 'shared';
+  end if;
+end;
+$$;
+
 grant execute on function public.share_custom_formation(uuid, uuid, text) to authenticated;
+grant execute on function public.unshare_custom_formation(uuid, uuid) to authenticated;
 ```
 
 **Admin-RPCs — Rolle wird serverseitig aus `profiles.role` geprüft**
@@ -813,6 +854,13 @@ permissions:
          sourceCustomFormationId), aber nicht das Original verändern"
   edit: "Empfänger kann das Original direkt über update_custom_formation
          bearbeiten (Berechtigung wird dort geprüft)"
+
+unshare:
+  rpc: "unshare_custom_formation(formation_id, target_id)"
+  verhalten: >
+    Entfernt einen einzelnen Share-Eintrag. Bestehen danach keine weiteren
+    formation_shares-Einträge mehr, wechselt status von 'shared' zurück auf
+    'private'. status in (submitted, library, rejected) bleibt unberührt.
 ```
 
 ### 5.1 Username-Onboarding
