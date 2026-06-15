@@ -45,12 +45,13 @@ referenziert, nicht wiederholt.
 
 ```sql
 alter table public.profiles
-  add column username text unique,        -- nullable; Pflicht-Onboarding nach Login
+  add column username text,               -- nullable; Pflicht-Onboarding nach Login
   add column role text not null default 'user'
     check (role in ('user', 'admin'));
 
--- Case-Insensitivity: "Ralf" und "ralf" dürfen nicht parallel existieren.
--- Die UI normalisiert auf lowercase, dieser Index erzwingt es zusätzlich serverseitig.
+-- Eindeutigkeit case-insensitiv: "Ralf" und "ralf" dürfen nicht parallel
+-- existieren. Die UI normalisiert zusätzlich auf lowercase vor dem Speichern;
+-- dieser Index erzwingt es serverseitig (ersetzt einen einfachen UNIQUE-Constraint).
 create unique index profiles_username_lower_idx on public.profiles (lower(username));
 ```
 
