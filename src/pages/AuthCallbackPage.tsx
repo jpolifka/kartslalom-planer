@@ -42,8 +42,8 @@ export default function AuthCallbackPage() {
     ranRef.current = true;
 
     async function handleCallback() {
-      // Supabase JS v2 nutzt für Magic Links standardmäßig PKCE:
-      // Der Link enthält ?code=... (Query-Parameter), kein #fragment mehr.
+      // supabase.ts setzt flowType: "pkce" — der Link enthält daher
+      // ?code=... (Query-Parameter), kein #fragment.
       const code = new URLSearchParams(window.location.search).get("code");
 
       if (code) {
