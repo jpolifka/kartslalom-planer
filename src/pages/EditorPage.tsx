@@ -446,6 +446,16 @@ export default function EditorPage() {
     ? { lat: areaSel.centerLat, lng: areaSel.centerLng }
     : { lat: 50.517, lng: 7.317 };
 
+  if (isCloudMode && isNewTrack) {
+    return <div style={{ padding: 40 }}>Neue Strecke wird angelegt…</div>;
+  }
+  if (isCloudMode && !isNewTrack && !cloudLoaded) {
+    if (trackQuery.isError) {
+      return <div style={{ padding: 40 }}>Strecke konnte nicht geladen werden.</div>;
+    }
+    return <div style={{ padding: 40 }}>Lädt…</div>;
+  }
+
   return (
     <div style={{ height: "100vh", overflow: "hidden", background: "#f1f5f9", color: "#0f172a", display: "flex", flexDirection: "column" }}>
 
@@ -592,6 +602,17 @@ export default function EditorPage() {
               <HelpCircle size={14} />
               <span>Hilfe</span>
             </button>
+            {isCloudMode ? (
+              <Link to="/dashboard" style={{ ...iconBtnLabel, textDecoration: "none" }} title="Zurück zu meinen Strecken">
+                <LayoutDashboard size={14} />
+                {!isMobile && <span>Meine Strecken</span>}
+              </Link>
+            ) : (
+              <Link to="/login" style={{ ...iconBtnLabel, textDecoration: "none" }} title="Anmelden, um Strecken in der Cloud zu speichern">
+                <LogIn size={14} />
+                {!isMobile && <span>Anmelden</span>}
+              </Link>
+            )}
           </div>
         </div>
 
