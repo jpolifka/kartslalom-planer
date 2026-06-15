@@ -1,7 +1,14 @@
 # Kartslalom Streckenplaner — Custom-Hindernis-Editor (Community-Formationen)
 
-**Dokument-Version:** 1.0
+**Dokument-Version:** 1.1
 **Erstellt:** 2026-06-15
+**Zuletzt geändert:** 2026-06-15
+**Änderungen v1.1:** Review-Feedback eingearbeitet — `profiles.email`-Bezug
+geklärt, `auth.uid()`-Checks und Eingabe-/Kategorie-Validierung in allen RPCs,
+neue Admin-Read-RPCs (`admin_list_custom_formations`,
+`admin_get_custom_formation`), `admin_update_custom_formation` aktualisiert
+Metadaten (Pylonenzahl, lichte Breite, Dauer, Richtung) konsistent, Indizes
+ergänzt.
 **Autor:** Claude Sonnet 4.6 (Analyse-Agent)
 **Referenz:** `SAAS_PLAN.md` v1.2, `IMPLEMENTATION_PLAN.md` v2.1
 **Zweck:** Maschinenlesbares Planungsdokument für das Feature "Nutzer bauen eigene
@@ -808,6 +815,9 @@ admin_dashboard:
 
   ansichten:
     liste:
+      datenquelle: "admin_list_custom_formations(status?, category?) — SECURITY DEFINER,
+                    umgeht die User-Select-Policies aus 2.5 nach serverseitiger
+                    role='admin'-Prüfung"
       filter: [status, category, owner]
       spalten: [name, owner_username, category, status, pylon_count, created_at]
 
