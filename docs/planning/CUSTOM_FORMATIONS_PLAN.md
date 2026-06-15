@@ -86,6 +86,9 @@ create table public.custom_formations (
 create trigger custom_formations_updated_at
   before update on public.custom_formations
   for each row execute procedure public.set_updated_at();  -- existiert bereits (Phase 0)
+
+create index custom_formations_owner_idx   on public.custom_formations(owner_id);
+create index custom_formations_library_idx on public.custom_formations(is_library);
 ```
 
 `owner_id` nutzt `on delete set null` (nicht `cascade`): Library-Formationen
