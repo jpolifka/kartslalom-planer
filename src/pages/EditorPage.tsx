@@ -275,17 +275,72 @@ export default function EditorPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // Cloud-Modus: bei "/editor/new" sofort einen neuen Track anlegen und
+  // zur RPC-zugewiesenen ID weiterleiten
+  useEffect(() => {
+    if (!isCloudMode || !isNewTrack || createCalledRef.current) return;
+    createCalledRef.current = true;
+    createTrackMutation.mutate(undefined, {
+      onSuccess: (id) => navigate(`/editor/${id}`, { replace: true }),
+      onError: (err) => {
+        if (err instanceof Error && err.message === "TRACK_LIMIT_REACHED") {
+          alert("Du hast die maximale Anzahl an Strecken für deinen Tarif erreicht.");
+        }
+        navigate("/dashboard", { replace: true });
+      },
+    });
+  }, [isCloudMode, isNewTrack]);
+
+  // Cloud-Modus: geladenen Track einmalig in den lokalen State übernehmen
+  useEffect(() => {
+    if (!isCloudMode || isNewTrack || !trackQuery.data || cloudAppliedRef.current) return;
+    cloudAppliedRef.current = true;
+    const d = trackQuery.data;
+    dispatch({
+      type: "RESET",
+      state: {
+        items: (d.state_json.items ?? []) as PlacedFormation[],
+        arrows: (d.state_json.arrows ?? []) as PlacedArrow[],
+      },
+    });
+    setAreaSel((d.area_sel_json as AreaSelection | null) ?? null);
+    setManualWidth(d.manual_width);
+    setManualLength(d.manual_length);
+    setManualWidthInput(String(d.manual_width));
+    setManualLengthInput(String(d.manual_length));
+    setMapSatellite(d.map_satellite);
+    setMapOpacity(d.map_opacity);
+    setCloudLoaded(true);
+  }, [isCloudMode, isNewTrack, trackQuery.data]);
+
   // Autosave — debounced 1 s after last change
   useEffect(() => {
+    if (!cloudLoaded) return; // Cloud-Strecke wurde noch nicht geladen — nichts überschreiben
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     if (savedFadeRef.current) clearTimeout(savedFadeRef.current);
     setSaveStatus("pending");
-    saveTimerRef.current = setTimeout(() => {
-      saveState({ items, arrows, manualWidth, manualLength, mapSatellite, mapOpacity, areaSel });
+    saveTimerRef.current = setTimeout(async () => {
+      if (isCloudMode && trackId) {
+        try {
+          await saveTrackMutation.mutateAsync({
+            id: trackId,
+            state: { items, arrows, manualWidth, manualLength, mapSatellite, mapOpacity, areaSel },
+          });
+        } catch (err) {
+          if (err instanceof Error && err.message === "SATELLITE_REQUIRES_PRO") {
+            setMapSatellite(false);
+            alert("Satellitenbilder sind ab dem Pro-Tarif verfügbar.");
+          }
+          setSaveStatus("idle");
+          return;
+        }
+      } else {
+        saveState({ items, arrows, manualWidth, manualLength, mapSatellite, mapOpacity, areaSel });
+      }
       setSaveStatus("saved");
       savedFadeRef.current = setTimeout(() => setSaveStatus("idle"), 2000);
     }, 1000);
-  }, [items, arrows, manualWidth, manualLength, mapSatellite, mapOpacity, areaSel]);
+  }, [items, arrows, manualWidth, manualLength, mapSatellite, mapOpacity, areaSel, cloudLoaded]);
 
   // Formation actions
   function addFormation(key: FormationKey, rotationDeg = 0) {
