@@ -389,6 +389,10 @@ create or replace function public.share_custom_formation(
   p_permission   text default 'view'
 ) returns void language plpgsql security definer set search_path = public as $$
 begin
+  if auth.uid() is null then
+    raise exception 'not_authenticated';
+  end if;
+
   if not exists (
     select 1 from public.custom_formations
     where id = p_formation_id and owner_id = auth.uid()
