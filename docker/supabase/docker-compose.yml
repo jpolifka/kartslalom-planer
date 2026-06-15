@@ -492,12 +492,11 @@ services:
       - ./volumes/db/logs.sql:/docker-entrypoint-initdb.d/migrations/99-logs.sql:Z
       # Changes required for Pooler support
       - ./volumes/db/pooler.sql:/docker-entrypoint-initdb.d/migrations/99-pooler.sql:Z
-      # App-Schema: profiles, tracks, track_versions (Phase 0.5)
-      - ./volumes/db/init/99-zz-app-1-schema.sql:/docker-entrypoint-initdb.d/migrations/99-zz-app-1-schema.sql:Z
-      # App-RLS-Policies (Phase 0.6)
-      - ./volumes/db/init/99-zz-app-2-rls.sql:/docker-entrypoint-initdb.d/migrations/99-zz-app-2-rls.sql:Z
-      # App SECURITY DEFINER Funktionen (Phase 0.7)
-      - ./volumes/db/init/99-zz-app-3-functions.sql:/docker-entrypoint-initdb.d/migrations/99-zz-app-3-functions.sql:Z
+      # App-Schema/RLS/Funktionen (Phase 0.5-0.7) — gleiche Dateien wie supabase/migrations/,
+      # damit lokaler Docker-Stack und Supabase Cloud aus einer Quelle gespeist werden
+      - ../../supabase/migrations/20260615120000_app_schema.sql:/docker-entrypoint-initdb.d/migrations/99-zz-app-1-schema.sql:Z
+      - ../../supabase/migrations/20260615120001_app_rls.sql:/docker-entrypoint-initdb.d/migrations/99-zz-app-2-rls.sql:Z
+      - ../../supabase/migrations/20260615120002_app_functions.sql:/docker-entrypoint-initdb.d/migrations/99-zz-app-3-functions.sql:Z
       # Use named volume to persist pgsodium decryption key between restarts
       - db-config:/etc/postgresql-custom
     healthcheck:
