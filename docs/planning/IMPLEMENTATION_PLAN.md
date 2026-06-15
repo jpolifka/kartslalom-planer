@@ -896,15 +896,15 @@ jobs:
 
 ### 1.17 Definition of Done Phase 1
 
-- [ ] Magic Link Login: E-Mail empfangen, `/auth/callback` verarbeitet, Session aktiv
-- [ ] PKCE-Flow geprüft (Supabase Dashboard → Auth → Settings → PKCE-Einstellung dokumentiert)
-- [ ] Dashboard zeigt eigene Tracks aus der DB
-- [ ] Neuer Track via `create_track()` RPC — kein direkter INSERT
-- [ ] Autosave schreibt via `save_track()` RPC für eingeloggte Nutzer
-- [ ] Gast-Modus vollständig: Editor, SVG-Export, PDF-Export ohne Login
-- [ ] Free-User: 4. Track → `TRACK_LIMIT_REACHED` vom Server
-- [ ] Free-User: map_satellite=true → `SATELLITE_REQUIRES_PRO` vom Server, Frontend setzt zurück
-- [ ] localStorage-Migration läuft beim ersten Login
+- [x] Magic Link Login: E-Mail empfangen, `/auth/callback` verarbeitet, Session aktiv
+- [x] PKCE-Flow geprüft (`flowType: "pkce"` in `src/lib/supabase.ts`, Ende-zu-Ende gegen lokalen Stack getestet)
+- [x] Dashboard zeigt eigene Tracks aus der DB
+- [x] Neuer Track via `create_track()` RPC — kein direkter INSERT
+- [x] Autosave schreibt via `save_track()` RPC für eingeloggte Nutzer
+- [x] Gast-Modus vollständig: Editor, SVG-Export, PDF-Export ohne Login
+- [x] Free-User: 4. Track → `TRACK_LIMIT_REACHED` vom Server
+- [x] Free-User: map_satellite=true → `SATELLITE_REQUIRES_PRO` vom Server, Frontend setzt zurück
+- [x] localStorage-Migration läuft beim ersten Login
 - [ ] Account-Export-Button in Settings gibt ZIP zurück
 - [ ] Account-Löschen: state_json = `{"items":[],"arrows":[]}`, E-Mail anonymisiert, Auth-User gelöscht
 - [ ] Willkommens-Mail kommt an (Resend-Dashboard)
