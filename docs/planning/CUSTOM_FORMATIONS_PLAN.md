@@ -835,9 +835,10 @@ admin_dashboard:
 
     weiterbearbeiten:                # Punkt 1.3.3
       aktion: >
-        Öffnet FormationEditorCanvas im Admin-Kontext (lädt beliebige
-        Formation unabhängig von RLS-Sichtbarkeit via admin-spezifischem
-        Read-Pfad, speichert via admin_update_custom_formation)
+        Öffnet FormationEditorCanvas im Admin-Kontext: lädt beliebige Formation
+        unabhängig von RLS-Sichtbarkeit via admin_get_custom_formation(id),
+        speichert via admin_update_custom_formation (aktualisiert auch
+        pylon_count, lichte_breite, duration_seconds, default_direction).
       audit: >
         previous_cones_json/previous_arrows_json sichern den Stand vor der
         Admin-Bearbeitung; edited_by_admin_id/_at dokumentieren wer/wann.
