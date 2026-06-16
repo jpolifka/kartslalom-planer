@@ -192,7 +192,6 @@ export default function EditorPage() {
   const [areaSel, setAreaSel] = useState<AreaSelection | null>(() => _initialSaved?.areaSel ?? null);
   const [showMapSelector, setShowMapSelector] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
-  const [showImprint, setShowImprint] = useState(false);
   const [manualWidth, setManualWidth] = useState(() => _initialSaved?.manualWidth ?? 18);
   const [manualLength, setManualLength] = useState(() => _initialSaved?.manualLength ?? 36);
   const [manualWidthInput, setManualWidthInput] = useState(() => String(_initialSaved?.manualWidth ?? 18));
