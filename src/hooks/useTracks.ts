@@ -3,7 +3,7 @@
 // All rights reserved.
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchTracks, fetchTrack, createTrack, saveTrack, deleteTrack } from "../lib/api/tracks";
+import { fetchTracks, fetchTrack, createTrack, saveTrack, renameTrack, deleteTrack } from "../lib/api/tracks";
 import { useAuthStore } from "../store/authStore";
 
 export function useTrackList() {
