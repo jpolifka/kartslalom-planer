@@ -1197,15 +1197,6 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function HelpSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section style={{ marginTop: 16 }}>
-      <h4 style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{title}</h4>
-      <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.6 }}>{children}</div>
-    </section>
-  );
-}
-
 function HelpContent() {
   const kbd: React.CSSProperties = {
     display: "inline-block", border: "1px solid #cbd5e1", borderBottom: "2px solid #cbd5e1",
