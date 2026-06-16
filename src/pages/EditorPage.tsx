@@ -20,7 +20,7 @@ import type { AreaSelection } from "../lib/areaSelection";
 import type { FormationKey, PlacedArrow, PlacedFormation } from "../types";
 import { saveState, loadState, clearSavedState, exportAsFile, parseImportFile } from "../lib/storage";
 import { useAuthStore } from "../store/authStore";
-import { useTrack, useCreateTrack, useSaveTrack } from "../hooks/useTracks";
+import { useTrack, useCreateTrack, useSaveTrack, useRenameTrack } from "../hooks/useTracks";
 
 // Load once at startup, shared across all useState lazy initializers (Gast-Modus)
 let _initialSaved = loadState();
@@ -179,6 +179,7 @@ export default function EditorPage() {
   const trackQuery = useTrack(isCloudMode && !isNewTrack ? trackId! : undefined);
   const createTrackMutation = useCreateTrack();
   const saveTrackMutation = useSaveTrack();
+  const renameTrackMutation = useRenameTrack();
   const createCalledRef = useRef(false);
   const cloudAppliedRef = useRef(false);
   const [cloudLoaded, setCloudLoaded] = useState(!isCloudMode);
