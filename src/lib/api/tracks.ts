@@ -72,6 +72,13 @@ export async function saveTrack(
   // last_active_at wird in save_track() serverseitig gesetzt — kein separater touch_last_active() nötig
 }
 
+export async function renameTrack(id: string, name: string): Promise<void> {
+  const trimmed = name.trim();
+  if (!trimmed) return;
+  const { error } = await supabase.from("tracks").update({ name: trimmed }).eq("id", id);
+  if (error) throw error;
+}
+
 // Löschen: RLS reicht (kein Feature-Bypass möglich)
 export async function deleteTrack(id: string): Promise<void> {
   const { error } = await supabase.from("tracks").delete().eq("id", id);
