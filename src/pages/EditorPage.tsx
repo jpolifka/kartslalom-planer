@@ -175,6 +175,8 @@ export default function EditorPage() {
   const navigate = useNavigate();
   const { session } = useAuthStore();
   const isCloudMode = !!session;
+  const { canUseSatellite } = useTier();
+  const satelliteLocked = isCloudMode && !canUseSatellite;
   const isNewTrack = !trackIdParam || trackIdParam === "new";
   const trackId = isNewTrack ? null : trackIdParam!;
 
