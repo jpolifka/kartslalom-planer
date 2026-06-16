@@ -192,7 +192,7 @@ export default function EditorPage() {
   const [manualLength, setManualLength] = useState(() => _initialSaved?.manualLength ?? 36);
   const [manualWidthInput, setManualWidthInput] = useState(() => String(_initialSaved?.manualWidth ?? 18));
   const [manualLengthInput, setManualLengthInput] = useState(() => String(_initialSaved?.manualLength ?? 36));
-  const [mapSatellite, setMapSatellite] = useState(() => _initialSaved?.mapSatellite ?? true);
+  const [mapSatellite, setMapSatellite] = useState(() => _initialSaved?.mapSatellite ?? (isCloudMode ? false : true));
   const [mapOpacity, setMapOpacity] = useState(() => _initialSaved?.mapOpacity ?? 0.5);
 
   const fieldWidth = areaSel ? areaSel.widthM : manualWidth;
