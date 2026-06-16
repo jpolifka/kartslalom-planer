@@ -313,6 +313,7 @@ export default function EditorPage() {
     setManualLengthInput(String(d.manual_length));
     setMapSatellite(d.map_satellite);
     setMapOpacity(d.map_opacity);
+    setTrackName(d.name);
     setCloudLoaded(true);
   }, [isCloudMode, isNewTrack, trackQuery.data]);
 
@@ -585,7 +586,7 @@ export default function EditorPage() {
       )}
 
       <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", maxWidth: 1600, width: "100%", margin: "0 auto", padding: isMobile ? "10px 10px" : "16px 20px", boxSizing: "border-box" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: isMobile ? 8 : 16, flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: isCloudMode && trackId ? 4 : (isMobile ? 8 : 16), flexShrink: 0 }}>
           <h1 style={{ margin: 0, fontSize: isMobile ? 17 : 21, fontWeight: 800 }}>
             Kartslalom Streckenplaner
           </h1>
@@ -618,6 +619,48 @@ export default function EditorPage() {
             )}
           </div>
         </div>
+
+        {isCloudMode && trackId && (
+          <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: isMobile ? 8 : 12, flexShrink: 0 }}>
+            <input
+              value={trackName}
+              onChange={(e) => setTrackName(e.target.value)}
+              onFocus={() => setNameFocused(true)}
+              onBlur={() => {
+                setNameFocused(false);
+                const trimmed = trackName.trim();
+                if (trimmed && trimmed !== trackQuery.data?.name) {
+                  renameTrackMutation.mutate({ id: trackId, name: trimmed });
+                } else if (!trimmed) {
+                  setTrackName(trackQuery.data?.name ?? "Neue Strecke");
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                if (e.key === "Escape") {
+                  setTrackName(trackQuery.data?.name ?? "Neue Strecke");
+                  (e.target as HTMLInputElement).blur();
+                }
+              }}
+              style={{
+                fontSize: isMobile ? 13 : 15,
+                fontWeight: 700,
+                color: "#0f172a",
+                border: "none",
+                borderBottom: nameFocused ? "2px solid #0284c7" : "2px solid transparent",
+                background: "transparent",
+                padding: "2px 2px",
+                outline: "none",
+                borderRadius: 0,
+                minWidth: 120,
+                maxWidth: 360,
+              }}
+              title="Streckenname bearbeiten"
+              aria-label="Streckenname"
+            />
+            <Pencil size={12} color="#94a3b8" />
+          </div>
+        )}
 
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "276px 1fr 296px", gap: 14, flex: 1, minHeight: 0, overflow: "hidden" }}>
 

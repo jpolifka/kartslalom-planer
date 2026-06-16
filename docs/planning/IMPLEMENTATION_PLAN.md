@@ -984,6 +984,249 @@ lifecycle_emails:
 
 ---
 
+## PHASE 3 — Custom-Hindernisse (H0–H5)
+
+**Voraussetzung:** Phase 1 abgeschlossen.  
+**Vollständiges Datenmodell, SQL und RPCs:** `CUSTOM_FORMATIONS_PLAN.md` v1.2.  
+Dieses Kapitel enthält Verzeichnisstruktur, Typen und DoD-Checklisten.
+
+### 3.0 Datenbank-Erweiterungen (H0)
+
+Läuft parallel zu Phase 0/1 — Tabellen und RPCs können im Supabase-SQL-Editor
+vorab ausgerollt werden, da sie eigenständig sind und bestehende Tabellen nur
+additiv erweitern.
+
+**profiles — ALTER**
+```sql
+alter table public.profiles
+  add column username text,
+  add column role text not null default 'user'
+    check (role in ('user', 'admin'));
+
+-- Case-insensitive Eindeutigkeit
+create unique index profiles_username_lower_idx on public.profiles (lower(username));
+```
+
+**Neue Tabellen** (vollständiges SQL in `CUSTOM_FORMATIONS_PLAN.md` 2.2–2.4):
+- `public.custom_formations` — Hindernis-Definitionen (Cones, Pfeile, Meta)
+- `public.formation_shares` — Sharing zwischen Usern
+- `public.app_config` — Feature-Gates, Seed: `custom_formations_required_tier = null`
+
+**RPCs** (SECURITY DEFINER, alle mit `auth.uid()`-Check zuerst):
+
+| Funktion | Zweck |
+|---|---|
+| `create_custom_formation(...)` | Erstellen + Premium-Gate + Limits |
+| `update_custom_formation(id, ...)` | Owner oder edit-Share |
+| `delete_custom_formation(id)` | Nur Owner |
+| `find_shareable_user(query)` | Username oder E-Mail, exakter Treffer |
+| `share_custom_formation(...)` | Share anlegen, status → 'shared' |
+| `unshare_custom_formation(...)` | Share entfernen, status → 'private' falls leer |
+| `admin_list_custom_formations(...)` | Alle lesen (Admin-Gate) |
+| `admin_get_custom_formation(id)` | Einzeln lesen (Admin-Gate) |
+| `admin_promote_to_library(...)` | Kopie mit is_library=true |
+| `admin_delete_custom_formation(id)` | Löschen (Admin-Gate) |
+| `admin_update_custom_formation(...)` | Bearbeiten + Metadaten + Audit |
+
+**Definition of Done H0**
+- [ ] `profiles`: username, role, `profiles_username_lower_idx` ausgerollt
+- [ ] `custom_formations`, `formation_shares`, `app_config` + RLS + Indizes aktiv
+- [ ] `app_config`: Seed-Row `custom_formations_required_tier = null`
+- [ ] Alle RPCs deploybar, auth.uid()-Checks, Kategorie-/Name-Validierung
+- [ ] RLS-Test: User A kann Custom-Formation von User B nicht lesen (wenn nicht geteilt)
+- [ ] RLS-Test: Direkter INSERT auf `custom_formations` schlägt fehl
+- [ ] Library-Formation (is_library=true) ist für anon lesbar
+
+---
+
+### 3.1 Editor-Skeleton — Typen + Komponente (H1)
+
+Kann vor H0 begonnen werden (kein Backend nötig, localStorage-Basis).
+
+**Typen-Erweiterungen `src/types.ts`**
+```typescript
+export type FormationCategory =
+  | "start_ziel" | "basis" | "kurven" | "komplex"
+  | "individuell";                    // NEU
+
+export type CustomFormationStatus =
+  | "private" | "shared" | "submitted" | "library" | "rejected";
+
+export type CustomFormationDefinition = {
+  id: string;
+  ownerId: string | null;
+  ownerUsername?: string;
+  name: string;
+  description?: string;
+  category: FormationCategory;
+  status: CustomFormationStatus;
+  isLibrary: boolean;
+  pylonCount: number;
+  lichteBreite?: number;
+  durationSeconds?: number;
+  sourceFormationKey?: FormationKey;
+  sourceCustomFormationId?: string;
+  cones: ConePoint[];
+  arrows: PlacedArrow[];
+  defaultDirection?: DirectionMode;
+  createdAt: string;
+  updatedAt: string;
+};
+
+// PlacedFormation — Erweiterung (bestehende Felder bleiben)
+// key = "custom" für Custom-Formationen
+// customFormationId: UUID der Quelle (für Referenz/Updates)
+// customSnapshot: beim Platzieren eingefroren (cones + arrows + label)
+//   → Track bleibt self-contained auch wenn Quell-Formation gelöscht wird
+```
+
+**Neue Seiten / Komponenten**
+```
+src/
+  pages/
+    FormationEditorPage.tsx     ← WYSIWYG-Editor (lokal & cloud)
+    AdminFormationsPage.tsx     ← /admin/formations
+
+  components/
+    formation-editor/
+      FormationEditorCanvas.tsx ← Cone/Pfeil-Editing, Rule-Overlays
+      FormationMetaPanel.tsx    ← Name, Pylonenzahl, Dauer, lichte Breite
+      GatePairTool.tsx          ← Tor-Paar markieren → lichte Breite live
+      BasisAuswahl.tsx          ← leer / Standard / Custom duplizieren
+    admin/
+      AdminGuard.tsx            ← wie AuthGuard, prüft role='admin'
+
+  hooks/
+    useCustomFormations.ts      ← TanStack Query: eigene + geteilte + Library
+    useFeatureGate.ts           ← reads app_config, profile.tier
+    useFormationEditor.ts       ← Reducer für Cone/Pfeil-State, Undo/Redo
+
+  lib/
+    api/
+      customFormations.ts       ← RPC-Wrapper (analog tracks.ts)
+    validation/
+      customFormation.ts        ← Live-Checks: cone_too_close, Tor-Breite
+```
+
+**Rule-Overlays** (referenzieren Konstanten aus `formations/common.ts`):
+- `PYLON_GAP` (0,5 m) → Mindestabstand Kante-zu-Kante, reuse `validation/geometry.ts`-Logik
+- `TASK_LANE_WIDTH` (1,65 m) → Tor-Breite nach Markierung von Tor-Paar, live-Anzeige
+
+**formationRegistry.ts — Erweiterung**
+```typescript
+// getFormation() erhält optionalen zweiten Parameter für Custom-Formationen:
+// wenn key === "custom" → gibt FormationDefinition aus PlacedFormation.customSnapshot
+export function resolveFormation(
+  pf: PlacedFormation,
+  customMap?: Map<string, CustomFormationDefinition>
+): FormationDefinition { ... }
+```
+
+**Definition of Done H1**
+- [ ] `FormationCategory` um `"individuell"` erweitert, kein Typ-Fehler in bestehendem Code
+- [ ] `PlacedFormation` um `customFormationId?` und `customSnapshot?` erweitert
+- [ ] `FormationEditorCanvas`: stehende/liegende/Sensor-Pylone platzieren, verschieben, löschen, rotieren
+- [ ] Pfeil-Tool im Editor (formation-lokale PlacedArrow)
+- [ ] `GatePairTool`: zwei Pylone markieren, lichte Breite live berechnen und anzeigen
+- [ ] `FormationMetaPanel`: Name (Pflicht), Pylonenzahl (auto), Dauer, lichte Breite
+- [ ] Rule-Overlays: Warnung wenn Pylon-Abstand < 0,5 m / Tor-Breite < 1,65 m
+- [ ] `BasisAuswahl`: leer starten, Standard-Formation duplizieren
+- [ ] Editor lokal speicherbar (localStorage) ohne Backend
+- [ ] Gast-Zugriff auf Palette-Gruppe "Individuell" (Library-Formationen) vorbereitet
+
+---
+
+### 3.2 Cloud-Anbindung + Feature-Gate (H2)
+
+**Voraussetzung:** H0 + H1
+
+```typescript
+// src/hooks/useFeatureGate.ts
+export function useFeatureGate(feature: 'custom_formations') {
+  // Liest app_config-Row via SELECT (public read, RLS erlaubt)
+  // + profile.tier aus useAuthStore
+  // gibt { allowed: boolean; requiredTier: string | null } zurück
+  // Heute: requiredTier = null → allowed = true für alle eingeloggten User
+}
+```
+
+**`src/lib/api/customFormations.ts`** — analog `tracks.ts`:
+alle Schreiboperationen via `.rpc(...)`, Error-Mapping für
+`premium_required`, `track_limit_reached`, `too_many_cones`, `invalid_name`, etc.
+
+**Definition of Done H2**
+- [ ] `useFeatureGate('custom_formations')`: allowed=true bei null-Gate
+- [ ] Erstellen/Speichern/Löschen via RPCs, keine direkten `.insert()`/`.update()`
+- [ ] `create_custom_formation`: Premium-Gate schlägt fehl wenn Gate aktiv + Tier zu niedrig
+- [ ] "Meine Hindernisse"-Sektion im Dashboard zeigt eigene Custom-Formationen
+- [ ] `BasisAuswahl` ergänzt: eigene Custom-Formation duplizieren
+- [ ] Autosave im FormationEditorPage (analog Editor-Autosave aus 1.12)
+
+---
+
+### 3.3 Sharing (H3)
+
+**Voraussetzung:** H2
+
+**Username-Onboarding** (in `AuthCallbackPage.tsx` oder separatem Guard):
+```typescript
+// Nach Login: falls profiles.username IS NULL → Redirect auf /onboarding/username
+// Pflicht-Dialog mit Validierung: 3-24 Zeichen, [a-z0-9_-], lowercase normalisiert
+```
+
+**Router-Erweiterungen**
+```
+/onboarding/username          ← Username-Pflichtdialog
+/formations/:id/share         ← Sharing-Verwaltung einer Formation
+```
+
+**Definition of Done H3**
+- [ ] Username-Onboarding: Dialog erscheint nach Login falls username fehlt, kann nicht übersprungen werden
+- [ ] `lower(username)`-Unique-Constraint verhindert Duplikate (inkl. case-Varianten)
+- [ ] Share-Dialog: Eingabe von Username oder E-Mail, `find_shareable_user` liefert Treffer
+- [ ] `share_custom_formation` / `unshare_custom_formation` funktionieren, status wechselt korrekt
+- [ ] Empfänger sieht Formation unter "Geteilt mit mir"
+- [ ] Permission `view`: Empfänger kann duplizieren, aber Original-RPC schlägt fehl
+- [ ] Permission `edit`: Empfänger kann `update_custom_formation` erfolgreich aufrufen
+
+---
+
+### 3.4 Admin (H4)
+
+**Voraussetzung:** H2
+
+```
+/admin/formations             ← AdminGuard (role='admin'), admin_list_custom_formations
+/admin/formations/:id         ← admin_get_custom_formation + FormationEditorCanvas
+```
+
+**Definition of Done H4**
+- [ ] `AdminGuard`: nicht-Admin-User werden zu `/dashboard` weitergeleitet
+- [ ] Admin-Rolle wird via separatem RPC serverseitig bestätigt (nicht aus Store übernommen)
+- [ ] `/admin/formations`: Tabelle mit Filter status/category, Paginierung
+- [ ] "In Bibliothek übernehmen": `admin_promote_to_library` erstellt Kopie, Original unberührt
+- [ ] "Löschen": `admin_delete_custom_formation`, Bestätigungs-Dialog
+- [ ] "Bearbeiten": öffnet FormationEditorCanvas im Admin-Kontext, speichert via `admin_update_custom_formation`
+- [ ] `admin_update_custom_formation`: pylon_count, lichte_breite, duration_seconds aktualisiert
+- [ ] Audit-Felder `edited_by_admin_id/_at` in DB gesetzt und in Admin-UI sichtbar
+
+---
+
+### 3.5 Library-Integration & Export-Robustheit (H5)
+
+**Voraussetzung:** H2 + H4
+
+**Definition of Done H5**
+- [ ] Palette "Individuell" zeigt Library-Formationen (is_library=true) auch für Gäste
+- [ ] `resolveFormation()` liest für `key="custom"` aus `customSnapshot` (kein Registry-Lookup)
+- [ ] Track mit Custom-Formation exportierbar als SVG/PDF ohne Fehler, auch wenn Quelle gelöscht
+- [ ] JSON-Import eines Tracks mit `customSnapshot` lädt korrekt
+- [ ] Account-Löschung: Library-Formationen behalten `owner_id=null`, Attribution "[gelöschter Nutzer]"
+- [ ] Nicht-Library Custom-Formationen des gelöschten Accounts werden bereinigt
+- [ ] Attribution-Anzeige in Palette: "Erstellt von <username>" / "[gelöschter Nutzer]"
+
+---
+
 ## KORREKTUREN ZU V2.0
 
 ```yaml
