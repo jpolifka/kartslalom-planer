@@ -16,7 +16,8 @@ Phase 2 dokumentiert.
 ```
 PHASE 0   Saubere Basis       — Impressum/DDG, Security, Docker, Schema, RLS
 PHASE 1   Login + Cloud Save  — Magic Link, Dashboard, Cloud Save via RPC, Limits
-PHASE 2   Pro + Billing       — Stripe, Share-Links, PNG-Export, Versionshistorie
+PHASE 2   Pro-Features        — Share-Links, PNG-Export, Versionshistorie (kein Stripe)
+PHASE 3   Custom-Hindernisse  — WYSIWYG-Editor, Sharing, Admin, Library (H0–H5)
 ```
 
 **Kernprinzip:** Kein direktes `.insert()` oder `.update()` auf sicherheitsrelevante Tabellen vom Client. Alle Schreiboperationen laufen durch SECURITY DEFINER Funktionen auf dem Server.
