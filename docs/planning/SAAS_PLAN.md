@@ -1,12 +1,15 @@
 # Kartslalom Streckenplaner — SaaS-Transformation
 
-**Dokument-Version:** 1.2  
+**Dokument-Version:** 1.3  
 **Erstellt:** 2026-06-02  
-**Zuletzt geändert:** 2026-06-02  
+**Zuletzt geändert:** 2026-06-16  
 **Änderungen v1.1:** Enterprise/Verband-Tier entfernt (zu früh). Export nur für angemeldete Nutzer. User-Lifecycle-Management (Inaktivitäts-Reminder + Cleanup) ergänzt.  
 **Änderungen v1.2:** Tech-Stack final entschieden: Supabase-first, Hetzner/Coolify statt Vercel, Zustand+TanStack Query+Zod, Resend (kein DOI für Transaktionsmails), Stripe mit Paddle als Fallback.  
+**Änderungen v1.3:** Zahlungsmodell geändert — kein Stripe, kein In-App-Checkout. Bezahlung läuft extern, Tier-Upgrades werden manuell per SQL gesetzt. Operative Details siehe `IMPLEMENTATION_PLAN.md` Phase 2.  
 **Autor:** Claude Sonnet 4.6 (Analyse-Agent)  
 **Zweck:** Maschinenlesbares Planungsdokument für die SaaS-Transformation des Kartslalom MVP. Verwendbar durch Menschen und AI-Agenten gleichermaßen.
+
+> **Hinweis:** Alle Abschnitte dieses Dokuments, die Stripe, Checkout, Customer Portal oder Webhooks beschreiben, sind durch die Entscheidung vom 2026-06-16 **überholt**. Das operative Planungsdokument ist `IMPLEMENTATION_PLAN.md`.
 
 ---
 
