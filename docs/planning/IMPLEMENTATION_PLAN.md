@@ -1,9 +1,13 @@
 # Kartslalom SaaS — Implementierungsplan
 
-**Version:** 2.1  
+**Version:** 2.2  
 **Datum:** 2026-06-02  
+**Zuletzt geändert:** 2026-06-16  
 **Änderungen v2.1:** Korrekturen zu v2.0 — siehe Abschnitt "Korrekturen" am Ende.  
-**Referenz:** `SAAS_PLAN.md` v1.2
+**Änderungen v2.2:** Phase 3 "Custom-Hindernisse" ergänzt (H0–H5 aus
+`CUSTOM_FORMATIONS_PLAN.md` v1.2 integriert). Zahlungsmodell-Entscheidung in
+Phase 2 dokumentiert.  
+**Referenz:** `SAAS_PLAN.md` v1.2, `CUSTOM_FORMATIONS_PLAN.md` v1.2
 
 ---
 
