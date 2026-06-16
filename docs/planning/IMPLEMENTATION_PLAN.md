@@ -912,18 +912,24 @@ jobs:
 
 ---
 
-## PHASE 2 — Pro + Billing
+## PHASE 2 — Pro-Features
 
 **Voraussetzung:** Phase 1 stabil und mindestens 2 Wochen in Produktion ohne kritische Fehler.
+
+**Zahlungsmodell (Entscheidung 2026-06-16):** Kein Stripe, kein In-App-Checkout.
+Upgrades auf Pro/Team laufen extern (z. B. Rechnung, Banküberweisung, direkte
+Absprache). Der Admin setzt `tier` danach manuell per SQL:
+```sql
+UPDATE profiles SET tier = 'pro' WHERE email = 'nutzer@example.com';
+```
+Produktiv über Supabase Dashboard → SQL-Editor. Lokal per `docker compose exec db psql`.
+
+Free-Nutzer sehen an den gesperrten Features einen Hinweis mit Kontakt-Link
+(`mailto:` o. ä.) statt einem Checkout-Flow.
 
 ### 2.1 Features
 
 ```yaml
-stripe:
-  - Checkout Session (Pro + Team Preise)
-  - Customer Portal (Verwalten, Kündigen, Plan-Wechsel)
-  - Webhook (PFLICHT: Signatur verifizieren vor DB-Änderung)
-
 share_links:
   flow:
     1: "Edge Function generiert 32-Byte crypto-Token"
@@ -932,6 +938,7 @@ share_links:
     4: "Share-URL: /share/<plaintext-token>"
   lookup: "RPC get_track_by_share_token(token) — hasht, sucht, gibt Track zurück"
   rls: "Kein öffentliches SELECT via is_public — nur via RPC"
+  tier: "Pro+"
 
 png_export:
   library: "html-to-image (client-seitig, kein Puppeteer nötig)"
@@ -941,11 +948,16 @@ version_history:
   write: "SECURITY DEFINER Funktion create_track_version()"
   keep:  "letzte 10 für Pro, unbegrenzt für Team"
   ui:    "Liste in Track-Settings, Wiederherstellen lädt state_json"
+  tier: "Pro+"
 
 satellite_imagery:
   provider: "Mapbox"
   security: "API-Key via Edge-Function-Proxy — nie im Client-Bundle"
   tier: "Pro+"
+
+upgrade_hint:
+  ui: "Gesperrte Features zeigen Hinweis mit Kontakt-Link (kein Checkout)"
+  format: "Tooltip oder Inline-Banner: 'Nur für Pro-Nutzer — Kontakt: …'"
 
 lifecycle_emails:
   activate: "erst nach Datenschutz-Review und Abmeldemöglichkeit"
@@ -958,11 +970,9 @@ lifecycle_emails:
 
 ### 2.2 Definition of Done Phase 2
 
-- [ ] Stripe Test-Checkout abschließbar, tier in DB aktualisiert (Webhook-Signatur verifiziert)
-- [ ] Customer Portal: Plan wechseln, kündigen → tier fällt zurück auf free
 - [ ] Share-Link: Token-Hash in DB, Plaintext einmalig zurückgegeben, Track über `/share/...` abrufbar
 - [ ] Kein SELECT `WHERE is_public = true` ohne RPC für Fremdzugriff möglich
-- [ ] PNG-Export für Pro, Upgrade-Hinweis für Free
+- [ ] PNG-Export für Pro, Upgrade-Hinweis mit Kontakt-Link für Free
 - [ ] Mapbox-Key nicht im Client-Bundle (über Edge-Function-Proxy)
 - [ ] Lifecycle-E-Mails mit Abmeldemöglichkeit, Datenschutz-Review dokumentiert
 - [ ] Versionshistorie: Wiederherstellen lädt korrekte Version
