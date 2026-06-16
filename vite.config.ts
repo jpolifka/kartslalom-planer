@@ -12,9 +12,9 @@ export default defineConfig({
     sourcemap: false,
     rollupOptions: {
       output: {
-        manualChunks: {
-          react: ["react", "react-dom"],
-          vendor: ["framer-motion", "lucide-react"],
+        manualChunks: (id) => {
+          if (id.includes("react") || id.includes("react-dom")) return "react";
+          if (id.includes("framer-motion") || id.includes("lucide-react")) return "vendor";
         },
       },
     },
