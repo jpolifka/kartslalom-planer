@@ -226,6 +226,8 @@ export default function EditorPage() {
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
   const [subMenuKey, setSubMenuKey] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "pending" | "saved">("idle");
+  const [trackName, setTrackName] = useState("Neue Strecke");
+  const [nameFocused, setNameFocused] = useState(false);
   const isMobile = useIsMobile();
   const [mobilePanel, setMobilePanel] = useState<"formations" | "properties" | null>(null);
   useEffect(() => { if (!isMobile) setMobilePanel(null); }, [isMobile]);
