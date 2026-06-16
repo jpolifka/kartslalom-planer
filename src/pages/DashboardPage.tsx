@@ -34,8 +34,24 @@ export default function DashboardPage() {
   }
 
   async function handleDelete(id: string, name: string) {
-    if (!confirm(`Strecke „${name}“ wirklich löschen?`)) return;
+    if (!confirm(`Strecke „${name}” wirklich löschen?`)) return;
     await deleteTrackMutation.mutateAsync(id);
+  }
+
+  function startRename(id: string, currentName: string) {
+    setRenamingId(id);
+    setRenameValue(currentName);
+  }
+
+  async function commitRename() {
+    if (!renamingId) return;
+    const trimmed = renameValue.trim();
+    if (trimmed) await renameTrackMutation.mutateAsync({ id: renamingId, name: trimmed });
+    setRenamingId(null);
+  }
+
+  function cancelRename() {
+    setRenamingId(null);
   }
 
   return (
@@ -90,10 +106,51 @@ export default function DashboardPage() {
                 boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
               }}
             >
-              <MapPin size={18} color="#0284c7" />
-              <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => navigate(`/editor/${track.id}`)}>
-                <div style={{ fontWeight: 700, fontSize: 14 }}>{track.name}</div>
-                <div style={{ fontSize: 12, color: "#94a3b8" }}>
+              <MapPin size={18} color="#0284c7" style={{ flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {renamingId === track.id ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <input
+                      autoFocus
+                      value={renameValue}
+                      onChange={(e) => setRenameValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") commitRename();
+                        if (e.key === "Escape") cancelRename();
+                      }}
+                      style={{
+                        fontSize: 14, fontWeight: 700, border: "1px solid #0284c7",
+                        borderRadius: 6, padding: "3px 7px", outline: "none", minWidth: 160,
+                      }}
+                    />
+                    <button onClick={commitRename} style={iconActionBtn} title="Speichern">
+                      <Check size={13} color="#16a34a" />
+                    </button>
+                    <button onClick={cancelRename} style={iconActionBtn} title="Abbrechen">
+                      <X size={13} color="#64748b" />
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    <div
+                      style={{ fontWeight: 700, fontSize: 14, cursor: "pointer" }}
+                      onClick={() => navigate(`/editor/${track.id}`)}
+                    >
+                      {track.name}
+                    </div>
+                    <button
+                      onClick={() => startRename(track.id, track.name)}
+                      style={{ ...iconActionBtn, color: "#94a3b8" }}
+                      title="Umbenennen"
+                    >
+                      <Pencil size={12} />
+                    </button>
+                  </div>
+                )}
+                <div
+                  style={{ fontSize: 12, color: "#94a3b8", cursor: renamingId === track.id ? "default" : "pointer" }}
+                  onClick={renamingId === track.id ? undefined : () => navigate(`/editor/${track.id}`)}
+                >
                   {track.manual_width} × {track.manual_length} m · zuletzt geändert{" "}
                   {new Date(track.updated_at).toLocaleString("de-DE")}
                 </div>
@@ -102,7 +159,7 @@ export default function DashboardPage() {
                 onClick={() => handleDelete(track.id, track.name)}
                 style={{
                   border: "1px solid #fecaca", background: "white", borderRadius: 8,
-                  padding: 7, cursor: "pointer", color: "#b91c1c", display: "flex",
+                  padding: 7, cursor: "pointer", color: "#b91c1c", display: "flex", flexShrink: 0,
                 }}
                 title="Strecke löschen"
               >
