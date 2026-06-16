@@ -172,3 +172,9 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+const iconActionBtn: React.CSSProperties = {
+  display: "inline-flex", alignItems: "center", justifyContent: "center",
+  border: "1px solid #e2e8f0", background: "white", borderRadius: 6,
+  padding: 4, cursor: "pointer", flexShrink: 0,
+};
