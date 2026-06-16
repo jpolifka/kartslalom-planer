@@ -15,7 +15,7 @@ Dashboard und Tier-System (Free / Pro).
 ```yaml
 frontend:
   framework:     React 18 + TypeScript
-  bundler:       Vite 5
+  bundler:       Vite 8
   routing:       React Router 7
   state:         Zustand (Auth/UI), React Query (Server-State)
   validation:    Zod
