@@ -17,7 +17,7 @@
 ```yaml
 frontend:
   framework: React 18 + TypeScript
-  bundler: Vite 5
+  bundler: Vite 8
   icons: lucide-react
   animation: framer-motion (installiert, kaum genutzt)
   map: OpenStreetMap Tiles (direkt via img-Tags)
