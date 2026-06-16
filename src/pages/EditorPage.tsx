@@ -595,13 +595,15 @@ export default function EditorPage() {
             Kartslalom Streckenplaner
           </h1>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <button
-              onClick={() => setShowImprint(true)}
-              style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", fontSize: 12, textDecoration: "underline", padding: 4, whiteSpace: "nowrap" }}
+            <a
+              href="/impressum"
+              target="_blank"
+              rel="noreferrer"
+              style={{ color: "#64748b", fontSize: 12, textDecoration: "underline", padding: 4, whiteSpace: "nowrap" }}
               title="Impressum / Datenschutzerklärung öffnen"
             >
               {isMobile ? "Impressum" : "Impressum / Datenschutzerklärung"}
-            </button>
+            </a>
             <button
               onClick={() => setShowHelp(true)}
               style={{ ...iconBtnLabel, color: "#0284c7", borderColor: "#bae6fd" }}
