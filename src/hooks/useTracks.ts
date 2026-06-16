@@ -35,6 +35,17 @@ export function useSaveTrack() {
   });
 }
 
+export function useRenameTrack() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) => renameTrack(id, name),
+    onSuccess: (_d, { id }) => {
+      qc.invalidateQueries({ queryKey: ["track", id] });
+      qc.invalidateQueries({ queryKey: ["tracks"] });
+    },
+  });
+}
+
 export function useDeleteTrack() {
   const qc = useQueryClient();
   return useMutation({
