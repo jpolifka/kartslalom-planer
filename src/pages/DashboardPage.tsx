@@ -3,8 +3,8 @@
 // All rights reserved.
 
 import { useNavigate } from "react-router-dom";
-import { Plus, Trash2, MapPin } from "lucide-react";
-import { useTrackList, useCreateTrack, useDeleteTrack } from "../hooks/useTracks";
+import { Plus, Trash2, MapPin, Pencil, Check, X } from "lucide-react";
+import { useTrackList, useCreateTrack, useDeleteTrack, useRenameTrack } from "../hooks/useTracks";
 import { useTier } from "../hooks/useTier";
 
 export default function DashboardPage() {
