@@ -21,6 +21,8 @@ import type { FormationKey, PlacedArrow, PlacedFormation } from "../types";
 import { saveState, loadState, clearSavedState, exportAsFile, parseImportFile } from "../lib/storage";
 import { useAuthStore } from "../store/authStore";
 import { useTrack, useCreateTrack, useSaveTrack, useRenameTrack } from "../hooks/useTracks";
+import { useTier } from "../hooks/useTier";
+import { HelpSection, ImprintContent } from "../components/ImprintContent";
 
 // Load once at startup, shared across all useState lazy initializers (Gast-Modus)
 let _initialSaved = loadState();
