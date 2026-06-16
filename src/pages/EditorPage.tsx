@@ -704,9 +704,10 @@ export default function EditorPage() {
                     <Trash2 size={13} /> Entfernen
                   </button>
                   <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 10, display: "grid", gap: 8 }}>
-                    <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer" }}>
-                      <input type="checkbox" checked={mapSatellite} onChange={(e) => setMapSatellite(e.target.checked)} />
+                    <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: satelliteLocked ? "default" : "pointer", opacity: satelliteLocked ? 0.55 : 1 }}>
+                      <input type="checkbox" checked={mapSatellite} onChange={(e) => setMapSatellite(e.target.checked)} disabled={satelliteLocked} />
                       <Satellite size={13} /> Satellitenbild
+                      {satelliteLocked && <span style={{ fontSize: 11, color: "#94a3b8", marginLeft: 2 }}>Pro</span>}
                     </label>
                     <label style={{ fontSize: 13 }}>
                       Transparenz: {Math.round(mapOpacity * 100)} %
