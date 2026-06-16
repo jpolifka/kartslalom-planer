@@ -131,7 +131,7 @@ export default function DashboardPage() {
                     </button>
                   </div>
                 ) : (
-                  <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <div
                       style={{ fontWeight: 700, fontSize: 14, cursor: "pointer" }}
                       onClick={() => navigate(`/editor/${track.id}`)}
@@ -140,10 +140,15 @@ export default function DashboardPage() {
                     </div>
                     <button
                       onClick={() => startRename(track.id, track.name)}
-                      style={{ ...iconActionBtn, color: "#94a3b8" }}
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 4,
+                        border: "1px solid #bae6fd", background: "#e0f2fe",
+                        borderRadius: 6, padding: "3px 8px", cursor: "pointer",
+                        color: "#0284c7", fontSize: 11, fontWeight: 600, flexShrink: 0,
+                      }}
                       title="Umbenennen"
                     >
-                      <Pencil size={12} />
+                      <Pencil size={11} /> Umbenennen
                     </button>
                   </div>
                 )}
