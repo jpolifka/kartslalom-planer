@@ -621,44 +621,54 @@ export default function EditorPage() {
         </div>
 
         {isCloudMode && trackId && (
-          <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: isMobile ? 8 : 12, flexShrink: 0 }}>
-            <input
-              value={trackName}
-              onChange={(e) => setTrackName(e.target.value)}
-              onFocus={() => setNameFocused(true)}
-              onBlur={() => {
-                setNameFocused(false);
-                const trimmed = trackName.trim();
-                if (trimmed && trimmed !== trackQuery.data?.name) {
-                  renameTrackMutation.mutate({ id: trackId, name: trimmed });
-                } else if (!trimmed) {
-                  setTrackName(trackQuery.data?.name ?? "Neue Strecke");
-                }
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                if (e.key === "Escape") {
-                  setTrackName(trackQuery.data?.name ?? "Neue Strecke");
-                  (e.target as HTMLInputElement).blur();
-                }
-              }}
-              style={{
-                fontSize: isMobile ? 13 : 15,
-                fontWeight: 700,
-                color: "#0f172a",
-                border: "none",
-                borderBottom: nameFocused ? "2px solid #0284c7" : "2px solid transparent",
-                background: "transparent",
-                padding: "2px 2px",
-                outline: "none",
-                borderRadius: 0,
-                minWidth: 120,
-                maxWidth: 360,
-              }}
-              title="Streckenname bearbeiten"
-              aria-label="Streckenname"
-            />
-            <Pencil size={12} color="#94a3b8" />
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: isMobile ? 8 : 12, flexShrink: 0 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#94a3b8", flexShrink: 0 }}>
+              Streckenname:
+            </span>
+            <div style={{
+              display: "flex", alignItems: "center", gap: 6,
+              background: nameFocused ? "white" : "#f1f5f9",
+              border: nameFocused ? "2px solid #0284c7" : "2px solid #e2e8f0",
+              borderRadius: 8, padding: "3px 8px",
+              transition: "border-color 0.15s, background 0.15s",
+              boxShadow: nameFocused ? "0 0 0 3px #bae6fd" : "none",
+            }}>
+              <Pencil size={12} color={nameFocused ? "#0284c7" : "#94a3b8"} style={{ flexShrink: 0 }} />
+              <input
+                value={trackName}
+                onChange={(e) => setTrackName(e.target.value)}
+                onFocus={() => setNameFocused(true)}
+                onBlur={() => {
+                  setNameFocused(false);
+                  const trimmed = trackName.trim();
+                  if (trimmed && trimmed !== trackQuery.data?.name) {
+                    renameTrackMutation.mutate({ id: trackId, name: trimmed });
+                  } else if (!trimmed) {
+                    setTrackName(trackQuery.data?.name ?? "Neue Strecke");
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                  if (e.key === "Escape") {
+                    setTrackName(trackQuery.data?.name ?? "Neue Strecke");
+                    (e.target as HTMLInputElement).blur();
+                  }
+                }}
+                style={{
+                  fontSize: isMobile ? 13 : 14,
+                  fontWeight: 700,
+                  color: "#0f172a",
+                  border: "none",
+                  background: "transparent",
+                  padding: 0,
+                  outline: "none",
+                  minWidth: 140,
+                  maxWidth: 320,
+                }}
+                title="Streckenname bearbeiten (Enter zum Bestätigen, Esc zum Abbrechen)"
+                aria-label="Streckenname"
+              />
+            </div>
           </div>
         )}
 
