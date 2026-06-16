@@ -8,6 +8,7 @@ import LoginPage from "./pages/LoginPage";
 import AuthCallbackPage from "./pages/AuthCallbackPage";
 import DashboardPage from "./pages/DashboardPage";
 import EditorPage from "./pages/EditorPage";
+import ImpressumPage from "./pages/ImpressumPage";
 import SettingsPage from "./pages/SettingsPage";
 import AuthGuard from "./components/auth/AuthGuard";
 import AppShell from "./components/layout/AppShell";
@@ -32,6 +33,9 @@ export default function AppRouter() {
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Route>
+
+      <Route path="/impressum" element={<ImpressumPage />} />
+      <Route path="/datenschutz" element={<Navigate to="/impressum#datenschutz" replace />} />
 
       <Route path="*" element={<Navigate to="/editor/new" replace />} />
     </Routes>
