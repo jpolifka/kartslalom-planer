@@ -12,7 +12,10 @@ export default function DashboardPage() {
   const { data: tracks, isLoading } = useTrackList();
   const createTrackMutation = useCreateTrack();
   const deleteTrackMutation = useDeleteTrack();
+  const renameTrackMutation = useRenameTrack();
   const { trackLimit } = useTier();
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
 
   const limitReached = !!tracks && tracks.length >= trackLimit;
 
