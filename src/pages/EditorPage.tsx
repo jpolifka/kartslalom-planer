@@ -22,7 +22,7 @@ import { saveState, loadState, clearSavedState, exportAsFile, parseImportFile } 
 import { useAuthStore } from "../store/authStore";
 import { useTrack, useCreateTrack, useSaveTrack, useRenameTrack } from "../hooks/useTracks";
 import { useTier } from "../hooks/useTier";
-import { HelpSection, ImprintContent } from "../components/ImprintContent";
+import { HelpSection } from "../components/ImprintContent";
 
 // Load once at startup, shared across all useState lazy initializers (Gast-Modus)
 let _initialSaved = loadState();
@@ -540,42 +540,6 @@ export default function EditorPage() {
               </button>
             </div>
             <HelpContent />
-          </div>
-        </div>
-      )}
-
-      {/* ── Modal: Impressum / Datenschutzerklärung ─────────────────── */}
-      {showImprint && (
-        <div
-          style={{
-            position: "fixed", inset: 0,
-            background: "rgba(0,0,0,0.55)",
-            zIndex: 200,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            padding: 16, boxSizing: "border-box",
-          }}
-          onClick={() => setShowImprint(false)}
-        >
-          <div
-            style={{
-              background: "white", borderRadius: 20, padding: 22,
-              width: "min(720px, 96vw)", maxHeight: "90vh", overflow: "auto",
-              boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
-              boxSizing: "border-box",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-              <h3 style={{ margin: 0 }}>Impressum / Datenschutzerklärung</h3>
-              <button
-                onClick={() => setShowImprint(false)}
-                style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", display: "flex", padding: 4 }}
-                title="Schließen"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <ImprintContent />
           </div>
         </div>
       )}
