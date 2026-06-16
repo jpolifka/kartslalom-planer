@@ -315,7 +315,7 @@ console.assert(satError?.message.includes("satellite_requires_pro"), "FAIL: Sate
 
 ### 0.9 Definition of Done Phase 0
 
-- [ ] `/impressum` und `/datenschutz` erreichbar, DDG-konform
+- [x] `/impressum` und `/datenschutz` erreichbar, DDG-konform
 - [ ] Security Headers aktiv (`securityheaders.com` zeigt A oder B+)
 - [ ] Docker-Build mit `nginx-unprivileged`, läuft ohne root
 - [ ] Supabase-Projekt in Frankfurt, Auth konfiguriert
