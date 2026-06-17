@@ -2,7 +2,6 @@
 // Copyright (c) Jens Polifka
 // All rights reserved.
 
-import React from "react";
 import { Map, Trash2, Satellite } from "lucide-react";
 import { getFormation } from "../../../lib/formationRegistry";
 import type { AreaSelection } from "../../../lib/areaSelection";
