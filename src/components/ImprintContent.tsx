@@ -173,7 +173,43 @@ export function ImprintContent() {
         </p>
       </HelpSection>
 
-      <HelpSection title="8. Kontaktaufnahme per E-Mail">
+      <HelpSection title="8. Kontolöschung und Inaktivitätsregel">
+        <strong>Kontolöschung auf Anfrage (Art. 17 DSGVO):</strong> Über den Bereich
+        „Einstellungen" in der Anwendung können Sie Ihr Konto jederzeit selbst löschen.
+        Dabei werden Ihr Benutzerprofil, alle gespeicherten Streckenpläne sowie Ihre
+        Authentifizierungsdaten unwiderruflich und vollständig gelöscht (Hard Delete).
+        Eine Wiederherstellung ist nicht möglich. Alternativ können Sie die Löschung
+        per E-Mail an{" "}
+        <a href="mailto:jens@polifka.info" style={link}>jens@polifka.info</a> beantragen.
+        <p style={{ margin: "8px 0" }}>
+          <strong>Automatische Deaktivierung bei Inaktivität:</strong> Um Daten nicht
+          länger als notwendig vorzuhalten, werden Konten nach längerem Nichtgebrauch
+          automatisch deaktiviert:
+        </p>
+        <ul style={ul}>
+          <li>
+            <strong>Nach 150 Tagen</strong> Inaktivität: erste Erinnerungsmail an
+            die hinterlegte E-Mail-Adresse
+          </li>
+          <li>
+            <strong>Nach 170 Tagen</strong> Inaktivität: zweite Erinnerungsmail mit
+            Hinweis auf die bevorstehende Deaktivierung
+          </li>
+          <li>
+            <strong>Nach 180 Tagen</strong> Inaktivität: Konto wird deaktiviert;
+            Profil und Streckendaten werden nicht mehr zugänglich gemacht. Eine
+            Reaktivierung ist nicht automatisch möglich — bitte wenden Sie sich an{" "}
+            <a href="mailto:jens@polifka.info" style={link}>jens@polifka.info</a>.
+          </li>
+        </ul>
+        <p style={{ margin: "6px 0 0" }}>
+          Inaktivität bedeutet, dass kein Login und keine Datenänderung stattgefunden
+          hat. Die Verarbeitung erfolgt auf Grundlage von Art. 6 Abs. 1 lit. f DSGVO
+          (berechtigtes Interesse an Datensparsamkeit gemäß Art. 5 Abs. 1 lit. e DSGVO).
+        </p>
+      </HelpSection>
+
+      <HelpSection title="9. Kontaktaufnahme per E-Mail">
         Wenn Sie per E-Mail Kontakt aufnehmen, werden die von Ihnen übermittelten
         Daten ausschließlich zur Bearbeitung Ihrer Anfrage verwendet.
         <p style={{ margin: "6px 0" }}>
@@ -187,21 +223,21 @@ export function ImprintContent() {
         </p>
       </HelpSection>
 
-      <HelpSection title="9. Ihre Rechte">
+      <HelpSection title="10. Ihre Rechte">
         Sie haben im Rahmen der geltenden gesetzlichen Bestimmungen das Recht auf:
         <ul style={ul}>
-          <li>Auskunft über Ihre gespeicherten Daten</li>
-          <li>Berichtigung unrichtiger Daten</li>
-          <li>Löschung Ihrer Daten</li>
-          <li>Einschränkung der Verarbeitung</li>
-          <li>Datenübertragbarkeit</li>
-          <li>Widerspruch gegen die Verarbeitung</li>
+          <li>Auskunft über Ihre gespeicherten Daten (Art. 15 DSGVO)</li>
+          <li>Berichtigung unrichtiger Daten (Art. 16 DSGVO)</li>
+          <li>Löschung Ihrer Daten (Art. 17 DSGVO) — siehe Abschnitt 8</li>
+          <li>Einschränkung der Verarbeitung (Art. 18 DSGVO)</li>
+          <li>Datenübertragbarkeit (Art. 20 DSGVO) — Datenexport in den Einstellungen</li>
+          <li>Widerspruch gegen die Verarbeitung (Art. 21 DSGVO)</li>
         </ul>
         Zur Ausübung Ihrer Rechte können Sie sich jederzeit an die oben genannte
         Kontaktadresse wenden.
       </HelpSection>
 
-      <HelpSection title="10. Beschwerderecht bei einer Aufsichtsbehörde">
+      <HelpSection title="11. Beschwerderecht bei einer Aufsichtsbehörde">
         Sie haben das Recht, sich bei einer Datenschutzaufsichtsbehörde über die
         Verarbeitung Ihrer personenbezogenen Daten zu beschweren.
         <p style={{ margin: "6px 0 0" }}>
@@ -211,7 +247,7 @@ export function ImprintContent() {
         </p>
       </HelpSection>
 
-      <HelpSection title="11. Änderungen dieser Datenschutzerklärung">
+      <HelpSection title="12. Änderungen dieser Datenschutzerklärung">
         Ich behalte mir vor, diese Datenschutzerklärung anzupassen, sofern dies
         aufgrund technischer oder rechtlicher Änderungen erforderlich wird.
         <p style={{ margin: "10px 0 0", color: "#94a3b8", fontSize: 12 }}>

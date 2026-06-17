@@ -1,0 +1,17 @@
+name: User-Lifecycle Cron
+
+on:
+  schedule:
+    - cron: '0 3 * * *'  # täglich 03:00 UTC
+  workflow_dispatch:     # manuell auslösbar (für Tests)
+
+jobs:
+  lifecycle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call user-lifecycle function
+        run: |
+          curl --fail -sf -X POST \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/user-lifecycle" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}"
