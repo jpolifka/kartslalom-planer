@@ -440,7 +440,7 @@ services:
     image: supabase/edge-runtime:v1.74.0
     restart: unless-stopped
     volumes:
-      - ./volumes/functions:/home/deno/functions:z
+      - ../../supabase/functions:/home/deno/functions:z
       - deno-cache:/root/.cache/deno
     depends_on:
       kong:
