@@ -75,8 +75,11 @@ export async function saveTrack(
 export async function renameTrack(id: string, name: string): Promise<void> {
   const trimmed = name.trim();
   if (!trimmed) return;
-  const { error } = await supabase.from("tracks").update({ name: trimmed }).eq("id", id);
-  if (error) throw error;
+  const { error } = await supabase.rpc("rename_track", { p_track_id: id, p_name: trimmed });
+  if (error) {
+    if (error.message.includes("not_owner")) throw new Error("NOT_OWNER");
+    throw error;
+  }
 }
 
 // Löschen: RLS reicht (kein Feature-Bypass möglich)
