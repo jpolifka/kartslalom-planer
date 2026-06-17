@@ -7,7 +7,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   RotateCw, Trash2, AlertTriangle, Info, Pencil, Map, Satellite,
   ChevronDown, ChevronRight, MousePointer, Undo2, Redo2, X, FileDown,
-  Menu, SlidersHorizontal, HelpCircle, LayoutDashboard, LogIn,
+  Menu, SlidersHorizontal, HelpCircle, LayoutDashboard, LogIn, LogOut,
 } from "lucide-react";
 import TrackCanvas from "../components/TrackCanvas";
 import type { MapConfig } from "../components/TrackCanvas";
@@ -576,10 +576,23 @@ export default function EditorPage() {
               <span>Hilfe</span>
             </button>
             {isCloudMode ? (
-              <Link to="/dashboard" style={{ ...iconBtnLabel, textDecoration: "none" }} title="Zurück zu meinen Strecken">
-                <LayoutDashboard size={14} />
-                {!isMobile && <span>Meine Strecken</span>}
-              </Link>
+              <>
+                <Link to="/dashboard" style={{ ...iconBtnLabel, textDecoration: "none" }} title="Zurück zu meinen Strecken">
+                  <LayoutDashboard size={14} />
+                  {!isMobile && <span>Meine Strecken</span>}
+                </Link>
+                <button
+                  onClick={async () => {
+                    await supabase.auth.signOut();
+                    navigate("/login");
+                  }}
+                  style={{ ...iconBtnLabel, color: "#b91c1c", borderColor: "#fecaca" }}
+                  title="Abmelden"
+                >
+                  <LogOut size={14} />
+                  {!isMobile && <span>Abmelden</span>}
+                </button>
+              </>
             ) : (
               <Link to="/login" style={{ ...iconBtnLabel, textDecoration: "none" }} title="Anmelden, um Strecken in der Cloud zu speichern">
                 <LogIn size={14} />
