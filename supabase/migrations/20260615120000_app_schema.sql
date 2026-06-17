@@ -6,9 +6,6 @@ create table public.profiles (
   email                   text not null,
   tier                    text not null default 'free'
                             check (tier in ('free', 'pro', 'team')),
-  stripe_customer_id      text,
-  stripe_subscription_id  text,
-  stripe_status           text,
   last_active_at          timestamptz not null default now(),
   reminder_150_sent_at    timestamptz,
   reminder_170_sent_at    timestamptz,
