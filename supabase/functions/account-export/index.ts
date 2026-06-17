@@ -1,60 +1,67 @@
 // account-export — DSGVO-Datenexport für eingeloggte User
-// Gibt ein JSON-Archiv mit Profil, allen Strecken und Versionen zurück.
-
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// Kein externer Import — nur fetch() gegen Supabase REST/Auth API.
 
 const SUPABASE_URL     = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-const corsHeaders = {
+const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, content-type",
 };
 
+function serviceHeaders() {
+  return {
+    "apikey": SERVICE_ROLE_KEY,
+    "Authorization": `Bearer ${SERVICE_ROLE_KEY}`,
+    "Content-Type": "application/json",
+  };
+}
+
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response(null, { headers: cors });
+
+  const bearer = req.headers.get("authorization");
+  if (!bearer) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: cors });
+
+  const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    headers: { "apikey": SERVICE_ROLE_KEY, "Authorization": bearer },
+  });
+  if (!userRes.ok) return new Response(JSON.stringify({ error: "Invalid token" }), { status: 401, headers: cors });
+  const user = await userRes.json();
+  const uid: string = user.id;
+
+  const profileRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/profiles?id=eq.${uid}&select=id,email,tier,created_at,last_active_at`,
+    { headers: serviceHeaders() },
+  );
+  const profiles = await profileRes.json();
+
+  const tracksRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/tracks?owner_id=eq.${uid}&select=id,name,description,state_json,area_sel_json,manual_width,manual_length,map_satellite,map_opacity,created_at,updated_at&order=created_at`,
+    { headers: serviceHeaders() },
+  );
+  const tracks = await tracksRes.json();
+
+  const trackIds: string[] = Array.isArray(tracks) ? tracks.map((t: { id: string }) => t.id) : [];
+  let versions: unknown[] = [];
+  if (trackIds.length > 0) {
+    const versionsRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/track_versions?track_id=in.(${trackIds.join(",")})&select=track_id,version_number,state_json,area_sel_json,created_at&order=created_at`,
+      { headers: serviceHeaders() },
+    );
+    versions = await versionsRes.json();
   }
-
-  const authHeader = req.headers.get("authorization");
-  if (!authHeader) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
-  }
-
-  const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
-
-  const { data: { user }, error: authError } = await admin.auth.getUser(authHeader.replace("Bearer ", ""));
-  if (authError || !user) {
-    return new Response(JSON.stringify({ error: "Invalid token" }), { status: 401, headers: corsHeaders });
-  }
-
-  const uid = user.id;
-
-  const [profileRes, tracksRes] = await Promise.all([
-    admin.from("profiles").select("id, email, tier, created_at, last_active_at").eq("id", uid).single(),
-    admin.from("tracks").select("id, name, description, state_json, area_sel_json, manual_width, manual_length, map_satellite, map_opacity, created_at, updated_at").eq("owner_id", uid).order("created_at"),
-  ]);
-
-  if (profileRes.error) {
-    return new Response(JSON.stringify({ error: "profile_not_found" }), { status: 404, headers: corsHeaders });
-  }
-
-  // Versionen für alle Strecken laden
-  const trackIds = (tracksRes.data ?? []).map((t) => t.id);
-  const versionsRes = trackIds.length > 0
-    ? await admin.from("track_versions").select("track_id, version_number, state_json, area_sel_json, created_at").in("track_id", trackIds).order("created_at")
-    : { data: [] };
 
   const exportData = {
     exported_at: new Date().toISOString(),
-    profile: profileRes.data,
-    tracks: tracksRes.data ?? [],
-    track_versions: versionsRes.data ?? [],
+    profile: Array.isArray(profiles) ? profiles[0] : null,
+    tracks: tracks ?? [],
+    track_versions: versions,
   };
 
   return new Response(JSON.stringify(exportData, null, 2), {
     headers: {
-      ...corsHeaders,
+      ...cors,
       "Content-Type": "application/json",
       "Content-Disposition": `attachment; filename="kartslalom-export-${new Date().toISOString().slice(0, 10)}.json"`,
     },
