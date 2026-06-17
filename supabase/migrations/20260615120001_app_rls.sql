@@ -10,7 +10,7 @@ alter table public.track_versions enable row level security;
 create policy "profiles_select_own" on public.profiles
   for select using (auth.uid() = id);
 
--- Kein UPDATE-Policy. tier, stripe_*, is_deleted nur via service_role / Funktionen.
+-- Kein UPDATE-Policy. tier, is_deleted nur via service_role / Funktionen.
 -- last_active_at via touch_last_active() (SECURITY DEFINER, s. u.)
 
 -- tracks — direktes INSERT und UPDATE gesperrt, nur via RPC
