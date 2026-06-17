@@ -11,8 +11,9 @@
 
 set -e
 
-COMPOSE_FILE="docker/docker-compose.dev.yml"
-VOLUMES_DIR="docker/supabase/volumes"
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+COMPOSE_FILE="$SCRIPT_DIR/docker-compose.dev.yml"
+VOLUMES_DIR="$SCRIPT_DIR/supabase/volumes"
 
 auto_confirm=0
 if [ "$1" = "-y" ]; then
