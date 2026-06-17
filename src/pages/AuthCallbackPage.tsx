@@ -4,7 +4,7 @@
 
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../lib/supabase";
+import { supabase, functionsUrl } from "../lib/supabase";
 import { createTrack, saveTrack } from "../lib/api/tracks";
 import { loadState, clearSavedState } from "../lib/storage";
 
