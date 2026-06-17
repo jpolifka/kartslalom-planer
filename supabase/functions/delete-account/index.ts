@@ -1,56 +1,52 @@
 // delete-account — Account-Löschung auf Nutzer-Anfrage (DSGVO Art. 17)
-// Löscht den auth.users-Eintrag via Admin-API; alle abhängigen Daten
-// (profiles, tracks, track_versions) werden durch ON DELETE CASCADE entfernt.
-// Vorher: Soft-Delete-Markierung und kurze Wartezeit können hier ergänzt werden.
-
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// Kein externer Import — nur fetch() gegen Supabase REST/Auth API.
 
 const SUPABASE_URL     = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-const corsHeaders = {
+const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, content-type",
 };
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response(null, { headers: cors });
+  if (req.method !== "POST") return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers: cors });
 
-  if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers: corsHeaders });
-  }
+  const bearer = req.headers.get("authorization");
+  if (!bearer) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: cors });
 
-  const authHeader = req.headers.get("authorization");
-  if (!authHeader) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
-  }
+  const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    headers: { "apikey": SERVICE_ROLE_KEY, "Authorization": bearer },
+  });
+  if (!userRes.ok) return new Response(JSON.stringify({ error: "Invalid token" }), { status: 401, headers: cors });
+  const user = await userRes.json();
+  const uid: string = user.id;
 
-  const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+  // Soft-Delete-Markierung (Audit-Trail)
+  await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${uid}`, {
+    method: "PATCH",
+    headers: { "apikey": SERVICE_ROLE_KEY, "Authorization": `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ is_deleted: true, deleted_at: new Date().toISOString() }),
+  });
 
-  // User aus JWT verifizieren
-  const { data: { user }, error: authError } = await admin.auth.getUser(authHeader.replace("Bearer ", ""));
-  if (authError || !user) {
-    return new Response(JSON.stringify({ error: "Invalid token" }), { status: 401, headers: corsHeaders });
-  }
+  // Hard-Delete via Admin-API — ON DELETE CASCADE entfernt alle Daten
+  const deleteRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${uid}`, {
+    method: "DELETE",
+    headers: { "apikey": SERVICE_ROLE_KEY, "Authorization": `Bearer ${SERVICE_ROLE_KEY}` },
+  });
 
-  // Soft-Delete-Markierung setzen (für Audit-Trail, falls gewünscht)
-  await admin.from("profiles").update({ is_deleted: true, deleted_at: new Date().toISOString() }).eq("id", user.id);
-
-  // Hard-Delete über Admin-API — cascadet alle abhängigen Daten
-  const { error: deleteError } = await admin.auth.admin.deleteUser(user.id);
-  if (deleteError) {
-    console.error("deleteUser error", deleteError);
-    // Soft-Delete rückgängig machen wenn Hard-Delete fehlschlug
-    await admin.from("profiles").update({ is_deleted: false, deleted_at: null }).eq("id", user.id);
-    return new Response(JSON.stringify({ error: "delete_failed" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+  if (!deleteRes.ok) {
+    console.error("deleteUser error", deleteRes.status, await deleteRes.text());
+    await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${uid}`, {
+      method: "PATCH",
+      headers: { "apikey": SERVICE_ROLE_KEY, "Authorization": `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ is_deleted: false, deleted_at: null }),
     });
+    return new Response(JSON.stringify({ error: "delete_failed" }), { status: 500, headers: cors });
   }
 
   return new Response(JSON.stringify({ deleted: true }), {
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...cors, "Content-Type": "application/json" },
   });
 });
