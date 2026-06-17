@@ -63,6 +63,12 @@ export default function AuthCallbackPage() {
         console.error("localStorage-Migration fehlgeschlagen:", err);
       }
 
+      // Willkommens-Mail — idempotent, die Function ignoriert alte Accounts
+      fetch(functionsUrl("send-welcome"), {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      }).catch(() => {});
+
       navigate("/dashboard", { replace: true });
     }
 
