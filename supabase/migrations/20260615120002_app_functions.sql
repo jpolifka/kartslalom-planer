@@ -84,6 +84,22 @@ $$;
 grant execute on function public.save_track(uuid, jsonb, jsonb, numeric, numeric, boolean, numeric)
   to authenticated;
 
+-- rename_track — Ownership-geprueft, kein Tier-Check noetig
+create or replace function public.rename_track(p_track_id uuid, p_name text)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not exists (
+    select 1 from public.tracks where id = p_track_id and owner_id = auth.uid()
+  ) then
+    raise exception 'not_owner';
+  end if;
+
+  update public.tracks set name = trim(p_name) where id = p_track_id and owner_id = auth.uid();
+end;
+$$;
+
+grant execute on function public.rename_track(uuid, text) to authenticated;
+
 -- touch_last_active — fuer Aktionen ohne save_track (z. B. Export)
 create or replace function public.touch_last_active()
 returns void language plpgsql security definer set search_path = public as $$

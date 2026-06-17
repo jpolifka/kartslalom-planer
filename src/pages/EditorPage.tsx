@@ -19,6 +19,7 @@ import { generateTrackSVG, downloadSVG, printAsPDF } from "../lib/exportSVG";
 import type { AreaSelection } from "../lib/areaSelection";
 import type { FormationKey, PlacedArrow, PlacedFormation } from "../types";
 import { saveState, loadState, clearSavedState, exportAsFile, parseImportFile } from "../lib/storage";
+import { supabase } from "../lib/supabase";
 import { useAuthStore } from "../store/authStore";
 import { useTrack, useCreateTrack, useSaveTrack, useRenameTrack } from "../hooks/useTracks";
 import { useTier } from "../hooks/useTier";
