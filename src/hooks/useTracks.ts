@@ -43,6 +43,7 @@ export function useRenameTrack() {
       qc.invalidateQueries({ queryKey: ["track", id] });
       qc.invalidateQueries({ queryKey: ["tracks"] });
     },
+    onError: () => alert("Umbenennen fehlgeschlagen. Bitte versuche es erneut."),
   });
 }
 
