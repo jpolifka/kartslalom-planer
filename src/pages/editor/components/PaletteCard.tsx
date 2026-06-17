@@ -2,7 +2,7 @@
 // Copyright (c) Jens Polifka
 // All rights reserved.
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { RotateCw } from "lucide-react";
 import FormationThumbnail from "../../../components/FormationThumbnail";
 import { getFormation } from "../../../lib/formationRegistry";
