@@ -2,7 +2,6 @@
 // Copyright (c) Jens Polifka
 // All rights reserved.
 
-import React from "react";
 import { X } from "lucide-react";
 
 export default function DrawerHeader({ title, onClose }: { title: string; onClose: () => void }) {
