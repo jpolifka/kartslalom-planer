@@ -2,7 +2,6 @@
 // Copyright (c) Jens Polifka
 // All rights reserved.
 
-import React from "react";
 import { RotateCw, Trash2, AlertTriangle, Info } from "lucide-react";
 import { getFormation } from "../../../lib/formationRegistry";
 import type { ValidationIssue } from "../../../lib/validation/types";
