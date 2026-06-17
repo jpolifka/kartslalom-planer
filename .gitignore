@@ -44,7 +44,6 @@ pnpm-debug.log*
 *.tsbuildinfo
 
 # Supabase (lokaler Docker-Stack)
-docker/supabase/volumes/db/data/
-docker/supabase/volumes/storage/
+docker/supabase/volumes/
 docker/supabase/.env
 docker/supabase/.env.bak
