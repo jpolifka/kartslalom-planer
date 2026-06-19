@@ -25,7 +25,7 @@ export default function AppShell() {
         padding: "12px 20px", background: "white",
         boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
       }}>
-        <Link to="/dashboard" style={{ fontWeight: 800, fontSize: 17, color: "#0f172a", textDecoration: "none" }}>
+        <Link to="/dashboard" style={{ fontWeight: 800, fontSize: 17, color: "#2F6C40", textDecoration: "none" }}>
           Kartslalom Streckenplaner
         </Link>
         <nav style={{ display: "flex", alignItems: "center", gap: 14, fontSize: 13 }}>
