@@ -392,7 +392,7 @@ export default function EditorPage() {
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
               <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
-                <HelpCircle size={20} color="#2F6C40" /> Hilfe
+                <HelpCircle size={20} color="var(--c-primary)" /> Hilfe
               </h3>
               <button onClick={() => setShowHelp(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", display: "flex", padding: 4 }} title="Schließen">
                 <X size={20} />
