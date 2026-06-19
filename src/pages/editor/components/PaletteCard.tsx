@@ -87,7 +87,7 @@ export default function PaletteCard({ formation, onClick, showRotationSubMenu, s
               title={`${deg}° gedreht einfügen`}
               style={{
                 borderRadius: 7,
-                border: "1px solid #bae6fd",
+                border: "1px solid #b8d98a",
                 background: "white",
                 padding: "4px 3px",
                 cursor: "pointer",
