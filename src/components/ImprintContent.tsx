@@ -15,7 +15,7 @@ export function HelpSection({ title, children }: { title: string; children: Reac
 
 export function ImprintContent() {
   const ul: React.CSSProperties = { margin: "4px 0", paddingLeft: 20 };
-  const link: React.CSSProperties = { color: "#0284c7" };
+  const link: React.CSSProperties = { color: "#2F6C40" };
   return (
     <div>
       <HelpSection title="Angaben gemäß § 5 DDG / Verantwortlicher nach § 18 Abs. 2 MStV">
