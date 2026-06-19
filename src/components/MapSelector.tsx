@@ -265,7 +265,7 @@ export default function MapSelector({
         {drawMode === "poly" && drawnPts.length >= 3 && (
           <button
             onClick={() => { setClosed(true); setDrawMode("none"); }}
-            style={{ ...btnStyle, borderColor: "#2F6C40", color: "#2F6C40", fontWeight: 700 }}
+            style={{ ...btnStyle, borderColor: "var(--c-primary)", color: "var(--c-primary)", fontWeight: 700 }}
           >
             Polygon schliessen
           </button>
@@ -291,12 +291,12 @@ export default function MapSelector({
 
       {/* Mode hint */}
       {drawMode === "rect" && (
-        <div style={{ fontSize: 12, color: "#2F6C40", marginBottom: 6 }}>
+        <div style={{ fontSize: 12, color: "var(--c-primary)", marginBottom: 6 }}>
           Klicken und ziehen um ein Rechteck aufzuziehen.
         </div>
       )}
       {drawMode === "poly" && (
-        <div style={{ fontSize: 12, color: "#2F6C40", marginBottom: 6 }}>
+        <div style={{ fontSize: 12, color: "var(--c-primary)", marginBottom: 6 }}>
           Klicken um Punkte zu setzen. {drawnPts.length >= 3 ? 'Ersten Punkt erneut anklicken oder "Polygon schliessen".' : `Noch ${3 - drawnPts.length} Punkt(e) bis zum Schliessen.`}
         </div>
       )}
@@ -468,12 +468,12 @@ const btnStyle: React.CSSProperties = {
   background: "white", padding: "6px 11px", cursor: "pointer", fontSize: 13,
 };
 const activeBtnStyle: React.CSSProperties = {
-  border: "2px solid #2F6C40", background: "#edf4de", color: "#2F6C40", fontWeight: 700,
+  border: "2px solid var(--c-primary)", background: "var(--c-primary-bg)", color: "var(--c-primary)", fontWeight: 700,
 };
 const confirmBtnStyle: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: 6,
-  borderRadius: 9, border: "2px solid #2F6C40",
-  background: "#2F6C40", color: "white",
+  borderRadius: 9, border: "2px solid var(--c-primary)",
+  background: "var(--c-primary)", color: "white",
   padding: "6px 13px", cursor: "pointer", fontSize: 13, fontWeight: 700,
 };
 const smallBtnStyle: React.CSSProperties = {
