@@ -86,7 +86,7 @@ export default function EditorHeader({
             border: nameFocused ? "2px solid #2F6C40" : "2px solid #e2e8f0",
             borderRadius: 8, padding: "3px 8px",
             transition: "border-color 0.15s, background 0.15s",
-            boxShadow: nameFocused ? "0 0 0 3px #bae6fd" : "none",
+            boxShadow: nameFocused ? "0 0 0 3px #b8d98a" : "none",
           }}>
             <Pencil size={12} color={nameFocused ? "#2F6C40" : "#94a3b8"} style={{ flexShrink: 0 }} />
             <input
