@@ -98,7 +98,7 @@ export default function LeftSidebar({
           </div>
         ) : (
           <div style={{ display: "grid", gap: 8 }}>
-            <button onClick={onOpenMapSelector} style={{ ...outlineBtn, borderColor: "#0284c7", color: "#0284c7", fontWeight: 700 }}>
+            <button onClick={onOpenMapSelector} style={{ ...outlineBtn, borderColor: "#2F6C40", color: "#2F6C40", fontWeight: 700 }}>
               <Map size={13} /> Bereich auf Karte waehlen
             </button>
             <div style={{ fontSize: 11, color: "#64748b" }}>Oder manuell eingeben:</div>
