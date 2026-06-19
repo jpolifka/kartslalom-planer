@@ -167,7 +167,7 @@ export default function RightPanel({
               borderRadius: 10, padding: "10px 12px",
               display: "flex", alignItems: "baseline", gap: 6,
             }}>
-              <span style={{ fontSize: 26, fontWeight: 800, color: "#2F6C40", lineHeight: 1 }}>
+              <span style={{ fontSize: 26, fontWeight: 800, color: "var(--c-primary)", lineHeight: 1 }}>
                 {totalDurationSeconds}
               </span>
               <span style={{ fontSize: 13, color: "#1e4d2b", fontWeight: 600 }}>Sekunden</span>
