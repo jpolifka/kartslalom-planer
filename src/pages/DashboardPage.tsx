@@ -119,7 +119,7 @@ export default function DashboardPage() {
                         if (e.key === "Escape") cancelRename();
                       }}
                       style={{
-                        fontSize: 14, fontWeight: 700, border: "1px solid #2F6C40",
+                        fontSize: 14, fontWeight: 700, border: "1px solid var(--c-primary)",
                         borderRadius: 6, padding: "3px 7px", outline: "none", minWidth: 160,
                       }}
                     />
