@@ -55,9 +55,9 @@ export function toolBtn(active: boolean): React.CSSProperties {
   return {
     display: "inline-flex", alignItems: "center", gap: 6,
     borderRadius: 9, border: active ? "2px solid #2F6C40" : "1px solid #cbd5e1",
-    background: active ? "#edf4de" : "white",
+    background: active ? "var(--c-primary-bg)" : "white",
     padding: "6px 12px", cursor: "pointer",
-    color: active ? "#2F6C40" : "#475569",
+    color: active ? "var(--c-primary)" : "#475569",
     fontWeight: active ? 700 : 400,
     fontSize: 12,
   };
