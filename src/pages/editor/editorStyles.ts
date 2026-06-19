@@ -57,7 +57,7 @@ export function toolBtn(active: boolean): React.CSSProperties {
     borderRadius: 9, border: active ? "2px solid #0284c7" : "1px solid #cbd5e1",
     background: active ? "#e0f2fe" : "white",
     padding: "6px 12px", cursor: "pointer",
-    color: active ? "#0284c7" : "#475569",
+    color: active ? "#2F6C40" : "#475569",
     fontWeight: active ? 700 : 400,
     fontSize: 12,
   };
