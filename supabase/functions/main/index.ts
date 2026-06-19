@@ -1,3 +1,5 @@
+// Lokaler Dispatcher für Docker-Dev-Setup (docker/supabase/docker-compose.yml).
+// Supabase Cloud: jede Funktion einzeln deployen (supabase functions deploy <name>).
 import * as jose from 'https://deno.land/x/jose@v4.14.4/index.ts'
 
 console.log('main function started')
