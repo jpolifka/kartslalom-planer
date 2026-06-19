@@ -373,8 +373,8 @@ lifecycle:
 
   phase_final_warning:
     condition: "last_active_at >= 170 Tage AND < 180 Tage"
-    trigger: "Cron-Job täglich 08:00 UTC"
-    phase_activated: 2
+    trigger: "Cron-Job täglich 03:00 UTC (Supabase Dashboard Schedules)"
+    phase_activated: 1
     actions:
       - send_email:
           template: "account_deletion_warning"
