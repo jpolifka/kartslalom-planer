@@ -1,13 +1,17 @@
 # Kartslalom SaaS — Implementierungsplan
 
-**Version:** 2.2  
+**Version:** 2.3  
 **Datum:** 2026-06-02  
-**Zuletzt geändert:** 2026-06-16  
+**Zuletzt geändert:** 2026-06-19  
 **Änderungen v2.1:** Korrekturen zu v2.0 — siehe Abschnitt "Korrekturen" am Ende.  
 **Änderungen v2.2:** Phase 3 "Custom-Hindernisse" ergänzt (H0–H5 aus
 `CUSTOM_FORMATIONS_PLAN.md` v1.2 integriert). Zahlungsmodell-Entscheidung in
 Phase 2 dokumentiert.  
-**Referenz:** `SAAS_PLAN.md` v1.2, `CUSTOM_FORMATIONS_PLAN.md` v1.2
+**Änderungen v2.3 (2026-06-19):** Account-Export = JSON (kein ZIP, bewusste Entscheidung).
+Account-Löschung = Hard Delete (nicht Anonymisierung). Lifecycle-Funktion in Phase 1
+voll aktiv (150/170/180-Tage-Mails + Soft-Delete); Datenschutz in Impressum/Datenschutz
+Abschnitt 8 dokumentiert. Lifecycle-Cron via Supabase Dashboard Schedules (nicht GitHub Actions).  
+**Referenz:** `SAAS_PLAN.md` v1.4, `CUSTOM_FORMATIONS_PLAN.md` v1.2
 
 ---
 
@@ -811,29 +815,31 @@ async function migrateLocalStorage() {
 
 ### 1.14 Account-Verwaltung (DSGVO-Pflicht)
 
-**Account-Export** — Edge Function, gibt ZIP zurück:
+**Account-Export** — Edge Function `account-export`, gibt JSON zurück (Entscheidung 2026-06-19: kein ZIP):
 
 ```typescript
 // supabase/functions/account-export/index.ts
-// Inhalt ZIP:
-//   profile.json   — id, email, tier, created_at (keine Stripe-Daten)
-//   tracks/        — eine JSON-Datei pro Track mit vollem state_json
+// Gibt Content-Disposition: attachment; filename="kartslalom-export-YYYY-MM-DD.json"
+// Inhalt:
+//   exported_at       — ISO-Timestamp
+//   profile           — id, email, tier, created_at, last_active_at
+//   tracks[]          — alle Felder inkl. state_json
+//   track_versions[]  — alle Versionen aller Tracks
+// Art. 20 DSGVO (Datenübertragbarkeit) erfüllt.
 ```
 
-**Account-Löschung** — Edge Function:
+**Account-Löschung** — Edge Function `delete-account`, Hard Delete (Entscheidung 2026-06-19):
 
 ```typescript
 // supabase/functions/delete-account/index.ts
 // Reihenfolge:
-//   1. Stripe-Subscription kündigen (falls stripe_subscription_id vorhanden)
-//   2. tracks: state_json = '{"items":[],"arrows":[]}' (NOT NULL — kein null!)
-//      name = '[gelöscht]', is_public = false
-//   3. profiles: email = 'deleted_' + gen_random_uuid() + '@deleted.invalid'
-//               is_deleted = true, deleted_at = now()
-//   4. auth.admin.deleteUser(userId)
+//   1. profiles: is_deleted = true, deleted_at = now() (Rollback-Marker)
+//   2. auth.admin.deleteUser(userId)
+//      → ON DELETE CASCADE löscht profiles + tracks + track_versions vollständig
+//   3. Bei Fehler in Schritt 2: is_deleted auf false zurücksetzen
+// Kein Anonymisierungsschritt — vollständige unwiderrufliche Löschung.
+// Art. 17 DSGVO (Löschungsrecht) erfüllt. Dokumentiert in Datenschutzerklärung Abschnitt 8.
 ```
-
-**Wichtig zu Punkt 2:** `state_json` hat `NOT NULL`. Beim Löschen nicht `null` setzen — stattdessen leeres Objekt `'{"items":[],"arrows":[]}'` eintragen.
 
 ### 1.15 Willkommens-Mail
 
