@@ -497,6 +497,8 @@ services:
       - ../../supabase/migrations/20260615120000_app_schema.sql:/docker-entrypoint-initdb.d/migrations/99-zz-app-1-schema.sql:Z
       - ../../supabase/migrations/20260615120001_app_rls.sql:/docker-entrypoint-initdb.d/migrations/99-zz-app-2-rls.sql:Z
       - ../../supabase/migrations/20260615120002_app_functions.sql:/docker-entrypoint-initdb.d/migrations/99-zz-app-3-functions.sql:Z
+      - ../../supabase/migrations/20260619000001_security_p1_is_deleted_check.sql:/docker-entrypoint-initdb.d/migrations/99-zz-app-4-security-p1.sql:Z
+      - ../../supabase/migrations/20260619000002_revoke_profiles_write.sql:/docker-entrypoint-initdb.d/migrations/99-zz-app-5-revoke-profiles.sql:Z
       # Use named volume to persist pgsodium decryption key between restarts
       - db-config:/etc/postgresql-custom
     healthcheck:

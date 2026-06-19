@@ -10,6 +10,11 @@
 set -e
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+
+cleanup() {
+  docker image rm kartslalom-security-test 2>/dev/null || true
+}
+trap cleanup EXIT
 SUPABASE_ENV="$SCRIPT_DIR/supabase/.env"
 
 if [ ! -f "$SUPABASE_ENV" ]; then
