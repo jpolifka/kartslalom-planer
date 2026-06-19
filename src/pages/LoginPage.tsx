@@ -100,12 +100,12 @@ export default function LoginPage() {
               )}
               <button
                 type="submit"
-                disabled={status === "verifying" || otp.length < 6}
+                disabled={status === "verifying" || otp.length < 8}
                 style={{
                   borderRadius: 10, border: "none", background: "#0284c7",
                   color: "white", padding: "10px 14px", fontSize: 14, fontWeight: 700,
-                  cursor: (status === "verifying" || otp.length < 6) ? "not-allowed" : "pointer",
-                  opacity: otp.length < 6 ? 0.6 : 1,
+                  cursor: (status === "verifying" || otp.length < 8) ? "not-allowed" : "pointer",
+                  opacity: otp.length < 8 ? 0.6 : 1,
                 }}
               >
                 {status === "verifying" ? "Wird geprüft…" : "Code bestätigen"}
