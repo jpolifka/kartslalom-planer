@@ -1,0 +1,8 @@
+FROM node:20-alpine
+WORKDIR /app
+COPY package*.json ./
+# devDependencies einschließen (enthält tsx)
+RUN npm ci
+COPY scripts/ ./scripts/
+COPY tsconfig.json ./
+CMD ["npx", "tsx", "scripts/security-smoke-test.ts"]
