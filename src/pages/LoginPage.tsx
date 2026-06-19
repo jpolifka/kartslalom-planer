@@ -67,11 +67,11 @@ export default function LoginPage() {
               borderRadius: 10, padding: "10px 12px", fontSize: 13, color: "#166534",
             }}>
               Anmeldelink wurde an <strong>{email}</strong> gesendet. Klicke auf den Link in der E-Mail
-              oder gib den 6-stelligen Code ein.
+              oder gib den 8-stelligen Code ein.
             </div>
             <form onSubmit={handleOtpSubmit} style={{ display: "grid", gap: 12 }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: "#475569" }}>
-                6-stelliger Code aus der E-Mail
+                8-stelliger Code aus der E-Mail
                 <input
                   type="text"
                   inputMode="numeric"
