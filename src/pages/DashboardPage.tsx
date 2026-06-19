@@ -119,7 +119,7 @@ export default function DashboardPage() {
                         if (e.key === "Escape") cancelRename();
                       }}
                       style={{
-                        fontSize: 14, fontWeight: 700, border: "1px solid #0284c7",
+                        fontSize: 14, fontWeight: 700, border: "1px solid #2F6C40",
                         borderRadius: 6, padding: "3px 7px", outline: "none", minWidth: 160,
                       }}
                     />
@@ -142,7 +142,7 @@ export default function DashboardPage() {
                       onClick={() => startRename(track.id, track.name)}
                       style={{
                         display: "inline-flex", alignItems: "center", gap: 4,
-                        border: "1px solid #bae6fd", background: "#edf4de",
+                        border: "1px solid #b8d98a", background: "#edf4de",
                         borderRadius: 6, padding: "3px 8px", cursor: "pointer",
                         color: "#2F6C40", fontSize: 11, fontWeight: 600, flexShrink: 0,
                       }}
