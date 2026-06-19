@@ -99,7 +99,7 @@ export default function Toolbar({
 
       <button
         onClick={onOpenMapSelector}
-        style={{ ...iconBtnLabel, borderColor: areaSel ? "#2F6C40" : "#cbd5e1", color: areaSel ? "#2F6C40" : "#475569" }}
+        style={{ ...iconBtnLabel, borderColor: areaSel ? "var(--c-primary)" : "#cbd5e1", color: areaSel ? "var(--c-primary)" : "#475569" }}
         title="Streckenbereich auf Karte auswählen / zoomen"
       >
         <Satellite size={14} />
