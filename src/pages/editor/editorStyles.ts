@@ -54,7 +54,7 @@ export const divider: React.CSSProperties = {
 export function toolBtn(active: boolean): React.CSSProperties {
   return {
     display: "inline-flex", alignItems: "center", gap: 6,
-    borderRadius: 9, border: active ? "2px solid #2F6C40" : "1px solid #cbd5e1",
+    borderRadius: 9, border: active ? "2px solid var(--c-primary)" : "1px solid #cbd5e1",
     background: active ? "var(--c-primary-bg)" : "white",
     padding: "6px 12px", cursor: "pointer",
     color: active ? "var(--c-primary)" : "#475569",
