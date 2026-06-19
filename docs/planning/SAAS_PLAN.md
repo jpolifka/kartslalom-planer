@@ -1204,7 +1204,7 @@ stack:
     transactional_no_opt_in_required:
       - Willkommens-Mail nach Signup
       - Team-Einladungs-Links
-      - Inaktivitäts-Reminder (60 Tage / 80 Tage)
+      - Inaktivitäts-Reminder (150 Tage / 170 Tage)
       - Zahlungsbestätigungen / Receipts
     rule: "Transaktionsmails enthalten keinen Marketinginhalt"
 
