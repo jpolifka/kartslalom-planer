@@ -45,7 +45,7 @@ export default function EditorHeader({
           </a>
           <button
             onClick={onShowHelp}
-            style={{ ...iconBtnLabel, color: "var(--c-primary)", borderColor: "#b8d98a" }}
+            style={{ ...iconBtnLabel, color: "var(--c-primary)", borderColor: "var(--c-primary-border)" }}
             title="Hilfe öffnen"
           >
             <HelpCircle size={14} />
