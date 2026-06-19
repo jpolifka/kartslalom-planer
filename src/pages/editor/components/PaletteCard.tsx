@@ -75,8 +75,8 @@ export default function PaletteCard({ formation, onClick, showRotationSubMenu, s
         <div style={{
           display: "grid", gridTemplateColumns: "1fr 1fr",
           gap: 3,
-          background: "#f0f9ff",
-          border: "1px solid #bae6fd",
+          background: "#f2f8ea",
+          border: "1px solid #b8d98a",
           borderRadius: 8,
           padding: 5,
         }}>
