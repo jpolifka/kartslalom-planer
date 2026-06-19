@@ -388,84 +388,58 @@ lifecycle:
 
   phase_deleted:
     condition: "last_active_at >= 180 Tage"
-    trigger: "Cron-Job täglich 03:00 UTC (outside peak hours)"
+    trigger: "Cron-Job täglich 03:00 UTC (Supabase Dashboard Schedules)"
     actions:
-      - anonymize_account:
+      - hard_delete:
           steps:
-            - "email -> gelöscht_{uuid}@deleted.invalid"
-            - "name -> [gelöscht]"
-            - "stripe_customer_id -> null (Subscription bereits gekündigt)"
-            - "is_deleted = true, deleted_at = now()"
-      - delete_track_content:
-          steps:
-            - "state_json und area_sel_json aller Versionen auf null setzen"
-            - "track.name -> [gelöscht]"
-            - "track.is_public = false"
-      - cancel_active_subscription:
-          condition: "nur wenn noch aktive Stripe-Subscription"
-          action: "stripe.subscriptions.cancel() mit Prorata-Erstattung"
-      - log_deletion:
-          fields: [user_id_hash, tier, tracks_count, deleted_at]
-          note: "kein PII — nur für interne Statistik"
-
-  paid_user_exception:
-    description: "Nutzer mit aktiver bezahlter Subscription werden NICHT gelöscht"
-    rationale: "Aktive Zahler sind per Definition nicht inaktiv im Business-Sinn"
-    implementation:
-      - "Cron prüft: tier IN ('pro', 'team') AND stripe_status = 'active' → skip"
-      - "Reminder-E-Mails trotzdem senden wenn >60 Tage inaktiv (Feature-Nutzung anregen)"
-      - "Kein Lösch-Flow — nur Kündigung durch Nutzer selbst"
+            - "profiles: is_deleted = true, deleted_at = now() (Rollback-Marker)"
+            - "auth.admin.deleteUser(userId)"
+            - "ON DELETE CASCADE löscht profiles + tracks + track_versions vollständig"
+            - "Bei Fehler: is_deleted zurücksetzen"
+          note: "Kein Anonymisierungsschritt — vollständige unwiderrufliche Löschung (Entscheidung 2026-06-19)"
+      - send_deactivation_mail:
+          template: "account_deactivated"
+          note: "Mail vor dem Delete senden, danach ist E-Mail-Adresse nicht mehr erreichbar"
 ```
 
 ### Technische Implementierung des Lifecycle-Crons
 
 ```yaml
 cron_implementation:
-  scheduler: "pg_cron (in Supabase) ODER externer Cron via Trigger.dev / Inngest"
-  recommended: "Inngest (serverless, zuverlässige Retries, einfaches Debugging)"
+  scheduler: "Supabase Edge Function + Supabase Dashboard Schedules"
+  recommended: "Supabase Dashboard → Edge Functions → user-lifecycle → Schedules → 0 3 * * *"
+  note: "GitHub Actions als Scheduler wurde verworfen (semantisch falsch, keine Garantie auf Pünktlichkeit)"
 
-  daily_cron_job:
-    name: "user-lifecycle-check"
-    schedule: "0 8 * * *"     # täglich 08:00 UTC
-    steps:
-      1_find_at_risk:
-        query: |
-          SELECT id, email, last_active_at
-          FROM users
-          WHERE last_active_at < NOW() - INTERVAL '60 days'
-            AND last_active_at >= NOW() - INTERVAL '75 days'
-            AND tier NOT IN ('pro', 'team') OR stripe_status != 'active'
-            AND reminder_60_sent_at IS NULL
-            AND is_deleted = false
-      2_send_reminder_60:
-        action: "E-Mail via Resend senden, reminder_60_sent_at = now() setzen"
-
-      3_find_final_warning:
-        query: |
-          SELECT id, email, last_active_at
-          FROM users
-          WHERE last_active_at < NOW() - INTERVAL '80 days'
-            AND last_active_at >= NOW() - INTERVAL '90 days'
-            AND reminder_80_sent_at IS NULL
-            AND is_deleted = false
-      4_send_reminder_80:
-        action: "E-Mail via Resend senden, reminder_80_sent_at = now() setzen"
-
-  nightly_cleanup_job:
-    name: "user-deletion-cleanup"
+  unified_cron_job:
+    name: "user-lifecycle"
     schedule: "0 3 * * *"     # täglich 03:00 UTC
+    function: "supabase/functions/user-lifecycle/index.ts"
+    auth: "x-cron-secret Header (Env-Var CRON_SECRET, gesetzt via supabase secrets set)"
     steps:
-      1_find_deleteable:
+      1_hard_delete_180d:
         query: |
-          SELECT id
-          FROM users
-          WHERE last_active_at < NOW() - INTERVAL '90 days'
-            AND is_deleted = false
-            AND (tier = 'free' OR stripe_status != 'active')
-      2_anonymize_and_delete:
-        action: "Anonymisierung + Content-Löschung wie oben definiert"
-        batch_size: 50         # nie zu viele auf einmal (Datenbank-Last)
-        retry_on_failure: true
+          SELECT id, email FROM profiles
+          WHERE is_deleted = false
+            AND last_active_at < NOW() - INTERVAL '180 days'
+        action: "Deaktivierungsmail senden, dann auth.admin.deleteUser() → CASCADE"
+
+      2_warn_170d:
+        query: |
+          SELECT id, email FROM profiles
+          WHERE is_deleted = false
+            AND reminder_170_sent_at IS NULL
+            AND last_active_at < NOW() - INTERVAL '170 days'
+            AND last_active_at >= NOW() - INTERVAL '180 days'
+        action: "Warnungsmail via Resend, reminder_170_sent_at = now() setzen"
+
+      3_remind_150d:
+        query: |
+          SELECT id, email FROM profiles
+          WHERE is_deleted = false
+            AND reminder_150_sent_at IS NULL
+            AND last_active_at < NOW() - INTERVAL '150 days'
+            AND last_active_at >= NOW() - INTERVAL '170 days'
+        action: "Erinnerungsmail via Resend, reminder_150_sent_at = now() setzen"
 
   db_columns_needed:
     profiles:

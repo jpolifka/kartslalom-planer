@@ -1255,7 +1255,9 @@ corrections:
 
   - id: C8
     issue: "Lifecycle-E-Mails in Phase 1 zu früh ohne Datenschutz-/Abmeldeprüfung"
-    fix: "Phase 1: nur Logging. E-Mails erst Phase 2 nach Review und Abmeldemöglichkeit."
+    fix: "Revidiert v2.3: Lifecycle voll aktiv in Phase 1. Datenschutz stattdessen in
+          Impressum/Datenschutz Abschnitt 8 dokumentiert (Inaktivitätsregel, Hard Delete,
+          150/170/180-Tage-Stufen). Abmeldemöglichkeit: Account-Löschung via Settings."
 ```
 
 ---
