@@ -5,7 +5,7 @@
 const SUPABASE_URL     = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const RESEND_API_KEY   = Deno.env.get("RESEND_API_KEY") ?? "";
-const FROM_EMAIL       = Deno.env.get("FROM_EMAIL") ?? "noreply@kartslalom-planer.de";
+const FROM_EMAIL       = Deno.env.get("FROM_EMAIL") ?? "noreply@kart.cheezuscraizt.de";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",

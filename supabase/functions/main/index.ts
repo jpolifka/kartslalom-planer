@@ -6,7 +6,7 @@ const JWT_SECRET       = Deno.env.get('JWT_SECRET')
 const SUPABASE_URL     = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const RESEND_API_KEY   = Deno.env.get('RESEND_API_KEY') ?? ''
-const FROM_EMAIL       = Deno.env.get('FROM_EMAIL') ?? 'noreply@kartslalom-planer.de'
+const FROM_EMAIL       = Deno.env.get('FROM_EMAIL') ?? 'noreply@kart.cheezuscraizt.de'
 const CRON_SECRET      = Deno.env.get('CRON_SECRET') ?? ''
 const VERIFY_JWT       = Deno.env.get('VERIFY_JWT') === 'true'
 
@@ -212,7 +212,7 @@ async function handleUserLifecycle(req: Request): Promise<Response> {
   )).json()
   for (const p of warn170 ?? []) {
     const ok = await sendMail(p.email, 'Letzte Erinnerung: Account wird bald deaktiviert',
-      '<p>Dein Account ist 170 Tage inaktiv. In 10 Tagen wird er deaktiviert. <a href="https://kartslalom-planer.de">Jetzt anmelden</a></p>')
+      '<p>Dein Account ist 170 Tage inaktiv. In 10 Tagen wird er deaktiviert. <a href="https://kart.cheezuscraizt.de">Jetzt anmelden</a></p>')
     if (ok) { await patch(p.id, { reminder_170_sent_at: now.toISOString() }); stats.reminder170++ }
     else stats.errors++
   }
@@ -223,7 +223,7 @@ async function handleUserLifecycle(req: Request): Promise<Response> {
   )).json()
   for (const p of warn150 ?? []) {
     const ok = await sendMail(p.email, 'Dein Account ist seit 150 Tagen inaktiv',
-      '<p>Melde dich an um deinen Account zu behalten: <a href="https://kartslalom-planer.de">kartslalom-planer.de</a></p>')
+      '<p>Melde dich an um deinen Account zu behalten: <a href="https://kart.cheezuscraizt.de">kart.cheezuscraizt.de</a></p>')
     if (ok) { await patch(p.id, { reminder_150_sent_at: now.toISOString() }); stats.reminder150++ }
     else stats.errors++
   }
