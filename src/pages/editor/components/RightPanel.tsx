@@ -170,8 +170,8 @@ export default function RightPanel({
               <span style={{ fontSize: 26, fontWeight: 800, color: "#2F6C40", lineHeight: 1 }}>
                 {totalDurationSeconds}
               </span>
-              <span style={{ fontSize: 13, color: "#0369a1", fontWeight: 600 }}>Sekunden</span>
-              <span style={{ fontSize: 11, color: "#7dd3fc", marginLeft: "auto" }}>
+              <span style={{ fontSize: 13, color: "#1e4d2b", fontWeight: 600 }}>Sekunden</span>
+              <span style={{ fontSize: 11, color: "#85B23D", marginLeft: "auto" }}>
                 ≈ {Math.floor(totalDurationSeconds / 60)}:{String(totalDurationSeconds % 60).padStart(2, "0")} min
               </span>
             </div>
