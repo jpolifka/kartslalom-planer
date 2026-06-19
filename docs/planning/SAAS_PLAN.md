@@ -1,11 +1,12 @@
 # Kartslalom Streckenplaner — SaaS-Transformation
 
-**Dokument-Version:** 1.3  
+**Dokument-Version:** 1.4  
 **Erstellt:** 2026-06-02  
-**Zuletzt geändert:** 2026-06-16  
+**Zuletzt geändert:** 2026-06-19  
 **Änderungen v1.1:** Enterprise/Verband-Tier entfernt (zu früh). Export nur für angemeldete Nutzer. User-Lifecycle-Management (Inaktivitäts-Reminder + Cleanup) ergänzt.  
 **Änderungen v1.2:** Tech-Stack final entschieden: Supabase-first, Hetzner/Coolify statt Vercel, Zustand+TanStack Query+Zod, Resend (kein DOI für Transaktionsmails), Stripe mit Paddle als Fallback.  
 **Änderungen v1.3:** Zahlungsmodell geändert — kein Stripe, kein In-App-Checkout. Bezahlung läuft extern, Tier-Upgrades werden manuell per SQL gesetzt. Operative Details siehe `IMPLEMENTATION_PLAN.md` Phase 2.  
+**Änderungen v1.4 (2026-06-19):** Lifecycle-Timing auf 150/170/180 Tage korrigiert (war 60/80/90). phase_deleted auf Hard Delete aktualisiert (kein Anonymisierungsschritt). Cron-Scheduling auf Supabase Dashboard umgestellt. phase_activated für at_risk/final_warning von 2 auf 1 korrigiert.  
 **Autor:** Claude Sonnet 4.6 (Analyse-Agent)  
 **Zweck:** Maschinenlesbares Planungsdokument für die SaaS-Transformation des Kartslalom MVP. Verwendbar durch Menschen und AI-Agenten gleichermaßen.
 
