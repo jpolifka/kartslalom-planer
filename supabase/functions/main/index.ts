@@ -186,7 +186,7 @@ async function handleSendWelcome(req: Request): Promise<Response> {
 
 async function handleUserLifecycle(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') return new Response(null)
-  if (CRON_SECRET && req.headers.get('x-cron-secret') !== CRON_SECRET) {
+  if (!CRON_SECRET || req.headers.get('x-cron-secret') !== CRON_SECRET) {
     return json({ error: 'Forbidden' }, 403)
   }
   const now = new Date()
