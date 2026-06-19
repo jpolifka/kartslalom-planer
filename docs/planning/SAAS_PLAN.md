@@ -456,8 +456,8 @@ cron_implementation:
 email_templates:
 
   re_engagement_reminder:
-    from: "Kartslalom Streckenplaner <hallo@kartslalom.de>"
-    timing: "60 Tage Inaktivität"
+    from: "Kartslalom Streckenplaner <noreply@kart.cheezuscraizt.de>"
+    timing: "150 Tage Inaktivität"
     tone: "freundlich, nicht alarmierend"
     must_contain:
       - Anzahl der gespeicherten Strecken
@@ -465,12 +465,12 @@ email_templates:
       - Hinweis auf bevorstehende Löschung (klar aber nicht aggressiv)
       - Opt-out von Lifecycle-E-Mails (aber Account bleibt)
     must_not_contain:
-      - "Du wirst gelöscht" (zu hart — erst in 80-Tage-Mail)
+      - "Du wirst gelöscht" (zu hart — erst in 170-Tage-Mail)
       - Preisangebote oder Upsell in dieser Mail
 
   account_deletion_warning:
-    from: "Kartslalom Streckenplaner <hallo@kartslalom.de>"
-    timing: "80 Tage Inaktivität (10 Tage vor Löschung)"
+    from: "Kartslalom Streckenplaner <noreply@kart.cheezuscraizt.de>"
+    timing: "170 Tage Inaktivität (10 Tage vor Löschung)"
     tone: "klar, sachlich, hilfreich"
     must_contain:
       - Konkretes Löschdatum (now + 10 Tage)
@@ -576,8 +576,8 @@ data_model:
     tier: enum[free, pro, team]
     stripe_customer_id: string
     last_active_at: timestamp
-    reminder_60_sent_at: timestamp     # nullable
-    reminder_80_sent_at: timestamp     # nullable
+    reminder_150_sent_at: timestamp    # nullable
+    reminder_170_sent_at: timestamp    # nullable
     is_deleted: boolean
     deleted_at: timestamp              # nullable
     created_at: timestamp
