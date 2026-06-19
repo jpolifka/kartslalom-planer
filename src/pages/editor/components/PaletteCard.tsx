@@ -62,7 +62,7 @@ export default function PaletteCard({ formation, onClick, showRotationSubMenu, s
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
-              color: subMenuOpen ? "#2F6C40" : "#94a3b8",
+              color: subMenuOpen ? "var(--c-primary)" : "#94a3b8",
               fontSize: 10,
               transition: "background 0.12s",
             }}
@@ -98,7 +98,7 @@ export default function PaletteCard({ formation, onClick, showRotationSubMenu, s
               }}
             >
               <FormationThumbnail formation={formation} size={36} rotationDeg={deg} />
-              <span style={{ fontSize: 10, color: "#2F6C40", fontWeight: 600 }}>{deg}°</span>
+              <span style={{ fontSize: 10, color: "var(--c-primary)", fontWeight: 600 }}>{deg}°</span>
             </button>
           ))}
         </div>
