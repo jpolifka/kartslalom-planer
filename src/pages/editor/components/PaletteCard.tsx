@@ -57,7 +57,7 @@ export default function PaletteCard({ formation, onClick, showRotationSubMenu, s
               borderRadius: "0 10px 10px 0",
               border: "1px solid #e2e8f0",
               borderLeft: "1px solid #e2e8f0",
-              background: subMenuOpen ? "#e0f2fe" : "#f8fafc",
+              background: subMenuOpen ? "#edf4de" : "#f8fafc",
               padding: "0 5px",
               cursor: "pointer",
               display: "flex",
