@@ -45,7 +45,7 @@ export default function EditorHeader({
           </a>
           <button
             onClick={onShowHelp}
-            style={{ ...iconBtnLabel, color: "#2F6C40", borderColor: "#b8d98a" }}
+            style={{ ...iconBtnLabel, color: "var(--c-primary)", borderColor: "#b8d98a" }}
             title="Hilfe öffnen"
           >
             <HelpCircle size={14} />
@@ -88,7 +88,7 @@ export default function EditorHeader({
             transition: "border-color 0.15s, background 0.15s",
             boxShadow: nameFocused ? "0 0 0 3px #b8d98a" : "none",
           }}>
-            <Pencil size={12} color={nameFocused ? "#2F6C40" : "#94a3b8"} style={{ flexShrink: 0 }} />
+            <Pencil size={12} color={nameFocused ? "var(--c-primary)" : "#94a3b8"} style={{ flexShrink: 0 }} />
             <input
               value={trackName}
               onChange={(e) => onSetTrackName(e.target.value)}
