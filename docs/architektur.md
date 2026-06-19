@@ -18,6 +18,7 @@ src/
 ├── components/
 │   ├── auth/AuthGuard.tsx         Redirect zu /login ohne Session
 │   ├── layout/AppShell.tsx        Header/Navigation für eingeloggte Routen, lädt Profil
+│   ├── ImprintContent.tsx         Impressum + Datenschutzerklärung (Inhaltskomponente, wiederverwendbar)
 │   ├── TrackCanvas.tsx           Zeichenfläche: Drag & Drop, Auswahl, Pfeile, Rendering
 │   ├── MapBackground.tsx         Rendering der OSM-Kachel(n) hinter der Strecke
 │   ├── MapSelector.tsx           Modal zur Auswahl/Drehung des Kartenausschnitts
