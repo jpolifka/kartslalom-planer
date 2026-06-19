@@ -75,8 +75,8 @@ export default function PaletteCard({ formation, onClick, showRotationSubMenu, s
         <div style={{
           display: "grid", gridTemplateColumns: "1fr 1fr",
           gap: 3,
-          background: "#f2f8ea",
-          border: "1px solid #b8d98a",
+          background: "var(--c-primary-subtle)",
+          border: "1px solid var(--c-primary-border)",
           borderRadius: 8,
           padding: 5,
         }}>
@@ -87,7 +87,7 @@ export default function PaletteCard({ formation, onClick, showRotationSubMenu, s
               title={`${deg}° gedreht einfügen`}
               style={{
                 borderRadius: 7,
-                border: "1px solid #b8d98a",
+                border: "1px solid var(--c-primary-border)",
                 background: "white",
                 padding: "4px 3px",
                 cursor: "pointer",
