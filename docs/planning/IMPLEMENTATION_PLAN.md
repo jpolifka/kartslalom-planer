@@ -963,8 +963,8 @@ lifecycle_emails:
   timing:
     150d: "freundlicher Reminder"
     170d: "Letzte Warnung + Export-Link"
-    180d: "Anonymisierung + Content-Löschung"
-  paid_users: "Kein Lösch-Flow — nur Reminder bei >150d Inaktivität"
+    180d: "Hard Delete — auth.admin.deleteUser() + ON DELETE CASCADE (Entscheidung 2026-06-19)"
+  paid_users: "Kein Lösch-Flow — nur Reminder bei >150d/170d Inaktivität"
 ```
 
 ### 2.2 Definition of Done Phase 2
