@@ -76,11 +76,11 @@ export default function LoginPage() {
                   type="text"
                   inputMode="numeric"
                   pattern="[0-9]*"
-                  maxLength={6}
+                  maxLength={8}
                   required
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-                  placeholder="123456"
+                  placeholder="12345678"
                   autoFocus
                   style={{
                     width: "100%", boxSizing: "border-box", display: "block",
