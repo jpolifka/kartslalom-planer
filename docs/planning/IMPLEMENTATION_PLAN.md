@@ -864,44 +864,33 @@ Deno.serve(async (req) => {
 Kein Double-Opt-In — Willkommens-Mail ist Vertragskommunikation (Art. 6 Abs. 1 lit. b DSGVO).
 Deployment: `supabase functions deploy send-welcome --project-ref <ref>`
 
-### 1.16 Lifecycle-Cron — Phase 1: nur Logging
+### 1.16 Lifecycle-Cron — Phase 1: voll aktiv
 
-In Phase 1 noch keine E-Mails senden. Erst nach Datenschutzprüfung und Abmeldemöglichkeit in Phase 2 aktivieren.
+Lifecycle-Funktion ist in Phase 1 vollständig aktiv. Datenschutz dokumentiert in
+Impressum/Datenschutz Abschnitt 8 (Kontolöschung und Inaktivitätsregel).
 
 ```typescript
-// supabase/functions/user-lifecycle/index.ts
-// Phase 1: identifiziert gefährdete User, loggt sie — keine E-Mails, keine Löschung
-
-const { data: at150 } = await supabase
-  .from("profiles")
-  .select("id, email, last_active_at")
-  .lt("last_active_at", daysAgo(150))
-  .eq("is_deleted", false)
-  .is("reminder_150_sent_at", null);
-
-console.log(`[lifecycle] 150d-inaktiv: ${at150?.length ?? 0} User`);
-// E-Mail-Versand und Löschlogik: Phase 2 nach Datenschutz- und Abmeldeprüfung
+// supabase/functions/user-lifecycle/index.ts (standalone, für Cloud-Deployment)
+// supabase/functions/main/index.ts (Dispatcher, für lokales Docker-Dev)
+// Stufen:
+//   150 Tage Inaktivität → erste Erinnerungsmail (einmalig, reminder_150_sent_at)
+//   170 Tage Inaktivität → zweite Warnung (einmalig, reminder_170_sent_at)
+//   180 Tage Inaktivität → is_deleted = true, deleted_at = now(), Deaktivierungsmail
+// Kein externer Import — nur fetch() gegen Supabase REST + Resend API.
+// Auth: x-cron-secret Header (Env-Var CRON_SECRET).
 ```
 
-GitHub Actions Cron (kostenlos, kein separater Service):
+Cron-Scheduling via **Supabase Dashboard** (nicht GitHub Actions):
 
-```yaml
-# .github/workflows/user-lifecycle.yml
-name: User Lifecycle
-on:
-  schedule:
-    - cron: "0 8 * * *"
-jobs:
-  run:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Trigger Lifecycle
-        run: |
-          curl -sf -X POST \
-            "${{ secrets.SUPABASE_URL }}/functions/v1/user-lifecycle" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
-            -H "Content-Type: application/json" \
-            -d '{}'
+```
+Supabase Dashboard → Edge Functions → user-lifecycle → Schedules → Add
+Cron-Ausdruck: 0 3 * * *   (täglich 03:00 UTC)
+```
+
+Deployment:
+```bash
+supabase functions deploy user-lifecycle --project-ref <ref>
+supabase secrets set RESEND_API_KEY=... FROM_EMAIL=... CRON_SECRET=... --project-ref <ref>
 ```
 
 ### 1.17 Definition of Done Phase 1
