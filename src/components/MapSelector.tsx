@@ -472,7 +472,7 @@ const activeBtnStyle: React.CSSProperties = {
 };
 const confirmBtnStyle: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: 6,
-  borderRadius: 9, border: "2px solid #0284c7",
+  borderRadius: 9, border: "2px solid #2F6C40",
   background: "#2F6C40", color: "white",
   padding: "6px 13px", cursor: "pointer", fontSize: 13, fontWeight: 700,
 };
