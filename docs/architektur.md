@@ -57,6 +57,8 @@ Die App ist seit Phase 1 eine Multi-Page-App via `react-router-dom`
   Cloud-Save (`save_track()`-RPC) oder `localStorage` verwendet wird.
 - `/`, `/dashboard`, `/settings` — hinter `AuthGuard` + `AppShell`
   (Header/Navigation, lädt das Profil über `useProfile`).
+- `/impressum` — öffentlich, `ImpressumPage` mit Hash-Scroll-Unterstützung.
+- `/datenschutz` — Redirect auf `/impressum#datenschutz`.
 
 `src/main.tsx` initialisiert beim Start `supabase.auth.getSession()` und
 abonniert `onAuthStateChange`, um `useAuthStore` (Session, Profil) aktuell
