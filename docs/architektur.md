@@ -13,7 +13,8 @@ src/
 │   ├── LoginPage.tsx              Magic-Link-Login (E-Mail-Eingabe)
 │   ├── AuthCallbackPage.tsx       PKCE-Code-Exchange + localStorage-Migration nach Login
 │   ├── DashboardPage.tsx          Liste der eigenen Strecken, Anlegen/Löschen
-│   └── SettingsPage.tsx           Account-Infos, Platzhalter Export/Löschen (Phase 1 Paket B)
+│   ├── SettingsPage.tsx           Account-Infos, Datenexport (JSON), Account löschen
+│   └── ImpressumPage.tsx          Impressum + Datenschutz als eigenständige Route, Hash-Scroll
 ├── components/
 │   ├── auth/AuthGuard.tsx         Redirect zu /login ohne Session
 │   ├── layout/AppShell.tsx        Header/Navigation für eingeloggte Routen, lädt Profil
