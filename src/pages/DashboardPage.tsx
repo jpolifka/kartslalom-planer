@@ -142,7 +142,7 @@ export default function DashboardPage() {
                       onClick={() => startRename(track.id, track.name)}
                       style={{
                         display: "inline-flex", alignItems: "center", gap: 4,
-                        border: "1px solid #bae6fd", background: "#e0f2fe",
+                        border: "1px solid #bae6fd", background: "#edf4de",
                         borderRadius: 6, padding: "3px 8px", cursor: "pointer",
                         color: "#2F6C40", fontSize: 11, fontWeight: 600, flexShrink: 0,
                       }}
