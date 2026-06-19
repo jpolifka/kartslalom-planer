@@ -98,7 +98,7 @@ export default function PaletteCard({ formation, onClick, showRotationSubMenu, s
               }}
             >
               <FormationThumbnail formation={formation} size={36} rotationDeg={deg} />
-              <span style={{ fontSize: 10, color: "#0369a1", fontWeight: 600 }}>{deg}°</span>
+              <span style={{ fontSize: 10, color: "#2F6C40", fontWeight: 600 }}>{deg}°</span>
             </button>
           ))}
         </div>
