@@ -1,0 +1,11 @@
+# Unit Test Runner
+#
+# Keine Supabase-Verbindung nötig — alle Tests sind offline.
+#
+#   docker compose -f docker/docker-compose.unit.yml up --build
+
+services:
+  unit-test:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.unit
