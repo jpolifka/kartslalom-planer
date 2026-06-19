@@ -83,7 +83,7 @@ export default function EditorHeader({
           <div style={{
             display: "flex", alignItems: "center", gap: 6,
             background: nameFocused ? "white" : "#f1f5f9",
-            border: nameFocused ? "2px solid #0284c7" : "2px solid #e2e8f0",
+            border: nameFocused ? "2px solid #2F6C40" : "2px solid #e2e8f0",
             borderRadius: 8, padding: "3px 8px",
             transition: "border-color 0.15s, background 0.15s",
             boxShadow: nameFocused ? "0 0 0 3px #bae6fd" : "none",
