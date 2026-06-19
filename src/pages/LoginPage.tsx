@@ -102,7 +102,7 @@ export default function LoginPage() {
                 type="submit"
                 disabled={status === "verifying" || otp.length < 8}
                 style={{
-                  borderRadius: 10, border: "none", background: "#0284c7",
+                  borderRadius: 10, border: "none", background: "#2F6C40",
                   color: "white", padding: "10px 14px", fontSize: 14, fontWeight: 700,
                   cursor: (status === "verifying" || otp.length < 8) ? "not-allowed" : "pointer",
                   opacity: otp.length < 8 ? 0.6 : 1,
@@ -150,7 +150,7 @@ export default function LoginPage() {
               type="submit"
               disabled={status === "sending"}
               style={{
-                borderRadius: 10, border: "none", background: "#0284c7",
+                borderRadius: 10, border: "none", background: "#2F6C40",
                 color: "white", padding: "10px 14px", fontSize: 14, fontWeight: 700,
                 cursor: status === "sending" ? "wait" : "pointer",
               }}
