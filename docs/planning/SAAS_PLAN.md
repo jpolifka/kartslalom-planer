@@ -356,9 +356,9 @@ lifecycle:
 
   phase_at_risk:
     condition: "last_active_at >= 150 Tage AND < 170 Tage"
-    rationale: "Vereinsbetrieb ist saisonal — 60 Tage wären zu aggressiv"
-    trigger: "Cron-Job täglich 08:00 UTC"
-    phase_activated: 2          # in Phase 1 nur Logging, kein E-Mail-Versand
+    rationale: "Vereinsbetrieb ist saisonal — kürzere Intervalle wären zu aggressiv"
+    trigger: "Cron-Job täglich 03:00 UTC (Supabase Dashboard Schedules)"
+    phase_activated: 1
     actions:
       - send_email:
           template: "re_engagement_reminder"
