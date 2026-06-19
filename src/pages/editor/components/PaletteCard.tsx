@@ -62,7 +62,7 @@ export default function PaletteCard({ formation, onClick, showRotationSubMenu, s
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
-              color: subMenuOpen ? "#0284c7" : "#94a3b8",
+              color: subMenuOpen ? "#2F6C40" : "#94a3b8",
               fontSize: 10,
               transition: "background 0.12s",
             }}
