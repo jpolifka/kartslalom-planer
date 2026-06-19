@@ -163,7 +163,7 @@ export default function RightPanel({
         ) : (
           <div style={{ display: "grid", gap: 8 }}>
             <div style={{
-              background: "#f2f8ea", border: "1px solid #b8d98a",
+              background: "var(--c-primary-subtle)", border: "1px solid #b8d98a",
               borderRadius: 10, padding: "10px 12px",
               display: "flex", alignItems: "baseline", gap: 6,
             }}>
