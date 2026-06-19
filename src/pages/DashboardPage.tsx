@@ -64,7 +64,7 @@ export default function DashboardPage() {
           title={limitReached ? "Limit für deinen Tarif erreicht" : undefined}
           style={{
             display: "inline-flex", alignItems: "center", gap: 6,
-            border: "none", borderRadius: 10, background: limitReached ? "#cbd5e1" : "#2F6C40",
+            border: "none", borderRadius: 10, background: limitReached ? "#cbd5e1" : "var(--c-primary)",
             color: "white", padding: "9px 14px", fontSize: 13, fontWeight: 700,
             cursor: limitReached ? "not-allowed" : "pointer",
           }}
@@ -106,7 +106,7 @@ export default function DashboardPage() {
                 boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
               }}
             >
-              <MapPin size={18} color="#2F6C40" style={{ flexShrink: 0 }} />
+              <MapPin size={18} color="var(--c-primary)" style={{ flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 {renamingId === track.id ? (
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -144,7 +144,7 @@ export default function DashboardPage() {
                         display: "inline-flex", alignItems: "center", gap: 4,
                         border: "1px solid #b8d98a", background: "#edf4de",
                         borderRadius: 6, padding: "3px 8px", cursor: "pointer",
-                        color: "#2F6C40", fontSize: 11, fontWeight: 600, flexShrink: 0,
+                        color: "var(--c-primary)", fontSize: 11, fontWeight: 600, flexShrink: 0,
                       }}
                       title="Umbenennen"
                     >
