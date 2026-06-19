@@ -108,7 +108,3 @@ Produktions-Container und mappt Port `5173` (Host) auf `80` (Container):
 docker compose -f docker/docker-compose.yml up -d --build
 ```
 
-> **Hinweis:** Die App ist aktuell eine echte Single-Page-Anwendung ohne
-> Client-seitiges Routing (kein `react-router` o. Ä., siehe `main.tsx`). Die
-> SPA-Routing-Konfiguration in `nginx.conf` ist insofern bereits für eine
-> mögliche künftige Einführung von Routen vorbereitet.
