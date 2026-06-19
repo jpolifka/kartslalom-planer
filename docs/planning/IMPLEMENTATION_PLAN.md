@@ -843,27 +843,26 @@ async function migrateLocalStorage() {
 
 ### 1.15 Willkommens-Mail
 
-Database Webhook: INSERT auf `public.profiles` → Edge Function `send-welcome`
+Auslöser: `AuthCallbackPage.tsx` feuert nach erfolgreichem Magic-Link-Login einen
+fire-and-forget-`fetch` an `send-welcome`. Idempotenz-Check: nur wenn Account < 5 Minuten alt.
 
 ```typescript
 // supabase/functions/send-welcome/index.ts
-import { Resend } from "npm:resend";
-const resend = new Resend(Deno.env.get("RESEND_API_KEY")!);
-
+// Kein externer npm-Import — nur fetch() gegen Resend REST-API
+// Env-Vars: RESEND_API_KEY, FROM_EMAIL (Fallback: noreply@kart.cheezuscraizt.de)
+// SUPABASE_URL + SERVICE_ROLE_KEY für /auth/v1/user-Lookup
 Deno.serve(async (req) => {
-  const { record } = await req.json();
-  await resend.emails.send({
-    from: "Kartslalom Streckenplaner <hallo@kartslalom.de>",
-    to: record.email,
-    subject: "Willkommen beim Kartslalom Streckenplaner",
-    html: `<p>Dein Account ist bereit. Du kannst bis zu 3 Strecken kostenlos speichern.</p>
-           <a href="https://app.kartslalom.de/dashboard">Zur App →</a>`,
-  });
-  return new Response("ok");
+  const bearer = req.headers.get("authorization");
+  const user = await fetch(`${SUPABASE_URL}/auth/v1/user`,
+    { headers: { apikey: SERVICE_ROLE_KEY, Authorization: bearer } }).then(r => r.json());
+  const ageMs = Date.now() - new Date(user.created_at).getTime();
+  if (ageMs > 5 * 60 * 1000) return json({ skipped: true });
+  await fetch("https://api.resend.com/emails", { method: "POST", ... });
 });
 ```
 
 Kein Double-Opt-In — Willkommens-Mail ist Vertragskommunikation (Art. 6 Abs. 1 lit. b DSGVO).
+Deployment: `supabase functions deploy send-welcome --project-ref <ref>`
 
 ### 1.16 Lifecycle-Cron — Phase 1: nur Logging
 
