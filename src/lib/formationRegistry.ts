@@ -2,7 +2,7 @@
 // Copyright (c) Jens Polifka
 // All rights reserved.
 
-import type { FormationDefinition, FormationKey } from "../types";
+import type { FormationDefinition, FormationKey, PlacedFormation } from "../types";
 import { normalizeCones } from "./geometry";
 import { meter, standing } from "./formations/common";
 import { startGate } from "./formations/startGate";
