@@ -57,7 +57,22 @@ export type FormationKey =
   | "startGate"
   | "finishLane"
   | "vorstartbereich"
-  | "wechselzone";
+  | "wechselzone"
+  | "custom";
+
+export type FormationCategory =
+  | "start_ziel"
+  | "basis"
+  | "kurven"
+  | "komplex"
+  | "individuell";
+
+export type CustomFormationStatus =
+  | "private"
+  | "shared"
+  | "submitted"
+  | "library"
+  | "rejected";
 
 export type FormationDefinition = {
   key: FormationKey;
