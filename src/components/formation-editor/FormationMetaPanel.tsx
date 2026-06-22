@@ -126,8 +126,11 @@ export default function FormationMetaPanel({
           step={0.05}
           value={lichteBreite ?? ""}
           onChange={(e) => onChangeLichteBreite(e.target.value === "" ? null : Number(e.target.value))}
-          placeholder="aus Tor-Paar"
+          placeholder="via „Breite messen""
         />
+        {lichteBreite !== null && lichteBreite < TASK_LANE_WIDTH && (
+          <span style={{ fontSize: 11, color: "#dc2626" }}>⚠ Zu schmal (min. 1,65 m)</span>
+        )}
       </div>
 
       {selectedCone && (
