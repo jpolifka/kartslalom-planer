@@ -88,5 +88,15 @@ export function getFormation(key: FormationDefinition["key"]) {
 
 export function getEffectiveDuration(durationSecondsOverride: number | undefined, key: FormationKey): number {
   if (durationSecondsOverride !== undefined) return durationSecondsOverride;
+  if (key === "custom") return 0;
   return getFormation(key).defaultDurationSeconds ?? 0;
+}
+
+export function resolveFormation(pf: PlacedFormation): FormationDefinition {
+  if (pf.key === "custom") {
+    const snap = pf.customSnapshot;
+    if (!snap) throw new Error("PlacedFormation mit key='custom' hat kein customSnapshot");
+    return { key: "custom", label: snap.label, description: "", cones: snap.cones };
+  }
+  return getFormation(pf.key);
 }
