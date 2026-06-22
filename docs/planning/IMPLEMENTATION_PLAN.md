@@ -2,7 +2,7 @@
 
 **Version:** 2.3  
 **Datum:** 2026-06-02  
-**Zuletzt geändert:** 2026-06-19  
+**Zuletzt geändert:** 2026-06-22  
 **Änderungen v2.1:** Korrekturen zu v2.0 — siehe Abschnitt "Korrekturen" am Ende.  
 **Änderungen v2.2:** Phase 3 "Custom-Hindernisse" ergänzt (H0–H5 aus
 `CUSTOM_FORMATIONS_PLAN.md` v1.2 integriert). Zahlungsmodell-Entscheidung in
