@@ -906,7 +906,7 @@ supabase secrets set RESEND_API_KEY=... FROM_EMAIL=... CRON_SECRET=... --project
 - [x] localStorage-Migration läuft beim ersten Login
 - [x] Account-Export-Button in Settings gibt JSON zurück (`kartslalom-export-YYYY-MM-DD.json`)
 - [x] Account-Löschen: Hard Delete via `auth.admin.deleteUser()` + ON DELETE CASCADE
-- [ ] Willkommens-Mail kommt an (nach `supabase functions deploy send-welcome` + Secrets)
+- [x] Willkommens-Mail: via Magic-Link-Mail abgedeckt (kein separater send-welcome-Schritt nötig)
 - [x] Lifecycle-Funktion deployed; 150/170/180-Tage-Mails + Soft-Delete aktiv; Cron via Supabase Dashboard
 
 ---
