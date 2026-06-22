@@ -96,6 +96,33 @@ export type PlacedFormation = {
   rotationDeg: number;
   direction: DirectionMode;
   durationSeconds?: number;
+  customFormationId?: string;
+  customSnapshot?: {
+    cones: ConePoint[];
+    arrows: PlacedArrow[];
+    label: string;
+  };
+};
+
+export type CustomFormationDefinition = {
+  id: string;
+  ownerId: string | null;
+  ownerUsername?: string;
+  name: string;
+  description?: string;
+  category: FormationCategory;
+  status: CustomFormationStatus;
+  isLibrary: boolean;
+  pylonCount: number;
+  lichteBreite?: number;
+  durationSeconds?: number;
+  sourceFormationKey?: FormationKey;
+  sourceCustomFormationId?: string;
+  cones: ConePoint[];
+  arrows: PlacedArrow[];
+  defaultDirection?: DirectionMode;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type PlacedArrow = {
