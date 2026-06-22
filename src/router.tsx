@@ -8,6 +8,7 @@ import LoginPage from "./pages/LoginPage";
 import AuthCallbackPage from "./pages/AuthCallbackPage";
 import DashboardPage from "./pages/DashboardPage";
 import EditorPage from "./pages/EditorPage";
+import FormationEditorPage from "./pages/FormationEditorPage";
 import ImpressumPage from "./pages/ImpressumPage";
 import SettingsPage from "./pages/SettingsPage";
 import AuthGuard from "./components/auth/AuthGuard";
