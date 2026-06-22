@@ -1023,10 +1023,10 @@ create unique index profiles_username_lower_idx on public.profiles (lower(userna
 | `admin_update_custom_formation(...)` | Bearbeiten + Metadaten + Audit |
 
 **Definition of Done H0**
-- [ ] `profiles`: username, role, `profiles_username_lower_idx` ausgerollt
-- [ ] `custom_formations`, `formation_shares`, `app_config` + RLS + Indizes aktiv
-- [ ] `app_config`: Seed-Row `custom_formations_required_tier = null`
-- [ ] Alle RPCs deploybar, auth.uid()-Checks, Kategorie-/Name-Validierung
+- [x] `profiles`: username, role, `profiles_username_lower_idx` ausgerollt
+- [x] `custom_formations`, `formation_shares`, `app_config` + RLS + Indizes aktiv
+- [x] `app_config`: Seed-Row `custom_formations_required_tier = null`
+- [x] Alle RPCs deploybar, auth.uid()-Checks, Kategorie-/Name-Validierung
 - [ ] RLS-Test: User A kann Custom-Formation von User B nicht lesen (wenn nicht geteilt)
 - [ ] RLS-Test: Direkter INSERT auf `custom_formations` schlägt fehl
 - [ ] Library-Formation (is_library=true) ist für anon lesbar
