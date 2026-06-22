@@ -4,6 +4,7 @@
 
 import type { EditableCone } from "../../hooks/useFormationEditor";
 import type { FormationCategory } from "../../types";
+import { TASK_LANE_WIDTH } from "../../lib/formations/common";
 
 const CATEGORIES: { value: FormationCategory; label: string }[] = [
   { value: "individuell", label: "Individuell" },
