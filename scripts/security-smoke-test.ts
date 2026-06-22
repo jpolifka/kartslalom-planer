@@ -102,6 +102,7 @@ async function main() {
   const emailA = `sec-test-a-${ts}@test.invalid`;
   const emailB = `sec-test-b-${ts}@test.invalid`;
   const userIds: string[] = [];
+  const formationIds: string[] = [];
 
   console.log("\n=== Kartslalom Security Smoke Test ===\n");
   console.log(`  Supabase: ${SUPABASE_URL}`);
