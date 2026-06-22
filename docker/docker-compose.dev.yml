@@ -1,3 +1,9 @@
+name: kartslalom
+
+include:
+  - path: supabase/docker-compose.yml
+    env_file: supabase/.env
+
 services:
   kartslalom-dev:
     build:

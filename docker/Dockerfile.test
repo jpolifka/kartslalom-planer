@@ -1,0 +1,12 @@
+FROM node:22-alpine
+WORKDIR /app
+
+# tsx global installieren — kein Eintrag in package.json oder package-lock.json nötig
+RUN npm install -g tsx
+
+# Nur Production-Dependencies (enthält @supabase/supabase-js)
+COPY package*.json ./
+RUN npm ci --omit=dev
+
+COPY scripts/ ./scripts/
+CMD ["tsx", "scripts/security-smoke-test.ts"]

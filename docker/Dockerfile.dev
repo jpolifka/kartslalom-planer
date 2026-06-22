@@ -1,6 +1,7 @@
 # Lokale Entwicklungsumgebung mit Vite-Dev-Server (HMR)
 FROM node:20-alpine
 WORKDIR /app
+RUN npm install -g npm@11
 COPY package*.json ./
 RUN npm ci
 COPY . .

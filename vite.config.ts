@@ -2,6 +2,10 @@ import { defineConfig } from "vite"
 import react from "@vitejs/plugin-react"
 
 export default defineConfig({
+  test: {
+    environment: "jsdom",
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+  },
   plugins: [react()],
   server: {
     host: true,
@@ -10,11 +14,12 @@ export default defineConfig({
   },
   build: {
     sourcemap: false,
+    modulePreload: { polyfill: false },
     rollupOptions: {
       output: {
-        manualChunks: {
-          react: ["react", "react-dom"],
-          vendor: ["framer-motion", "lucide-react"],
+        manualChunks: (id) => {
+          if (id.includes("react") || id.includes("react-dom")) return "react";
+          if (id.includes("framer-motion") || id.includes("lucide-react")) return "vendor";
         },
       },
     },

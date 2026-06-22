@@ -1,3 +1,13 @@
+:root {
+  --c-primary:        #2F6C40;
+  --c-primary-dark:   #1e4d2b;
+  --c-accent:         #85B23D;
+  --c-primary-bg:     #edf4de;
+  --c-primary-border: #b8d98a;
+  --c-primary-subtle: #f2f8ea;
+  --c-primary-sel:    rgba(47,108,64,0.05);
+}
+
 body{
   margin:0;
   font-family:Arial,Helvetica,sans-serif;

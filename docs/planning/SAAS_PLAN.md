@@ -1,12 +1,16 @@
 # Kartslalom Streckenplaner — SaaS-Transformation
 
-**Dokument-Version:** 1.2  
+**Dokument-Version:** 1.4  
 **Erstellt:** 2026-06-02  
-**Zuletzt geändert:** 2026-06-02  
+**Zuletzt geändert:** 2026-06-19  
 **Änderungen v1.1:** Enterprise/Verband-Tier entfernt (zu früh). Export nur für angemeldete Nutzer. User-Lifecycle-Management (Inaktivitäts-Reminder + Cleanup) ergänzt.  
 **Änderungen v1.2:** Tech-Stack final entschieden: Supabase-first, Hetzner/Coolify statt Vercel, Zustand+TanStack Query+Zod, Resend (kein DOI für Transaktionsmails), Stripe mit Paddle als Fallback.  
+**Änderungen v1.3:** Zahlungsmodell geändert — kein Stripe, kein In-App-Checkout. Bezahlung läuft extern, Tier-Upgrades werden manuell per SQL gesetzt. Operative Details siehe `IMPLEMENTATION_PLAN.md` Phase 2.  
+**Änderungen v1.4 (2026-06-19):** Lifecycle-Timing auf 150/170/180 Tage korrigiert (war 60/80/90). phase_deleted auf Hard Delete aktualisiert (kein Anonymisierungsschritt). Cron-Scheduling auf Supabase Dashboard umgestellt. phase_activated für at_risk/final_warning von 2 auf 1 korrigiert.  
 **Autor:** Claude Sonnet 4.6 (Analyse-Agent)  
 **Zweck:** Maschinenlesbares Planungsdokument für die SaaS-Transformation des Kartslalom MVP. Verwendbar durch Menschen und AI-Agenten gleichermaßen.
+
+> **Hinweis:** Alle Abschnitte dieses Dokuments, die Stripe, Checkout, Customer Portal oder Webhooks beschreiben, sind durch die Entscheidung vom 2026-06-16 **überholt**. Das operative Planungsdokument ist `IMPLEMENTATION_PLAN.md`.
 
 ---
 
@@ -17,7 +21,7 @@
 ```yaml
 frontend:
   framework: React 18 + TypeScript
-  bundler: Vite 5
+  bundler: Vite 8
   icons: lucide-react
   animation: framer-motion (installiert, kaum genutzt)
   map: OpenStreetMap Tiles (direkt via img-Tags)
@@ -352,9 +356,9 @@ lifecycle:
 
   phase_at_risk:
     condition: "last_active_at >= 150 Tage AND < 170 Tage"
-    rationale: "Vereinsbetrieb ist saisonal — 60 Tage wären zu aggressiv"
-    trigger: "Cron-Job täglich 08:00 UTC"
-    phase_activated: 2          # in Phase 1 nur Logging, kein E-Mail-Versand
+    rationale: "Vereinsbetrieb ist saisonal — kürzere Intervalle wären zu aggressiv"
+    trigger: "Cron-Job täglich 03:00 UTC (Supabase Dashboard Schedules)"
+    phase_activated: 1
     actions:
       - send_email:
           template: "re_engagement_reminder"
@@ -369,8 +373,8 @@ lifecycle:
 
   phase_final_warning:
     condition: "last_active_at >= 170 Tage AND < 180 Tage"
-    trigger: "Cron-Job täglich 08:00 UTC"
-    phase_activated: 2
+    trigger: "Cron-Job täglich 03:00 UTC (Supabase Dashboard Schedules)"
+    phase_activated: 1
     actions:
       - send_email:
           template: "account_deletion_warning"
@@ -384,84 +388,58 @@ lifecycle:
 
   phase_deleted:
     condition: "last_active_at >= 180 Tage"
-    trigger: "Cron-Job täglich 03:00 UTC (outside peak hours)"
+    trigger: "Cron-Job täglich 03:00 UTC (Supabase Dashboard Schedules)"
     actions:
-      - anonymize_account:
+      - hard_delete:
           steps:
-            - "email -> gelöscht_{uuid}@deleted.invalid"
-            - "name -> [gelöscht]"
-            - "stripe_customer_id -> null (Subscription bereits gekündigt)"
-            - "is_deleted = true, deleted_at = now()"
-      - delete_track_content:
-          steps:
-            - "state_json und area_sel_json aller Versionen auf null setzen"
-            - "track.name -> [gelöscht]"
-            - "track.is_public = false"
-      - cancel_active_subscription:
-          condition: "nur wenn noch aktive Stripe-Subscription"
-          action: "stripe.subscriptions.cancel() mit Prorata-Erstattung"
-      - log_deletion:
-          fields: [user_id_hash, tier, tracks_count, deleted_at]
-          note: "kein PII — nur für interne Statistik"
-
-  paid_user_exception:
-    description: "Nutzer mit aktiver bezahlter Subscription werden NICHT gelöscht"
-    rationale: "Aktive Zahler sind per Definition nicht inaktiv im Business-Sinn"
-    implementation:
-      - "Cron prüft: tier IN ('pro', 'team') AND stripe_status = 'active' → skip"
-      - "Reminder-E-Mails trotzdem senden wenn >60 Tage inaktiv (Feature-Nutzung anregen)"
-      - "Kein Lösch-Flow — nur Kündigung durch Nutzer selbst"
+            - "profiles: is_deleted = true, deleted_at = now() (Rollback-Marker)"
+            - "auth.admin.deleteUser(userId)"
+            - "ON DELETE CASCADE löscht profiles + tracks + track_versions vollständig"
+            - "Bei Fehler: is_deleted zurücksetzen"
+          note: "Kein Anonymisierungsschritt — vollständige unwiderrufliche Löschung (Entscheidung 2026-06-19)"
+      - send_deactivation_mail:
+          template: "account_deactivated"
+          note: "Mail vor dem Delete senden, danach ist E-Mail-Adresse nicht mehr erreichbar"
 ```
 
 ### Technische Implementierung des Lifecycle-Crons
 
 ```yaml
 cron_implementation:
-  scheduler: "pg_cron (in Supabase) ODER externer Cron via Trigger.dev / Inngest"
-  recommended: "Inngest (serverless, zuverlässige Retries, einfaches Debugging)"
+  scheduler: "Supabase Edge Function + Supabase Dashboard Schedules"
+  recommended: "Supabase Dashboard → Edge Functions → user-lifecycle → Schedules → 0 3 * * *"
+  note: "GitHub Actions als Scheduler wurde verworfen (semantisch falsch, keine Garantie auf Pünktlichkeit)"
 
-  daily_cron_job:
-    name: "user-lifecycle-check"
-    schedule: "0 8 * * *"     # täglich 08:00 UTC
-    steps:
-      1_find_at_risk:
-        query: |
-          SELECT id, email, last_active_at
-          FROM users
-          WHERE last_active_at < NOW() - INTERVAL '60 days'
-            AND last_active_at >= NOW() - INTERVAL '75 days'
-            AND tier NOT IN ('pro', 'team') OR stripe_status != 'active'
-            AND reminder_60_sent_at IS NULL
-            AND is_deleted = false
-      2_send_reminder_60:
-        action: "E-Mail via Resend senden, reminder_60_sent_at = now() setzen"
-
-      3_find_final_warning:
-        query: |
-          SELECT id, email, last_active_at
-          FROM users
-          WHERE last_active_at < NOW() - INTERVAL '80 days'
-            AND last_active_at >= NOW() - INTERVAL '90 days'
-            AND reminder_80_sent_at IS NULL
-            AND is_deleted = false
-      4_send_reminder_80:
-        action: "E-Mail via Resend senden, reminder_80_sent_at = now() setzen"
-
-  nightly_cleanup_job:
-    name: "user-deletion-cleanup"
+  unified_cron_job:
+    name: "user-lifecycle"
     schedule: "0 3 * * *"     # täglich 03:00 UTC
+    function: "supabase/functions/user-lifecycle/index.ts"
+    auth: "x-cron-secret Header (Env-Var CRON_SECRET, gesetzt via supabase secrets set)"
     steps:
-      1_find_deleteable:
+      1_hard_delete_180d:
         query: |
-          SELECT id
-          FROM users
-          WHERE last_active_at < NOW() - INTERVAL '90 days'
-            AND is_deleted = false
-            AND (tier = 'free' OR stripe_status != 'active')
-      2_anonymize_and_delete:
-        action: "Anonymisierung + Content-Löschung wie oben definiert"
-        batch_size: 50         # nie zu viele auf einmal (Datenbank-Last)
-        retry_on_failure: true
+          SELECT id, email FROM profiles
+          WHERE is_deleted = false
+            AND last_active_at < NOW() - INTERVAL '180 days'
+        action: "Deaktivierungsmail senden, dann auth.admin.deleteUser() → CASCADE"
+
+      2_warn_170d:
+        query: |
+          SELECT id, email FROM profiles
+          WHERE is_deleted = false
+            AND reminder_170_sent_at IS NULL
+            AND last_active_at < NOW() - INTERVAL '170 days'
+            AND last_active_at >= NOW() - INTERVAL '180 days'
+        action: "Warnungsmail via Resend, reminder_170_sent_at = now() setzen"
+
+      3_remind_150d:
+        query: |
+          SELECT id, email FROM profiles
+          WHERE is_deleted = false
+            AND reminder_150_sent_at IS NULL
+            AND last_active_at < NOW() - INTERVAL '150 days'
+            AND last_active_at >= NOW() - INTERVAL '170 days'
+        action: "Erinnerungsmail via Resend, reminder_150_sent_at = now() setzen"
 
   db_columns_needed:
     profiles:
@@ -478,8 +456,8 @@ cron_implementation:
 email_templates:
 
   re_engagement_reminder:
-    from: "Kartslalom Streckenplaner <hallo@kartslalom.de>"
-    timing: "60 Tage Inaktivität"
+    from: "Kartslalom Streckenplaner <noreply@kart.cheezuscraizt.de>"
+    timing: "150 Tage Inaktivität"
     tone: "freundlich, nicht alarmierend"
     must_contain:
       - Anzahl der gespeicherten Strecken
@@ -487,12 +465,12 @@ email_templates:
       - Hinweis auf bevorstehende Löschung (klar aber nicht aggressiv)
       - Opt-out von Lifecycle-E-Mails (aber Account bleibt)
     must_not_contain:
-      - "Du wirst gelöscht" (zu hart — erst in 80-Tage-Mail)
+      - "Du wirst gelöscht" (zu hart — erst in 170-Tage-Mail)
       - Preisangebote oder Upsell in dieser Mail
 
   account_deletion_warning:
-    from: "Kartslalom Streckenplaner <hallo@kartslalom.de>"
-    timing: "80 Tage Inaktivität (10 Tage vor Löschung)"
+    from: "Kartslalom Streckenplaner <noreply@kart.cheezuscraizt.de>"
+    timing: "170 Tage Inaktivität (10 Tage vor Löschung)"
     tone: "klar, sachlich, hilfreich"
     must_contain:
       - Konkretes Löschdatum (now + 10 Tage)
@@ -598,8 +576,8 @@ data_model:
     tier: enum[free, pro, team]
     stripe_customer_id: string
     last_active_at: timestamp
-    reminder_60_sent_at: timestamp     # nullable
-    reminder_80_sent_at: timestamp     # nullable
+    reminder_150_sent_at: timestamp    # nullable
+    reminder_170_sent_at: timestamp    # nullable
     is_deleted: boolean
     deleted_at: timestamp              # nullable
     created_at: timestamp
@@ -1226,7 +1204,7 @@ stack:
     transactional_no_opt_in_required:
       - Willkommens-Mail nach Signup
       - Team-Einladungs-Links
-      - Inaktivitäts-Reminder (60 Tage / 80 Tage)
+      - Inaktivitäts-Reminder (150 Tage / 170 Tage)
       - Zahlungsbestätigungen / Receipts
     rule: "Transaktionsmails enthalten keinen Marketinginhalt"
 

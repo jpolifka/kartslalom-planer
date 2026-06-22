@@ -1,9 +1,17 @@
 # Kartslalom SaaS — Implementierungsplan
 
-**Version:** 2.1  
+**Version:** 2.3  
 **Datum:** 2026-06-02  
+**Zuletzt geändert:** 2026-06-19  
 **Änderungen v2.1:** Korrekturen zu v2.0 — siehe Abschnitt "Korrekturen" am Ende.  
-**Referenz:** `SAAS_PLAN.md` v1.2
+**Änderungen v2.2:** Phase 3 "Custom-Hindernisse" ergänzt (H0–H5 aus
+`CUSTOM_FORMATIONS_PLAN.md` v1.2 integriert). Zahlungsmodell-Entscheidung in
+Phase 2 dokumentiert.  
+**Änderungen v2.3 (2026-06-19):** Account-Export = JSON (kein ZIP, bewusste Entscheidung).
+Account-Löschung = Hard Delete (nicht Anonymisierung). Lifecycle-Funktion in Phase 1
+voll aktiv (150/170/180-Tage-Mails + Soft-Delete); Datenschutz in Impressum/Datenschutz
+Abschnitt 8 dokumentiert. Lifecycle-Cron via Supabase Dashboard Schedules (nicht GitHub Actions).  
+**Referenz:** `SAAS_PLAN.md` v1.4, `CUSTOM_FORMATIONS_PLAN.md` v1.2
 
 ---
 
@@ -12,7 +20,8 @@
 ```
 PHASE 0   Saubere Basis       — Impressum/DDG, Security, Docker, Schema, RLS
 PHASE 1   Login + Cloud Save  — Magic Link, Dashboard, Cloud Save via RPC, Limits
-PHASE 2   Pro + Billing       — Stripe, Share-Links, PNG-Export, Versionshistorie
+PHASE 2   Pro-Features        — Share-Links, PNG-Export, Versionshistorie (kein Stripe)
+PHASE 3   Custom-Hindernisse  — WYSIWYG-Editor, Sharing, Admin, Library (H0–H5)
 ```
 
 **Kernprinzip:** Kein direktes `.insert()` oder `.update()` auf sicherheitsrelevante Tabellen vom Client. Alle Schreiboperationen laufen durch SECURITY DEFINER Funktionen auf dem Server.
@@ -23,102 +32,6 @@ PHASE 2   Pro + Billing       — Stripe, Share-Links, PNG-Export, Versionshisto
 
 **Ziel:** Rechtlich sicherer, technisch solider Unterbau. Gast-Modus bleibt vollständig erhalten.
 
-### 0.1 Rechtliches
-
-```
-Pflichtseiten:
-  /impressum    → § 5 DDG (Digitale-Dienste-Gesetz, löste TMG 2024 ab)
-  /datenschutz  → DSGVO Art. 13
-
-Mindestinhalt Datenschutz:
-  - Verantwortlicher (Name + Adresse)
-  - Gespeicherte Daten: E-Mail, Koordinaten der Kartbahn
-  - Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO (Vertragsdurchführung)
-  - Auftragsverarbeiter: Supabase EU (Frankfurt), Resend, Stripe
-  - Betroffenenrechte: Auskunft, Löschung, Portabilität
-  - Kontaktadresse für Datenschutz-Anfragen
-
-Cookie-Banner: NICHT nötig bei rein technisch notwendigen Cookies (Session-Token).
-  Posthog: erst einbinden wenn benötigt — dann Opt-in-Banner erforderlich.
-```
-
-### 0.2 Security Headers
-
-`nginx.conf` für den statischen Frontend-Build:
-
-```nginx
-server {
-  listen 8080;
-  root /usr/share/nginx/html;
-  index index.html;
-
-  # SPA-Routing
-  location / {
-    try_files $uri $uri/ /index.html;
-  }
-
-  add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-  add_header X-Content-Type-Options    "nosniff" always;
-  add_header X-Frame-Options           "DENY" always;
-  add_header Referrer-Policy           "strict-origin-when-cross-origin" always;
-  add_header Content-Security-Policy   "
-    default-src 'self';
-    script-src  'self';
-    style-src   'self' 'unsafe-inline';
-    img-src     'self' data:
-                https://tile.openstreetmap.org
-                https://*.tile.openstreetmap.org;
-    connect-src 'self'
-                https://*.supabase.co
-                wss://*.supabase.co
-                https://api.stripe.com;
-    frame-ancestors 'none';
-  " always;
-}
-```
-
-`unsafe-inline` für Styles ist akzeptabel — das bestehende Frontend nutzt durchgehend Inline-Styles.
-
-### 0.3 Dockerfile
-
-`nginxinc/nginx-unprivileged` verwenden — läuft ohne root, Port 8080, kein manuelles Rechte-Gebaste nötig:
-
-```dockerfile
-FROM node:20-alpine AS builder
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY . .
-RUN npm run build
-
-# nginx-unprivileged läuft bereits als non-root auf Port 8080
-FROM nginxinc/nginx-unprivileged:1.25-alpine
-COPY --from=builder /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 8080
-```
-
-### 0.4 Supabase Projekt anlegen
-
-```
-Dashboard → New Project
-  Name:    kartslalom-prod
-  Region:  West EU (Frankfurt)
-
-Auth → Settings:
-  Site URL:       https://app.kartslalom.de
-  Redirect URLs:  https://app.kartslalom.de/auth/callback
-                  http://localhost:5173/auth/callback
-  Email Confirmations: AN
-  Magic Link:          AN
-```
-
-Werte notieren — alle drei werden gebraucht:
-```
-SUPABASE_URL
-SUPABASE_ANON_KEY
-SUPABASE_SERVICE_ROLE_KEY   ← nur Edge Functions und Admin-Skripte, niemals Frontend
-```
 
 ### 0.5 Datenbank-Schema
 
@@ -411,7 +324,7 @@ console.assert(satError?.message.includes("satellite_requires_pro"), "FAIL: Sate
 
 ### 0.9 Definition of Done Phase 0
 
-- [ ] `/impressum` und `/datenschutz` erreichbar, DDG-konform
+- [x] `/impressum` und `/datenschutz` erreichbar, DDG-konform
 - [ ] Security Headers aktiv (`securityheaders.com` zeigt A oder B+)
 - [ ] Docker-Build mit `nginx-unprivileged`, läuft ohne root
 - [ ] Supabase-Projekt in Frankfurt, Auth konfiguriert
@@ -902,124 +815,120 @@ async function migrateLocalStorage() {
 
 ### 1.14 Account-Verwaltung (DSGVO-Pflicht)
 
-**Account-Export** — Edge Function, gibt ZIP zurück:
+**Account-Export** — Edge Function `account-export`, gibt JSON zurück (Entscheidung 2026-06-19: kein ZIP):
 
 ```typescript
 // supabase/functions/account-export/index.ts
-// Inhalt ZIP:
-//   profile.json   — id, email, tier, created_at (keine Stripe-Daten)
-//   tracks/        — eine JSON-Datei pro Track mit vollem state_json
+// Gibt Content-Disposition: attachment; filename="kartslalom-export-YYYY-MM-DD.json"
+// Inhalt:
+//   exported_at       — ISO-Timestamp
+//   profile           — id, email, tier, created_at, last_active_at
+//   tracks[]          — alle Felder inkl. state_json
+//   track_versions[]  — alle Versionen aller Tracks
+// Art. 20 DSGVO (Datenübertragbarkeit) erfüllt.
 ```
 
-**Account-Löschung** — Edge Function:
+**Account-Löschung** — Edge Function `delete-account`, Hard Delete (Entscheidung 2026-06-19):
 
 ```typescript
 // supabase/functions/delete-account/index.ts
 // Reihenfolge:
-//   1. Stripe-Subscription kündigen (falls stripe_subscription_id vorhanden)
-//   2. tracks: state_json = '{"items":[],"arrows":[]}' (NOT NULL — kein null!)
-//      name = '[gelöscht]', is_public = false
-//   3. profiles: email = 'deleted_' + gen_random_uuid() + '@deleted.invalid'
-//               is_deleted = true, deleted_at = now()
-//   4. auth.admin.deleteUser(userId)
+//   1. profiles: is_deleted = true, deleted_at = now() (Rollback-Marker)
+//   2. auth.admin.deleteUser(userId)
+//      → ON DELETE CASCADE löscht profiles + tracks + track_versions vollständig
+//   3. Bei Fehler in Schritt 2: is_deleted auf false zurücksetzen
+// Kein Anonymisierungsschritt — vollständige unwiderrufliche Löschung.
+// Art. 17 DSGVO (Löschungsrecht) erfüllt. Dokumentiert in Datenschutzerklärung Abschnitt 8.
 ```
-
-**Wichtig zu Punkt 2:** `state_json` hat `NOT NULL`. Beim Löschen nicht `null` setzen — stattdessen leeres Objekt `'{"items":[],"arrows":[]}'` eintragen.
 
 ### 1.15 Willkommens-Mail
 
-Database Webhook: INSERT auf `public.profiles` → Edge Function `send-welcome`
+Auslöser: `AuthCallbackPage.tsx` feuert nach erfolgreichem Magic-Link-Login einen
+fire-and-forget-`fetch` an `send-welcome`. Idempotenz-Check: nur wenn Account < 5 Minuten alt.
 
 ```typescript
 // supabase/functions/send-welcome/index.ts
-import { Resend } from "npm:resend";
-const resend = new Resend(Deno.env.get("RESEND_API_KEY")!);
-
+// Kein externer npm-Import — nur fetch() gegen Resend REST-API
+// Env-Vars: RESEND_API_KEY, FROM_EMAIL (Fallback: noreply@kart.cheezuscraizt.de)
+// SUPABASE_URL + SERVICE_ROLE_KEY für /auth/v1/user-Lookup
 Deno.serve(async (req) => {
-  const { record } = await req.json();
-  await resend.emails.send({
-    from: "Kartslalom Streckenplaner <hallo@kartslalom.de>",
-    to: record.email,
-    subject: "Willkommen beim Kartslalom Streckenplaner",
-    html: `<p>Dein Account ist bereit. Du kannst bis zu 3 Strecken kostenlos speichern.</p>
-           <a href="https://app.kartslalom.de/dashboard">Zur App →</a>`,
-  });
-  return new Response("ok");
+  const bearer = req.headers.get("authorization");
+  const user = await fetch(`${SUPABASE_URL}/auth/v1/user`,
+    { headers: { apikey: SERVICE_ROLE_KEY, Authorization: bearer } }).then(r => r.json());
+  const ageMs = Date.now() - new Date(user.created_at).getTime();
+  if (ageMs > 5 * 60 * 1000) return json({ skipped: true });
+  await fetch("https://api.resend.com/emails", { method: "POST", ... });
 });
 ```
 
 Kein Double-Opt-In — Willkommens-Mail ist Vertragskommunikation (Art. 6 Abs. 1 lit. b DSGVO).
+Deployment: `supabase functions deploy send-welcome --project-ref <ref>`
 
-### 1.16 Lifecycle-Cron — Phase 1: nur Logging
+### 1.16 Lifecycle-Cron — Phase 1: voll aktiv
 
-In Phase 1 noch keine E-Mails senden. Erst nach Datenschutzprüfung und Abmeldemöglichkeit in Phase 2 aktivieren.
+Lifecycle-Funktion ist in Phase 1 vollständig aktiv. Datenschutz dokumentiert in
+Impressum/Datenschutz Abschnitt 8 (Kontolöschung und Inaktivitätsregel).
 
 ```typescript
-// supabase/functions/user-lifecycle/index.ts
-// Phase 1: identifiziert gefährdete User, loggt sie — keine E-Mails, keine Löschung
-
-const { data: at150 } = await supabase
-  .from("profiles")
-  .select("id, email, last_active_at")
-  .lt("last_active_at", daysAgo(150))
-  .eq("is_deleted", false)
-  .is("reminder_150_sent_at", null);
-
-console.log(`[lifecycle] 150d-inaktiv: ${at150?.length ?? 0} User`);
-// E-Mail-Versand und Löschlogik: Phase 2 nach Datenschutz- und Abmeldeprüfung
+// supabase/functions/user-lifecycle/index.ts (standalone, für Cloud-Deployment)
+// supabase/functions/main/index.ts (Dispatcher, für lokales Docker-Dev)
+// Stufen:
+//   150 Tage Inaktivität → erste Erinnerungsmail (einmalig, reminder_150_sent_at)
+//   170 Tage Inaktivität → zweite Warnung (einmalig, reminder_170_sent_at)
+//   180 Tage Inaktivität → is_deleted = true, deleted_at = now(), Deaktivierungsmail
+// Kein externer Import — nur fetch() gegen Supabase REST + Resend API.
+// Auth: x-cron-secret Header (Env-Var CRON_SECRET).
 ```
 
-GitHub Actions Cron (kostenlos, kein separater Service):
+Cron-Scheduling via **Supabase Dashboard** (nicht GitHub Actions):
 
-```yaml
-# .github/workflows/user-lifecycle.yml
-name: User Lifecycle
-on:
-  schedule:
-    - cron: "0 8 * * *"
-jobs:
-  run:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Trigger Lifecycle
-        run: |
-          curl -sf -X POST \
-            "${{ secrets.SUPABASE_URL }}/functions/v1/user-lifecycle" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
-            -H "Content-Type: application/json" \
-            -d '{}'
+```
+Supabase Dashboard → Edge Functions → user-lifecycle → Schedules → Add
+Cron-Ausdruck: 0 3 * * *   (täglich 03:00 UTC)
+```
+
+Deployment:
+```bash
+supabase functions deploy user-lifecycle --project-ref <ref>
+supabase secrets set RESEND_API_KEY=... FROM_EMAIL=... CRON_SECRET=... --project-ref <ref>
 ```
 
 ### 1.17 Definition of Done Phase 1
 
-- [ ] Magic Link Login: E-Mail empfangen, `/auth/callback` verarbeitet, Session aktiv
-- [ ] PKCE-Flow geprüft (Supabase Dashboard → Auth → Settings → PKCE-Einstellung dokumentiert)
-- [ ] Dashboard zeigt eigene Tracks aus der DB
-- [ ] Neuer Track via `create_track()` RPC — kein direkter INSERT
-- [ ] Autosave schreibt via `save_track()` RPC für eingeloggte Nutzer
-- [ ] Gast-Modus vollständig: Editor, SVG-Export, PDF-Export ohne Login
-- [ ] Free-User: 4. Track → `TRACK_LIMIT_REACHED` vom Server
-- [ ] Free-User: map_satellite=true → `SATELLITE_REQUIRES_PRO` vom Server, Frontend setzt zurück
-- [ ] localStorage-Migration läuft beim ersten Login
-- [ ] Account-Export-Button in Settings gibt ZIP zurück
-- [ ] Account-Löschen: state_json = `{"items":[],"arrows":[]}`, E-Mail anonymisiert, Auth-User gelöscht
-- [ ] Willkommens-Mail kommt an (Resend-Dashboard)
-- [ ] Lifecycle-Cron läuft täglich, loggt in GitHub Actions (kein E-Mail-Versand)
+- [x] Magic Link Login: E-Mail empfangen, `/auth/callback` verarbeitet, Session aktiv
+- [x] PKCE-Flow geprüft (`flowType: "pkce"` in `src/lib/supabase.ts`, Ende-zu-Ende gegen lokalen Stack getestet)
+- [x] Dashboard zeigt eigene Tracks aus der DB
+- [x] Neuer Track via `create_track()` RPC — kein direkter INSERT
+- [x] Autosave schreibt via `save_track()` RPC für eingeloggte Nutzer
+- [x] Gast-Modus vollständig: Editor, SVG-Export, PDF-Export ohne Login
+- [x] Free-User: 4. Track → `TRACK_LIMIT_REACHED` vom Server
+- [x] Free-User: map_satellite=true → `SATELLITE_REQUIRES_PRO` vom Server, Frontend setzt zurück
+- [x] localStorage-Migration läuft beim ersten Login
+- [x] Account-Export-Button in Settings gibt JSON zurück (`kartslalom-export-YYYY-MM-DD.json`)
+- [x] Account-Löschen: Hard Delete via `auth.admin.deleteUser()` + ON DELETE CASCADE
+- [ ] Willkommens-Mail kommt an (nach `supabase functions deploy send-welcome` + Secrets)
+- [x] Lifecycle-Funktion deployed; 150/170/180-Tage-Mails + Soft-Delete aktiv; Cron via Supabase Dashboard
 
 ---
 
-## PHASE 2 — Pro + Billing
+## PHASE 2 — Pro-Features
 
 **Voraussetzung:** Phase 1 stabil und mindestens 2 Wochen in Produktion ohne kritische Fehler.
+
+**Zahlungsmodell (Entscheidung 2026-06-16):** Kein Stripe, kein In-App-Checkout.
+Upgrades auf Pro/Team laufen extern (z. B. Rechnung, Banküberweisung, direkte
+Absprache). Der Admin setzt `tier` danach manuell per SQL:
+```sql
+UPDATE profiles SET tier = 'pro' WHERE email = 'nutzer@example.com';
+```
+Produktiv über Supabase Dashboard → SQL-Editor. Lokal per `docker compose exec db psql`.
+
+Free-Nutzer sehen an den gesperrten Features einen Hinweis mit Kontakt-Link
+(`mailto:` o. ä.) statt einem Checkout-Flow.
 
 ### 2.1 Features
 
 ```yaml
-stripe:
-  - Checkout Session (Pro + Team Preise)
-  - Customer Portal (Verwalten, Kündigen, Plan-Wechsel)
-  - Webhook (PFLICHT: Signatur verifizieren vor DB-Änderung)
-
 share_links:
   flow:
     1: "Edge Function generiert 32-Byte crypto-Token"
@@ -1028,6 +937,7 @@ share_links:
     4: "Share-URL: /share/<plaintext-token>"
   lookup: "RPC get_track_by_share_token(token) — hasht, sucht, gibt Track zurück"
   rls: "Kein öffentliches SELECT via is_public — nur via RPC"
+  tier: "Pro+"
 
 png_export:
   library: "html-to-image (client-seitig, kein Puppeteer nötig)"
@@ -1037,31 +947,277 @@ version_history:
   write: "SECURITY DEFINER Funktion create_track_version()"
   keep:  "letzte 10 für Pro, unbegrenzt für Team"
   ui:    "Liste in Track-Settings, Wiederherstellen lädt state_json"
+  tier: "Pro+"
 
 satellite_imagery:
   provider: "Mapbox"
   security: "API-Key via Edge-Function-Proxy — nie im Client-Bundle"
   tier: "Pro+"
 
+upgrade_hint:
+  ui: "Gesperrte Features zeigen Hinweis mit Kontakt-Link (kein Checkout)"
+  format: "Tooltip oder Inline-Banner: 'Nur für Pro-Nutzer — Kontakt: …'"
+
 lifecycle_emails:
   activate: "erst nach Datenschutz-Review und Abmeldemöglichkeit"
   timing:
     150d: "freundlicher Reminder"
     170d: "Letzte Warnung + Export-Link"
-    180d: "Anonymisierung + Content-Löschung"
-  paid_users: "Kein Lösch-Flow — nur Reminder bei >150d Inaktivität"
+    180d: "Hard Delete — auth.admin.deleteUser() + ON DELETE CASCADE (Entscheidung 2026-06-19)"
+  paid_users: "Kein Lösch-Flow — nur Reminder bei >150d/170d Inaktivität"
 ```
 
 ### 2.2 Definition of Done Phase 2
 
-- [ ] Stripe Test-Checkout abschließbar, tier in DB aktualisiert (Webhook-Signatur verifiziert)
-- [ ] Customer Portal: Plan wechseln, kündigen → tier fällt zurück auf free
 - [ ] Share-Link: Token-Hash in DB, Plaintext einmalig zurückgegeben, Track über `/share/...` abrufbar
 - [ ] Kein SELECT `WHERE is_public = true` ohne RPC für Fremdzugriff möglich
-- [ ] PNG-Export für Pro, Upgrade-Hinweis für Free
+- [ ] PNG-Export für Pro, Upgrade-Hinweis mit Kontakt-Link für Free
 - [ ] Mapbox-Key nicht im Client-Bundle (über Edge-Function-Proxy)
 - [ ] Lifecycle-E-Mails mit Abmeldemöglichkeit, Datenschutz-Review dokumentiert
 - [ ] Versionshistorie: Wiederherstellen lädt korrekte Version
+
+---
+
+## PHASE 3 — Custom-Hindernisse (H0–H5)
+
+**Voraussetzung:** Phase 1 abgeschlossen.  
+**Vollständiges Datenmodell, SQL und RPCs:** `CUSTOM_FORMATIONS_PLAN.md` v1.2.  
+Dieses Kapitel enthält Verzeichnisstruktur, Typen und DoD-Checklisten.
+
+### 3.0 Datenbank-Erweiterungen (H0)
+
+Läuft parallel zu Phase 0/1 — Tabellen und RPCs können im Supabase-SQL-Editor
+vorab ausgerollt werden, da sie eigenständig sind und bestehende Tabellen nur
+additiv erweitern.
+
+**profiles — ALTER**
+```sql
+alter table public.profiles
+  add column username text,
+  add column role text not null default 'user'
+    check (role in ('user', 'admin'));
+
+-- Case-insensitive Eindeutigkeit
+create unique index profiles_username_lower_idx on public.profiles (lower(username));
+```
+
+**Neue Tabellen** (vollständiges SQL in `CUSTOM_FORMATIONS_PLAN.md` 2.2–2.4):
+- `public.custom_formations` — Hindernis-Definitionen (Cones, Pfeile, Meta)
+- `public.formation_shares` — Sharing zwischen Usern
+- `public.app_config` — Feature-Gates, Seed: `custom_formations_required_tier = null`
+
+**RPCs** (SECURITY DEFINER, alle mit `auth.uid()`-Check zuerst):
+
+| Funktion | Zweck |
+|---|---|
+| `create_custom_formation(...)` | Erstellen + Premium-Gate + Limits |
+| `update_custom_formation(id, ...)` | Owner oder edit-Share |
+| `delete_custom_formation(id)` | Nur Owner |
+| `find_shareable_user(query)` | Username oder E-Mail, exakter Treffer |
+| `share_custom_formation(...)` | Share anlegen, status → 'shared' |
+| `unshare_custom_formation(...)` | Share entfernen, status → 'private' falls leer |
+| `admin_list_custom_formations(...)` | Alle lesen (Admin-Gate) |
+| `admin_get_custom_formation(id)` | Einzeln lesen (Admin-Gate) |
+| `admin_promote_to_library(...)` | Kopie mit is_library=true |
+| `admin_delete_custom_formation(id)` | Löschen (Admin-Gate) |
+| `admin_update_custom_formation(...)` | Bearbeiten + Metadaten + Audit |
+
+**Definition of Done H0**
+- [ ] `profiles`: username, role, `profiles_username_lower_idx` ausgerollt
+- [ ] `custom_formations`, `formation_shares`, `app_config` + RLS + Indizes aktiv
+- [ ] `app_config`: Seed-Row `custom_formations_required_tier = null`
+- [ ] Alle RPCs deploybar, auth.uid()-Checks, Kategorie-/Name-Validierung
+- [ ] RLS-Test: User A kann Custom-Formation von User B nicht lesen (wenn nicht geteilt)
+- [ ] RLS-Test: Direkter INSERT auf `custom_formations` schlägt fehl
+- [ ] Library-Formation (is_library=true) ist für anon lesbar
+
+---
+
+### 3.1 Editor-Skeleton — Typen + Komponente (H1)
+
+Kann vor H0 begonnen werden (kein Backend nötig, localStorage-Basis).
+
+**Typen-Erweiterungen `src/types.ts`**
+```typescript
+export type FormationCategory =
+  | "start_ziel" | "basis" | "kurven" | "komplex"
+  | "individuell";                    // NEU
+
+export type CustomFormationStatus =
+  | "private" | "shared" | "submitted" | "library" | "rejected";
+
+export type CustomFormationDefinition = {
+  id: string;
+  ownerId: string | null;
+  ownerUsername?: string;
+  name: string;
+  description?: string;
+  category: FormationCategory;
+  status: CustomFormationStatus;
+  isLibrary: boolean;
+  pylonCount: number;
+  lichteBreite?: number;
+  durationSeconds?: number;
+  sourceFormationKey?: FormationKey;
+  sourceCustomFormationId?: string;
+  cones: ConePoint[];
+  arrows: PlacedArrow[];
+  defaultDirection?: DirectionMode;
+  createdAt: string;
+  updatedAt: string;
+};
+
+// PlacedFormation — Erweiterung (bestehende Felder bleiben)
+// key = "custom" für Custom-Formationen
+// customFormationId: UUID der Quelle (für Referenz/Updates)
+// customSnapshot: beim Platzieren eingefroren (cones + arrows + label)
+//   → Track bleibt self-contained auch wenn Quell-Formation gelöscht wird
+```
+
+**Neue Seiten / Komponenten**
+```
+src/
+  pages/
+    FormationEditorPage.tsx     ← WYSIWYG-Editor (lokal & cloud)
+    AdminFormationsPage.tsx     ← /admin/formations
+
+  components/
+    formation-editor/
+      FormationEditorCanvas.tsx ← Cone/Pfeil-Editing, Rule-Overlays
+      FormationMetaPanel.tsx    ← Name, Pylonenzahl, Dauer, lichte Breite
+      GatePairTool.tsx          ← Tor-Paar markieren → lichte Breite live
+      BasisAuswahl.tsx          ← leer / Standard / Custom duplizieren
+    admin/
+      AdminGuard.tsx            ← wie AuthGuard, prüft role='admin'
+
+  hooks/
+    useCustomFormations.ts      ← TanStack Query: eigene + geteilte + Library
+    useFeatureGate.ts           ← reads app_config, profile.tier
+    useFormationEditor.ts       ← Reducer für Cone/Pfeil-State, Undo/Redo
+
+  lib/
+    api/
+      customFormations.ts       ← RPC-Wrapper (analog tracks.ts)
+    validation/
+      customFormation.ts        ← Live-Checks: cone_too_close, Tor-Breite
+```
+
+**Rule-Overlays** (referenzieren Konstanten aus `formations/common.ts`):
+- `PYLON_GAP` (0,5 m) → Mindestabstand Kante-zu-Kante, reuse `validation/geometry.ts`-Logik
+- `TASK_LANE_WIDTH` (1,65 m) → Tor-Breite nach Markierung von Tor-Paar, live-Anzeige
+
+**formationRegistry.ts — Erweiterung**
+```typescript
+// getFormation() erhält optionalen zweiten Parameter für Custom-Formationen:
+// wenn key === "custom" → gibt FormationDefinition aus PlacedFormation.customSnapshot
+export function resolveFormation(
+  pf: PlacedFormation,
+  customMap?: Map<string, CustomFormationDefinition>
+): FormationDefinition { ... }
+```
+
+**Definition of Done H1**
+- [ ] `FormationCategory` um `"individuell"` erweitert, kein Typ-Fehler in bestehendem Code
+- [ ] `PlacedFormation` um `customFormationId?` und `customSnapshot?` erweitert
+- [ ] `FormationEditorCanvas`: stehende/liegende/Sensor-Pylone platzieren, verschieben, löschen, rotieren
+- [ ] Pfeil-Tool im Editor (formation-lokale PlacedArrow)
+- [ ] `GatePairTool`: zwei Pylone markieren, lichte Breite live berechnen und anzeigen
+- [ ] `FormationMetaPanel`: Name (Pflicht), Pylonenzahl (auto), Dauer, lichte Breite
+- [ ] Rule-Overlays: Warnung wenn Pylon-Abstand < 0,5 m / Tor-Breite < 1,65 m
+- [ ] `BasisAuswahl`: leer starten, Standard-Formation duplizieren
+- [ ] Editor lokal speicherbar (localStorage) ohne Backend
+- [ ] Gast-Zugriff auf Palette-Gruppe "Individuell" (Library-Formationen) vorbereitet
+
+---
+
+### 3.2 Cloud-Anbindung + Feature-Gate (H2)
+
+**Voraussetzung:** H0 + H1
+
+```typescript
+// src/hooks/useFeatureGate.ts
+export function useFeatureGate(feature: 'custom_formations') {
+  // Liest app_config-Row via SELECT (public read, RLS erlaubt)
+  // + profile.tier aus useAuthStore
+  // gibt { allowed: boolean; requiredTier: string | null } zurück
+  // Heute: requiredTier = null → allowed = true für alle eingeloggten User
+}
+```
+
+**`src/lib/api/customFormations.ts`** — analog `tracks.ts`:
+alle Schreiboperationen via `.rpc(...)`, Error-Mapping für
+`premium_required`, `track_limit_reached`, `too_many_cones`, `invalid_name`, etc.
+
+**Definition of Done H2**
+- [ ] `useFeatureGate('custom_formations')`: allowed=true bei null-Gate
+- [ ] Erstellen/Speichern/Löschen via RPCs, keine direkten `.insert()`/`.update()`
+- [ ] `create_custom_formation`: Premium-Gate schlägt fehl wenn Gate aktiv + Tier zu niedrig
+- [ ] "Meine Hindernisse"-Sektion im Dashboard zeigt eigene Custom-Formationen
+- [ ] `BasisAuswahl` ergänzt: eigene Custom-Formation duplizieren
+- [ ] Autosave im FormationEditorPage (analog Editor-Autosave aus 1.12)
+
+---
+
+### 3.3 Sharing (H3)
+
+**Voraussetzung:** H2
+
+**Username-Onboarding** (in `AuthCallbackPage.tsx` oder separatem Guard):
+```typescript
+// Nach Login: falls profiles.username IS NULL → Redirect auf /onboarding/username
+// Pflicht-Dialog mit Validierung: 3-24 Zeichen, [a-z0-9_-], lowercase normalisiert
+```
+
+**Router-Erweiterungen**
+```
+/onboarding/username          ← Username-Pflichtdialog
+/formations/:id/share         ← Sharing-Verwaltung einer Formation
+```
+
+**Definition of Done H3**
+- [ ] Username-Onboarding: Dialog erscheint nach Login falls username fehlt, kann nicht übersprungen werden
+- [ ] `lower(username)`-Unique-Constraint verhindert Duplikate (inkl. case-Varianten)
+- [ ] Share-Dialog: Eingabe von Username oder E-Mail, `find_shareable_user` liefert Treffer
+- [ ] `share_custom_formation` / `unshare_custom_formation` funktionieren, status wechselt korrekt
+- [ ] Empfänger sieht Formation unter "Geteilt mit mir"
+- [ ] Permission `view`: Empfänger kann duplizieren, aber Original-RPC schlägt fehl
+- [ ] Permission `edit`: Empfänger kann `update_custom_formation` erfolgreich aufrufen
+
+---
+
+### 3.4 Admin (H4)
+
+**Voraussetzung:** H2
+
+```
+/admin/formations             ← AdminGuard (role='admin'), admin_list_custom_formations
+/admin/formations/:id         ← admin_get_custom_formation + FormationEditorCanvas
+```
+
+**Definition of Done H4**
+- [ ] `AdminGuard`: nicht-Admin-User werden zu `/dashboard` weitergeleitet
+- [ ] Admin-Rolle wird via separatem RPC serverseitig bestätigt (nicht aus Store übernommen)
+- [ ] `/admin/formations`: Tabelle mit Filter status/category, Paginierung
+- [ ] "In Bibliothek übernehmen": `admin_promote_to_library` erstellt Kopie, Original unberührt
+- [ ] "Löschen": `admin_delete_custom_formation`, Bestätigungs-Dialog
+- [ ] "Bearbeiten": öffnet FormationEditorCanvas im Admin-Kontext, speichert via `admin_update_custom_formation`
+- [ ] `admin_update_custom_formation`: pylon_count, lichte_breite, duration_seconds aktualisiert
+- [ ] Audit-Felder `edited_by_admin_id/_at` in DB gesetzt und in Admin-UI sichtbar
+
+---
+
+### 3.5 Library-Integration & Export-Robustheit (H5)
+
+**Voraussetzung:** H2 + H4
+
+**Definition of Done H5**
+- [ ] Palette "Individuell" zeigt Library-Formationen (is_library=true) auch für Gäste
+- [ ] `resolveFormation()` liest für `key="custom"` aus `customSnapshot` (kein Registry-Lookup)
+- [ ] Track mit Custom-Formation exportierbar als SVG/PDF ohne Fehler, auch wenn Quelle gelöscht
+- [ ] JSON-Import eines Tracks mit `customSnapshot` lädt korrekt
+- [ ] Account-Löschung: Library-Formationen behalten `owner_id=null`, Attribution "[gelöschter Nutzer]"
+- [ ] Nicht-Library Custom-Formationen des gelöschten Accounts werden bereinigt
+- [ ] Attribution-Anzeige in Palette: "Erstellt von <username>" / "[gelöschter Nutzer]"
 
 ---
 
@@ -1099,7 +1255,9 @@ corrections:
 
   - id: C8
     issue: "Lifecycle-E-Mails in Phase 1 zu früh ohne Datenschutz-/Abmeldeprüfung"
-    fix: "Phase 1: nur Logging. E-Mails erst Phase 2 nach Review und Abmeldemöglichkeit."
+    fix: "Revidiert v2.3: Lifecycle voll aktiv in Phase 1. Datenschutz stattdessen in
+          Impressum/Datenschutz Abschnitt 8 dokumentiert (Inaktivitätsregel, Hard Delete,
+          150/170/180-Tage-Stufen). Abmeldemöglichkeit: Account-Löschung via Settings."
 ```
 
 ---

@@ -12,6 +12,8 @@ dist-ssr/
 .env
 .env.local
 .env.*.local
+.env.prod
+.env.test
 
 # Logs
 logs/
@@ -35,9 +37,15 @@ pnpm-debug.log*
 .DS_Store
 .AppleDouble
 .LSOverride
+._*
 
 # Claude Code
 .claude/
 
 # TypeScript
 *.tsbuildinfo
+
+# Supabase (lokaler Docker-Stack)
+docker/supabase/volumes/
+docker/supabase/.env
+docker/supabase/.env.bak

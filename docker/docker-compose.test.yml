@@ -1,0 +1,23 @@
+# Security Smoke Test Runner
+#
+# ── Gegen Remote-Supabase (Prod / Staging) ────────────────────────────────────
+#   SUPABASE_URL=https://xxx.supabase.co \
+#   SUPABASE_ANON_KEY=<anon-key> \
+#   SUPABASE_SERVICE_ROLE_KEY=<service-role-key> \
+#   docker compose -f docker/docker-compose.test.yml up --build
+#
+# ── Gegen lokalen Dev-Stack ────────────────────────────────────────────────────
+#   Voraussetzung: lokaler Stack läuft (docker compose -f docker/docker-compose.dev.yml up -d)
+#   Schlüssel werden automatisch aus docker/supabase/.env gelesen:
+#
+#   sh docker/run-security-test-local.sh
+
+services:
+  security-test:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.test
+    environment:
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}

@@ -54,7 +54,7 @@ const PYLON_SIZE_M = 0.30;
 const PYLON_MIN_PX = 6;
 const RULER_SIZE = 28;
 const ARROW_COLOR = "#334155";
-const ARROW_SELECTED = "#0284c7";
+const ARROW_SELECTED = "var(--c-primary)";
 const ARROWHEAD_PX = 14;
 const ENDPOINT_R = 8;
 const CP_R = 6;
@@ -354,7 +354,7 @@ export default function TrackCanvas(props: TrackCanvasProps) {
             // Border-Priorität: Selektion > Fehler > Warnung > neutral
             let border = "1px dashed transparent";
             let bg = "transparent";
-            if (isSelected) { border = "2px dashed #0284c7"; bg = "rgba(14,165,233,0.05)"; }
+            if (isSelected) { border = "2px dashed var(--c-primary)"; bg = "var(--c-primary-sel)"; }
             else if (severity === "error") { border = "2px solid #ef4444"; bg = "rgba(239,68,68,0.05)"; }
             else if (severity === "warning") { border = "2px solid #f59e0b"; bg = "rgba(245,158,11,0.05)"; }
 

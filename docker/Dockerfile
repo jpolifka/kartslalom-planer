@@ -1,9 +1,12 @@
 # Stage 1: Build
 FROM node:20-alpine AS builder
 WORKDIR /app
+RUN npm install -g npm@11
 COPY package*.json ./
 RUN npm ci --ignore-scripts
 COPY . .
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_ANON_KEY
 RUN npm run build
 
 # Stage 2: Serve
