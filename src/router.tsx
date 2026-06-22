@@ -27,6 +27,9 @@ export default function AppRouter() {
       <Route path="/editor/new" element={<EditorPage />} />
       <Route path="/editor/:trackId" element={<EditorPage />} />
 
+      {/* Hindernis-Editor: ohne Login nutzbar, localStorage-Draft */}
+      <Route path="/formations/new" element={<FormationEditorPage />} />
+
       <Route element={<AuthGuard />}>
         <Route element={<AppShell />}>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
