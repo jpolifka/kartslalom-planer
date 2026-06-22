@@ -7,9 +7,9 @@ import { useNavigate } from "react-router-dom";
 import { useFormationEditor, type EditorSnap } from "../hooks/useFormationEditor";
 import FormationEditorCanvas, { type EditorTool } from "../components/formation-editor/FormationEditorCanvas";
 import FormationMetaPanel from "../components/formation-editor/FormationMetaPanel";
-import GatePairTool from "../components/formation-editor/GatePairTool";
 import BasisAuswahl from "../components/formation-editor/BasisAuswahl";
 import type { FormationCategory, FormationKey } from "../types";
+import { PYLON_FOOT_SIZE, TASK_LANE_WIDTH } from "../lib/formations/common";
 
 const DRAFT_KEY = "kartslalom-formation-draft";
 
@@ -38,7 +38,7 @@ const TOOL_LABELS: Record<EditorTool, string> = {
   lying: "Liegend",
   sensor: "Sensor",
   arrow: "Pfeil",
-  gatePair: "Tor",
+  gatePair: "Breite messen",
 };
 
 const TOOLS: EditorTool[] = ["select", "standing", "lying", "sensor", "arrow", "gatePair"];
@@ -48,11 +48,12 @@ const s: Record<string, React.CSSProperties> = {
   header: { display: "flex", alignItems: "center", gap: 12, padding: "0 16px", height: 52, background: "white", borderBottom: "1px solid #e5e7eb", flexShrink: 0 },
   title: { fontSize: 15, fontWeight: 700, color: "#111827", flex: 1 },
   body: { display: "flex", flex: 1, overflow: "hidden" },
-  left: { display: "flex", flexDirection: "column", flexShrink: 0 },
-  toolbar: { display: "flex", gap: 4, padding: "8px 12px", background: "white", borderBottom: "1px solid #e5e7eb", flexWrap: "wrap" as const },
+  left: { display: "flex", flexDirection: "column", flex: 1, minWidth: 0 },
+  toolbar: { display: "flex", gap: 4, padding: "8px 12px", background: "white", borderBottom: "1px solid #e5e7eb", flexWrap: "wrap" as const, alignItems: "center" },
   toolBtn: { padding: "5px 10px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 6, cursor: "pointer", background: "white" },
   toolBtnActive: { padding: "5px 10px", fontSize: 12, border: "1px solid #2563eb", borderRadius: 6, cursor: "pointer", background: "#eff6ff", color: "#2563eb", fontWeight: 600 },
   canvas: { padding: 16, flex: 1, overflow: "auto", display: "flex", alignItems: "flex-start", justifyContent: "center" },
+  legend: { padding: "4px 16px 8px", fontSize: 11, color: "#9ca3af", textAlign: "center" as const, flexShrink: 0, background: "white", borderTop: "1px solid #f3f4f6" },
   saveStatus: { fontSize: 12, color: "#9ca3af" },
   undoBtn: { padding: "5px 10px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 6, cursor: "pointer", background: "white" },
   headerBtn: { padding: "5px 12px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 6, cursor: "pointer", background: "white" },
@@ -67,7 +68,6 @@ export default function FormationEditorPage() {
   const [selectedConeIds, setSelectedConeIds] = useState<string[]>([]);
   const [selectedArrowId, setSelectedArrowId] = useState<string | null>(null);
   const [gatePairIds, setGatePairIds] = useState<[string, string] | null>(null);
-  const [gatePairActive, setGatePairActive] = useState(false);
   const [gatePairPending, setGatePairPending] = useState<string | null>(null);
 
   const [name, setName] = useState(draft?.name ?? "");
@@ -80,6 +80,17 @@ export default function FormationEditorPage() {
 
   const { cones, arrows, snap, dispatch, canUndo, canRedo } = useFormationEditor(draft?.snap);
 
+  // Auto-compute lichte Breite from gate pair cones whenever pair or positions change
+  useEffect(() => {
+    if (!gatePairIds) return;
+    const c0 = cones.find((c) => c.id === gatePairIds[0]);
+    const c1 = cones.find((c) => c.id === gatePairIds[1]);
+    if (c0 && c1) {
+      const lb = Math.sqrt((c0.x - c1.x) ** 2 + (c0.y - c1.y) ** 2) - PYLON_FOOT_SIZE;
+      setLichteBreite(Math.round(lb * 100) / 100);
+    }
+  }, [gatePairIds, cones]);
+
   const saveDraft = useCallback(() => {
     const data: DraftData = { snap, name, description, category, durationSeconds, lichteBreite, sourceFormationKey };
     localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
@@ -87,14 +98,12 @@ export default function FormationEditorPage() {
     setTimeout(() => setSaveStatus("idle"), 2000);
   }, [snap, name, description, category, durationSeconds, lichteBreite, sourceFormationKey]);
 
-  // Autosave on changes
   useEffect(() => {
     if (showBasis) return;
     const t = setTimeout(saveDraft, 800);
     return () => clearTimeout(t);
   }, [snap, name, description, category, durationSeconds, lichteBreite, saveDraft, showBasis]);
 
-  // Keyboard shortcuts
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -109,7 +118,6 @@ export default function FormationEditorPage() {
         setSelectedArrowId(null);
       } else if (e.key === "Escape") {
         setTool("select");
-        setGatePairActive(false);
         setGatePairPending(null);
       }
     }
@@ -129,23 +137,23 @@ export default function FormationEditorPage() {
     } else if (gatePairPending !== coneId) {
       setGatePairIds([gatePairPending, coneId]);
       setGatePairPending(null);
-      setGatePairActive(false);
       setTool("select");
     }
   }
 
-  function handleActivateGatePair() {
-    setTool("gatePair");
-    setGatePairActive(true);
-    setGatePairIds(null);
-    setGatePairPending(null);
-  }
-
-  function handleClearGatePair() {
-    setGatePairActive(false);
-    setGatePairIds(null);
-    setGatePairPending(null);
-    if (tool === "gatePair") setTool("select");
+  function handleToolClick(t: EditorTool) {
+    if (t === "gatePair") {
+      if (tool === "gatePair") {
+        setTool("select");
+        setGatePairPending(null);
+      } else {
+        setTool("gatePair");
+        setGatePairPending(null);
+      }
+    } else {
+      setTool(t);
+      setGatePairPending(null);
+    }
   }
 
   function handleRotateSelected(angleDeg: number) {
@@ -160,6 +168,7 @@ export default function FormationEditorPage() {
   }
 
   const displaySourceKey = sourceFormationKey ? ` (Basis: ${sourceFormationKey})` : "";
+  const lichteBreiteWarning = lichteBreite !== null && lichteBreite < TASK_LANE_WIDTH;
 
   return (
     <div style={s.page}>
@@ -183,25 +192,21 @@ export default function FormationEditorPage() {
               <button
                 key={t}
                 style={tool === t ? s.toolBtnActive : s.toolBtn}
-                onClick={() => { setTool(t); if (t !== "gatePair") { setGatePairActive(false); setGatePairPending(null); } }}
+                onClick={() => handleToolClick(t)}
                 title={TOOL_LABELS[t]}
               >
                 {TOOL_LABELS[t]}
               </button>
             ))}
             <div style={{ flex: 1 }} />
+            {tool === "gatePair" && (
+              <span style={{ fontSize: 11, color: "#2563eb", marginRight: 8 }}>
+                {!gatePairPending ? "→ 1. Pylone klicken" : "→ 2. Pylone klicken"}
+              </span>
+            )}
             <button style={{ ...s.undoBtn, opacity: canUndo ? 1 : 0.4 }} onClick={() => dispatch({ type: "UNDO" })} disabled={!canUndo}>↩ Undo</button>
             <button style={{ ...s.undoBtn, opacity: canRedo ? 1 : 0.4 }} onClick={() => dispatch({ type: "REDO" })} disabled={!canRedo}>↪ Redo</button>
           </div>
-
-          <GatePairTool
-            cones={cones}
-            gatePairIds={gatePairIds}
-            active={gatePairActive}
-            onActivate={handleActivateGatePair}
-            onClear={handleClearGatePair}
-            onApplyLichteBreite={setLichteBreite}
-          />
 
           <div style={s.canvas}>
             <FormationEditorCanvas
@@ -216,6 +221,19 @@ export default function FormationEditorPage() {
               onSelectArrow={setSelectedArrowId}
               onGatePairClick={handleGatePairClick}
             />
+          </div>
+
+          <div style={s.legend}>
+            <span style={{ color: "#f59e0b", letterSpacing: 2 }}>━ ━</span>
+            {" "}Pylone zu nah (&lt;&nbsp;0,8 m Abstand)
+            {lichteBreite !== null && (
+              <span style={{ marginLeft: 16 }}>
+                <span style={{ color: lichteBreiteWarning ? "#ef4444" : "#22c55e", letterSpacing: 2 }}>━ ━</span>
+                {" "}{lichteBreiteWarning
+                  ? `Lichte Breite ${lichteBreite.toFixed(2)} m — zu schmal (min. 1,65 m)`
+                  : `Lichte Breite ${lichteBreite.toFixed(2)} m ✓`}
+              </span>
+            )}
           </div>
         </div>
 

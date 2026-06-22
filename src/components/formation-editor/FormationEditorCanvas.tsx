@@ -109,7 +109,7 @@ export default function FormationEditorCanvas({
     }
   }
 
-  function handleConePointerDown(e: React.PointerEvent<SVGCircleElement | SVGRectElement>, cone: EditableCone) {
+  function handleConePointerDown(e: React.PointerEvent<SVGElement>, cone: EditableCone) {
     e.stopPropagation();
     if (tool === "gatePair") {
       onGatePairClick(cone.id);
@@ -297,15 +297,24 @@ export default function FormationEditorCanvas({
           const h = PYLON_FOOT_SIZE * SCALE * 1.8;
           const angle = cone.angleDeg ?? 0;
           return (
-            <rect
+            <g
               key={cone.id}
-              x={cx - w / 2} y={cy - h / 2}
-              width={w} height={h}
-              fill={fillColor} stroke={strokeColor} strokeWidth={strokeW} rx={2}
               transform={`rotate(${angle}, ${cx}, ${cy})`}
               style={{ cursor: tool === "select" ? "move" : "crosshair" }}
               onPointerDown={(e) => handleConePointerDown(e, cone)}
-            />
+            >
+              <rect
+                x={cx - w / 2} y={cy - h / 2}
+                width={w} height={h}
+                fill={fillColor} stroke={strokeColor} strokeWidth={strokeW} rx={2}
+              />
+              {/* Small triangle at "front" end to show orientation */}
+              <polygon
+                points={`${cx},${cy - h / 2 - 5} ${cx - 4},${cy - h / 2 + 1} ${cx + 4},${cy - h / 2 + 1}`}
+                fill={strokeColor}
+                pointerEvents="none"
+              />
+            </g>
           );
         }
 
