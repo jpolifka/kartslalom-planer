@@ -268,7 +268,6 @@ export default function FormationEditorCanvas({
   let rotHandleX = 0, rotHandleY = 0;
   if (selectedLyingCone) {
     const cx = selectedLyingCone.x * S, cy = selectedLyingCone.y * S;
-    const w = PYLON_FOOT_SIZE * S * 0.6;
     const h = PYLON_FOOT_SIZE * S * 1.8;
     const tri = Math.max(3, h * 0.25);
     const handleDist = h / 2 + tri + 12;
