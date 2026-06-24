@@ -93,24 +93,27 @@ export default function FormationEditorCanvas({
     };
   }
 
-  /** Magnetic snap: pull cone to 0.5m or 1.65m lichte Breite from nearest cone */
-  function applySnap(mx: number, my: number, movingId: string) {
-    let best: { x: number; y: number } | null = null;
+  /** Magnetic snap: pull cone to 0.5m or 1.65m lichte Breite from nearest cone.
+   *  Returns snapped position + optional indicator for rendering. */
+  function applySnap(mx: number, my: number, movingId: string): { x: number; y: number; indicator: SnapIndicator | null } {
+    let bestPos: { x: number; y: number } | null = null;
+    let bestIndicator: SnapIndicator | null = null;
     let bestDiff = SNAP_THRESHOLD;
     for (const c of cones) {
       if (c.id === movingId) continue;
       const d = dist(mx, my, c.x, c.y);
       if (d < 0.001) continue;
-      for (const sd of SNAP_CENTERS) {
+      for (const [sd, label] of SNAP_CENTERS) {
         const diff = Math.abs(d - sd);
         if (diff < bestDiff) {
           bestDiff = diff;
           const ratio = sd / d;
-          best = { x: c.x + (mx - c.x) * ratio, y: c.y + (my - c.y) * ratio };
+          bestPos = { x: c.x + (mx - c.x) * ratio, y: c.y + (my - c.y) * ratio };
+          bestIndicator = { x1: c.x, y1: c.y, x2: bestPos.x, y2: bestPos.y, label };
         }
       }
     }
-    return best ?? { x: mx, y: my };
+    return { x: bestPos?.x ?? mx, y: bestPos?.y ?? my, indicator: bestIndicator };
   }
 
   function handleBgPointerDown(e: React.PointerEvent<SVGRectElement>) {
