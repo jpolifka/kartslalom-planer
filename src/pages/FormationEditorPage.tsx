@@ -113,7 +113,12 @@ export default function FormationEditorPage() {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "a") {
+        e.preventDefault();
+        setTool("select");
+        setSelectedConeIds(cones.map((c) => c.id));
+        setSelectedArrowId(null);
+      } else if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) {
         dispatch({ type: "UNDO" });
       } else if ((e.metaKey || e.ctrlKey) && (e.key === "y" || (e.key === "z" && e.shiftKey))) {
         dispatch({ type: "REDO" });
@@ -125,11 +130,12 @@ export default function FormationEditorPage() {
       } else if (e.key === "Escape") {
         setTool("select");
         setGatePairPending(null);
+        setSelectedConeIds([]);
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [dispatch, selectedConeIds, selectedArrowId]);
+  }, [dispatch, selectedConeIds, selectedArrowId, cones]);
 
   function handleBasisConfirm(initialSnap: EditorSnap, sourceKey?: FormationKey) {
     dispatch({ type: "RESET", snap: initialSnap });
