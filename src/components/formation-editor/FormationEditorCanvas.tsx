@@ -5,7 +5,7 @@
 import { useRef, useState } from "react";
 import type { PlacedArrow } from "../../types";
 import type { EditableCone, EditorAction } from "../../hooks/useFormationEditor";
-import { PYLON_FOOT_SIZE, PYLON_SPACING } from "../../lib/formations/common";
+import { PYLON_FOOT_SIZE, PYLON_HEIGHT, PYLON_SPACING } from "../../lib/formations/common";
 
 export type EditorTool = "select" | "standing" | "lying" | "sensor" | "arrow" | "gatePair";
 
