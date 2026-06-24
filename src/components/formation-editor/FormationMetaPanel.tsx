@@ -140,7 +140,7 @@ export default function FormationMetaPanel({
             {selectedCone.kind === "standing" ? "Stehend" : selectedCone.kind === "lying" ? "Liegend" : "Sensor"}
             {" "}({selectedCone.x.toFixed(2)} m / {selectedCone.y.toFixed(2)} m)
           </div>
-          {selectedCone.kind === "lying" && (
+          {(selectedCone.kind === "lying" || selectedCone.kind === "standing") && (
             <div>
               <label style={s.label}>Winkel (°) — oder gelben Griff ziehen</label>
               <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 6 }}>
