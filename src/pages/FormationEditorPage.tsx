@@ -5,11 +5,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useFormationEditor, type EditorSnap } from "../hooks/useFormationEditor";
-import FormationEditorCanvas, { type EditorTool } from "../components/formation-editor/FormationEditorCanvas";
+import FormationEditorCanvas, { type EditorTool, type MeasurementLine } from "../components/formation-editor/FormationEditorCanvas";
 import FormationMetaPanel from "../components/formation-editor/FormationMetaPanel";
 import BasisAuswahl from "../components/formation-editor/BasisAuswahl";
 import type { FormationCategory, FormationKey } from "../types";
-import { PYLON_FOOT_SIZE, TASK_LANE_WIDTH } from "../lib/formations/common";
+import { TASK_LANE_WIDTH } from "../lib/formations/common";
 
 const DRAFT_KEY = "kartslalom-formation-draft";
 
@@ -67,8 +67,8 @@ export default function FormationEditorPage() {
   const [tool, setTool] = useState<EditorTool>("select");
   const [selectedConeIds, setSelectedConeIds] = useState<string[]>([]);
   const [selectedArrowId, setSelectedArrowId] = useState<string | null>(null);
-  const [gatePairIds, setGatePairIds] = useState<[string, string] | null>(null);
-  const [gatePairPending, setGatePairPending] = useState<string | null>(null);
+  const [measurements, setMeasurements] = useState<MeasurementLine[]>([]);
+  const [selectedMeasurementId, setSelectedMeasurementId] = useState<string | null>(null);
 
   const [name, setName] = useState(draft?.name ?? "");
   const [description, setDescription] = useState(draft?.description ?? "");
@@ -85,17 +85,6 @@ export default function FormationEditorPage() {
   const canZoomOut = zoomIdx < ZOOM_STEPS.length - 1;
 
   const { cones, arrows, snap, dispatch, canUndo, canRedo } = useFormationEditor(draft?.snap);
-
-  // Auto-compute lichte Breite from gate pair cones whenever pair or positions change
-  useEffect(() => {
-    if (!gatePairIds) return;
-    const c0 = cones.find((c) => c.id === gatePairIds[0]);
-    const c1 = cones.find((c) => c.id === gatePairIds[1]);
-    if (c0 && c1) {
-      const lb = Math.sqrt((c0.x - c1.x) ** 2 + (c0.y - c1.y) ** 2) - PYLON_FOOT_SIZE;
-      setLichteBreite(Math.round(lb * 100) / 100);
-    }
-  }, [gatePairIds, cones]);
 
   const saveDraft = useCallback(() => {
     const data: DraftData = { snap, name, description, category, durationSeconds, lichteBreite, sourceFormationKey };
@@ -125,17 +114,19 @@ export default function FormationEditorPage() {
       } else if (e.key === "Delete" || e.key === "Backspace") {
         if (selectedConeIds.length) dispatch({ type: "DELETE_CONES", ids: selectedConeIds });
         if (selectedArrowId) dispatch({ type: "DELETE_ARROW", id: selectedArrowId });
+        if (selectedMeasurementId) setMeasurements((ms) => ms.filter((m) => m.id !== selectedMeasurementId));
         setSelectedConeIds([]);
         setSelectedArrowId(null);
+        setSelectedMeasurementId(null);
       } else if (e.key === "Escape") {
         setTool("select");
-        setGatePairPending(null);
         setSelectedConeIds([]);
+        setSelectedMeasurementId(null);
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [dispatch, selectedConeIds, selectedArrowId, cones]);
+  }, [dispatch, selectedConeIds, selectedArrowId, selectedMeasurementId, cones]);
 
   function handleBasisConfirm(initialSnap: EditorSnap, sourceKey?: FormationKey) {
     dispatch({ type: "RESET", snap: initialSnap });
@@ -143,29 +134,8 @@ export default function FormationEditorPage() {
     setShowBasis(false);
   }
 
-  function handleGatePairClick(coneId: string) {
-    if (!gatePairPending) {
-      setGatePairPending(coneId);
-    } else if (gatePairPending !== coneId) {
-      setGatePairIds([gatePairPending, coneId]);
-      setGatePairPending(null);
-      setTool("select");
-    }
-  }
-
   function handleToolClick(t: EditorTool) {
-    if (t === "gatePair") {
-      if (tool === "gatePair") {
-        setTool("select");
-        setGatePairPending(null);
-      } else {
-        setTool("gatePair");
-        setGatePairPending(null);
-      }
-    } else {
-      setTool(t);
-      setGatePairPending(null);
-    }
+    setTool(tool === t && t === "gatePair" ? "select" : t);
   }
 
   function handleRotateSelected(angleDeg: number) {
@@ -179,6 +149,12 @@ export default function FormationEditorPage() {
     setSelectedConeIds([]);
   }
 
+  // Selected measurement distance for legend
+  const selectedMeasurement = measurements.find((m) => m.id === selectedMeasurementId);
+  const selDist = selectedMeasurement
+    ? Math.sqrt((selectedMeasurement.x2 - selectedMeasurement.x1) ** 2 + (selectedMeasurement.y2 - selectedMeasurement.y1) ** 2)
+    : null;
+
   const displaySourceKey = sourceFormationKey ? ` (Basis: ${sourceFormationKey})` : "";
   const lichteBreiteWarning = lichteBreite !== null && lichteBreite < TASK_LANE_WIDTH;
 
@@ -188,12 +164,8 @@ export default function FormationEditorPage() {
 
       <header style={s.header}>
         <button style={s.headerBtn} onClick={() => navigate(-1)}>← Zurück</button>
-        <span style={s.title}>
-          {name || "Neues Hindernis"}{displaySourceKey}
-        </span>
-        <span style={s.saveStatus}>
-          {saveStatus === "saved" ? "Gespeichert ✓" : ""}
-        </span>
+        <span style={s.title}>{name || "Neues Hindernis"}{displaySourceKey}</span>
+        <span style={s.saveStatus}>{saveStatus === "saved" ? "Gespeichert ✓" : ""}</span>
         <button style={s.headerBtn} onClick={saveDraft}>Speichern</button>
       </header>
 
@@ -213,7 +185,7 @@ export default function FormationEditorPage() {
             <div style={{ flex: 1 }} />
             {tool === "gatePair" && (
               <span style={{ fontSize: 11, color: "#2563eb", marginRight: 8 }}>
-                {!gatePairPending ? "→ 1. Pylone klicken" : "→ 2. Pylone klicken"}
+                → Ziehen zum Messen
               </span>
             )}
             <button style={{ ...s.undoBtn, opacity: canUndo ? 1 : 0.4 }} onClick={() => dispatch({ type: "UNDO" })} disabled={!canUndo}>↩ Undo</button>
@@ -228,27 +200,52 @@ export default function FormationEditorPage() {
             <FormationEditorCanvas
               cones={cones}
               arrows={arrows}
+              measurements={measurements}
               selectedConeIds={selectedConeIds}
               selectedArrowId={selectedArrowId}
+              selectedMeasurementId={selectedMeasurementId}
               tool={tool}
-              gatePairIds={gatePairIds}
               visibleM={visibleM}
               dispatch={dispatch}
               onSelectCones={setSelectedConeIds}
               onSelectArrow={setSelectedArrowId}
-              onGatePairClick={handleGatePairClick}
+              onSelectMeasurement={setSelectedMeasurementId}
+              onAddMeasurement={(m) => setMeasurements((ms) => [...ms, m])}
+              onGatePairClick={() => {}}
             />
           </div>
 
           <div style={s.legend}>
             <span style={{ color: "#f59e0b", letterSpacing: 2 }}>━ ━</span>
-            {" "}Pylone zu nah (&lt;&nbsp;0,8 m Abstand)
+            {" "}Pylone zu nah (&lt;&nbsp;0,8 m)
+            {selDist !== null ? (
+              <span style={{ marginLeft: 16, color: "#3b82f6" }}>
+                Maßlinie: <strong>{selDist.toFixed(2)} m</strong>
+                {selDist < TASK_LANE_WIDTH ? " ⚠ zu schmal" : ""}
+                <button
+                  style={{ marginLeft: 8, fontSize: 11, padding: "1px 6px", border: "1px solid #93c5fd", borderRadius: 4, cursor: "pointer", background: "white", color: "#2563eb" }}
+                  onClick={() => setLichteBreite(Math.round(selDist * 100) / 100)}
+                >
+                  → Lichte Breite
+                </button>
+                <button
+                  style={{ marginLeft: 4, fontSize: 11, padding: "1px 6px", border: "1px solid #fca5a5", borderRadius: 4, cursor: "pointer", background: "white", color: "#dc2626" }}
+                  onClick={() => { setMeasurements((ms) => ms.filter((m) => m.id !== selectedMeasurementId)); setSelectedMeasurementId(null); }}
+                >
+                  Löschen
+                </button>
+              </span>
+            ) : measurements.length > 0 ? (
+              <span style={{ marginLeft: 12, color: "#3b82f6" }}>
+                {measurements.length} Maßlinie{measurements.length > 1 ? "n" : ""} — klicken zum Auswählen
+              </span>
+            ) : null}
             {lichteBreite !== null && (
               <span style={{ marginLeft: 16 }}>
-                <span style={{ color: lichteBreiteWarning ? "#ef4444" : "#22c55e", letterSpacing: 2 }}>━ ━</span>
-                {" "}{lichteBreiteWarning
-                  ? `Lichte Breite ${lichteBreite.toFixed(2)} m — zu schmal (min. 1,65 m)`
-                  : `Lichte Breite ${lichteBreite.toFixed(2)} m ✓`}
+                | Lichte Breite:{" "}
+                <span style={{ color: lichteBreiteWarning ? "#ef4444" : "#22c55e", fontWeight: 600 }}>
+                  {lichteBreite.toFixed(2)} m{lichteBreiteWarning ? " ⚠" : " ✓"}
+                </span>
               </span>
             )}
           </div>
