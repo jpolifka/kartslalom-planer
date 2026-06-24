@@ -324,27 +324,19 @@ export default function FormationEditorCanvas({
         const sw = sel ? 2.5 : 1.5;
 
         if (cone.kind === "lying") {
-          // Real Leitkegel lying on its side: trapezoid, wide at base, narrow at tip
-          const baseW = Math.max(6, PYLON_FOOT_SIZE * S);          // base width (≈ full diameter)
-          const tipW  = Math.max(2, baseW * 0.18);                  // tip width
-          const h     = Math.max(16, PYLON_FOOT_SIZE * S * 2.2);   // length (cone height)
+          // Leitkegel lying on its side: rectangle = foot width × pylon height
+          const w = Math.max(4, PYLON_FOOT_SIZE * S);
+          const h = Math.max(8, PYLON_HEIGHT * S);
           const angle = cone.angleDeg ?? 0;
-          // Tip is "up" (front), base is "down" — polygon in unrotated coords
-          const pts = [
-            `${cx - tipW / 2},${cy - h / 2}`,
-            `${cx + tipW / 2},${cy - h / 2}`,
-            `${cx + baseW / 2},${cy + h / 2}`,
-            `${cx - baseW / 2},${cy + h / 2}`,
-          ].join(" ");
-          // Small direction tick near tip
-          const tickY = cy - h / 2 + h * 0.18;
           return (
             <g key={cone.id} transform={`rotate(${angle}, ${cx}, ${cy})`}
               style={{ cursor: tool === "select" ? "move" : "crosshair" }}
               onPointerDown={(e) => handleConePointerDown(e, cone)}>
-              <polygon points={pts} fill={fill} stroke={stroke} strokeWidth={sw} />
-              <line x1={cx - tipW * 0.8} y1={tickY} x2={cx + tipW * 0.8} y2={tickY}
-                stroke={stroke} strokeWidth={1} opacity={0.6} pointerEvents="none" />
+              <rect x={cx - w / 2} y={cy - h / 2} width={w} height={h}
+                fill={fill} stroke={stroke} strokeWidth={sw} rx={1} />
+              {/* Small tick near the "top" end to show direction */}
+              <line x1={cx - w * 0.4} y1={cy - h * 0.35} x2={cx + w * 0.4} y2={cy - h * 0.35}
+                stroke={stroke} strokeWidth={1} opacity={0.7} pointerEvents="none" />
             </g>
           );
         }
