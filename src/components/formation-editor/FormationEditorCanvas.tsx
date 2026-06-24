@@ -118,10 +118,30 @@ export default function FormationEditorCanvas({
     return { x: bestPos?.x ?? mx, y: bestPos?.y ?? my, indicator: bestIndicator };
   }
 
+  /** Positions of pylons spaced at PYLON_SPACING along a drag line. */
+  function computeLinePylons(sx: number, sy: number, ex: number, ey: number) {
+    const dx = ex - sx, dy = ey - sy;
+    const d = Math.sqrt(dx * dx + dy * dy);
+    if (d < 0.001) return [{ x: sx, y: sy, angleDeg: 0 }];
+    const ux = dx / d, uy = dy / d;
+    const angleDeg = Math.round(((Math.atan2(ux, -uy) * 180 / Math.PI) % 360 + 360) % 360);
+    const count = Math.max(1, Math.floor(d / PYLON_SPACING) + 1);
+    return Array.from({ length: count }, (_, i) => ({
+      x: sx + ux * PYLON_SPACING * i,
+      y: sy + uy * PYLON_SPACING * i,
+      angleDeg,
+    }));
+  }
+
   function handleBgPointerDown(e: React.PointerEvent<SVGRectElement>) {
     const pos = toMeters(e.clientX, e.clientY);
     if (tool === "standing" || tool === "lying" || tool === "sensor") {
-      dispatch({ type: "ADD_CONE", cone: { id: crypto.randomUUID(), x: pos.x, y: pos.y, kind: tool } });
+      if (e.shiftKey) {
+        setPylonLine({ startX: pos.x, startY: pos.y, curX: pos.x, curY: pos.y });
+        (e.target as SVGElement).setPointerCapture(e.pointerId);
+      } else {
+        dispatch({ type: "ADD_CONE", cone: { id: crypto.randomUUID(), x: pos.x, y: pos.y, kind: tool } });
+      }
       return;
     }
     if (tool === "arrow") {
