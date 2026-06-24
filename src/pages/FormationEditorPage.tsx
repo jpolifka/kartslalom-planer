@@ -212,6 +212,10 @@ export default function FormationEditorPage() {
             )}
             <button style={{ ...s.undoBtn, opacity: canUndo ? 1 : 0.4 }} onClick={() => dispatch({ type: "UNDO" })} disabled={!canUndo}>↩ Undo</button>
             <button style={{ ...s.undoBtn, opacity: canRedo ? 1 : 0.4 }} onClick={() => dispatch({ type: "REDO" })} disabled={!canRedo}>↪ Redo</button>
+            <div style={{ width: 1, background: "#e5e7eb", margin: "0 4px", alignSelf: "stretch" }} />
+            <button style={{ ...s.undoBtn, opacity: canZoomIn ? 1 : 0.4 }} onClick={() => setVisibleM(ZOOM_STEPS[zoomIdx - 1])} disabled={!canZoomIn} title="Rein-zoomen">＋</button>
+            <span style={{ fontSize: 11, color: "#6b7280", minWidth: 38, textAlign: "center" }}>{visibleM} m</span>
+            <button style={{ ...s.undoBtn, opacity: canZoomOut ? 1 : 0.4 }} onClick={() => setVisibleM(ZOOM_STEPS[zoomIdx + 1])} disabled={!canZoomOut} title="Raus-zoomen">－</button>
           </div>
 
           <div style={s.canvas}>
