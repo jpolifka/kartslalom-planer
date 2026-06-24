@@ -211,6 +211,7 @@ export default function FormationEditorCanvas({
     setDrag(null);
     setArrowDragCp(null);
     setRotDrag(null);
+    setSnapIndicator(null);
   }
 
   function handleCpPointerDown(e: React.PointerEvent<SVGCircleElement>, arrow: PlacedArrow) {
