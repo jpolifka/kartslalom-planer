@@ -376,8 +376,44 @@ export default function FormationEditorCanvas({
       {measurements.map((m) => renderMeasurement(m))}
       {measureDraw && renderMeasurement({ id: "_preview", x1: measureDraw.startX, y1: measureDraw.startY, x2: measureDraw.curX, y2: measureDraw.curY }, true)}
 
+      {/* Pylon-line preview (Shift+drag in placement mode) */}
+      {pylonLine && (tool === "standing" || tool === "lying" || tool === "sensor") && (() => {
+        const positions = computeLinePylons(pylonLine.startX, pylonLine.startY, pylonLine.curX, pylonLine.curY);
+        const fill = CONE_COLORS[tool];
+        const sq = Math.max(4, PYLON_FOOT_SIZE * S);
+        const baseW = Math.max(6, PYLON_FOOT_SIZE * S);
+        const tipW  = Math.max(2, 0.05 * S);
+        const h     = Math.max(8, PYLON_HEIGHT * S);
+        const fs    = Math.max(10, S * 0.18);
+        const lastPt = positions[positions.length - 1];
+        return (
+          <g pointerEvents="none">
+            <line
+              x1={pylonLine.startX * S} y1={pylonLine.startY * S}
+              x2={pylonLine.curX * S}  y2={pylonLine.curY * S}
+              stroke={fill} strokeWidth={1} strokeDasharray="4 3" opacity={0.4} />
+            {positions.map((p, i) => {
+              const cx = p.x * S, cy = p.y * S;
+              if (tool === "lying") {
+                const pts = [`${cx-tipW/2},${cy-h/2}`,`${cx+tipW/2},${cy-h/2}`,`${cx+baseW/2},${cy+h/2}`,`${cx-baseW/2},${cy+h/2}`].join(" ");
+                return <polygon key={i} transform={`rotate(${p.angleDeg},${cx},${cy})`} points={pts} fill={fill} opacity={0.4} />;
+              }
+              if (tool === "sensor") {
+                const sr = Math.max(4, (PYLON_FOOT_SIZE / 2) * S);
+                return <circle key={i} cx={cx} cy={cy} r={sr} fill="transparent" stroke={fill} strokeWidth={1.5} strokeDasharray="3 2" opacity={0.5} />;
+              }
+              return <rect key={i} x={cx-sq/2} y={cy-sq/2} width={sq} height={sq} fill={fill} opacity={0.4} rx={Math.max(2, sq*0.2)} />;
+            })}
+            <rect x={lastPt.x*S - fs*1.6} y={lastPt.y*S - h/2 - fs*1.8} width={fs*3.2} height={fs*1.4} fill="white" opacity={0.85} rx={3} />
+            <text x={lastPt.x*S} y={lastPt.y*S - h/2 - fs*0.6} textAnchor="middle" fontSize={fs} fill={fill} fontWeight="700">
+              {positions.length}×
+            </text>
+          </g>
+        );
+      })()}
+
       {/* Ghost pylon preview in placement mode */}
-      {cursorPos && (tool === "standing" || tool === "lying" || tool === "sensor") && (() => {
+      {!pylonLine && cursorPos && (tool === "standing" || tool === "lying" || tool === "sensor") && (() => {
         const cx = cursorPos.x * S, cy = cursorPos.y * S;
         const fill = CONE_COLORS[tool];
         if (tool === "lying") {
