@@ -213,8 +213,10 @@ export default function FormationEditorCanvas({
     onSelectArrow(null);
     onSelectMeasurement(null);
     dispatch({ type: "CHECKPOINT" });
+    dragRef.current = { id: cone.id };
     setDrag({ id: cone.id });
-    (e.target as SVGElement).setPointerCapture(e.pointerId);
+    // Use currentTarget (the <g> or <circle> with the handler), not target (inner child element)
+    (e.currentTarget as SVGElement).setPointerCapture(e.pointerId);
   }
 
   function handleSvgPointerMove(e: React.PointerEvent<SVGSVGElement>) {
