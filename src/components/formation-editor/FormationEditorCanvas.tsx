@@ -60,7 +60,6 @@ export default function FormationEditorCanvas({
   onSelectCones, onSelectArrow, onSelectMeasurement, onAddMeasurement,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const [drag, setDrag] = useState<{ id: string } | null>(null);
   const dragRef = useRef<{ id: string } | null>(null);
   const [arrowDraw, setArrowDraw] = useState<LineDraw | null>(null);
   const [measureDraw, setMeasureDraw] = useState<LineDraw | null>(null);
@@ -214,7 +213,6 @@ export default function FormationEditorCanvas({
     onSelectMeasurement(null);
     dispatch({ type: "CHECKPOINT" });
     dragRef.current = { id: cone.id };
-    setDrag({ id: cone.id });
     // Use currentTarget (the <g> or <circle> with the handler), not target (inner child element)
     (e.currentTarget as SVGElement).setPointerCapture(e.pointerId);
   }
