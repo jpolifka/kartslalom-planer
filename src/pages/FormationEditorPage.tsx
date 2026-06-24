@@ -77,6 +77,12 @@ export default function FormationEditorPage() {
   const [lichteBreite, setLichteBreite] = useState<number | null>(draft?.lichteBreite ?? null);
   const [sourceFormationKey, setSourceFormationKey] = useState<FormationKey | undefined>(draft?.sourceFormationKey);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saved">("idle");
+  const [visibleM, setVisibleM] = useState(10);
+
+  const ZOOM_STEPS = [5, 8, 10, 12, 15, 20, 30];
+  const zoomIdx = ZOOM_STEPS.indexOf(visibleM);
+  const canZoomIn = zoomIdx > 0;
+  const canZoomOut = zoomIdx < ZOOM_STEPS.length - 1;
 
   const { cones, arrows, snap, dispatch, canUndo, canRedo } = useFormationEditor(draft?.snap);
 
