@@ -153,8 +153,10 @@ export default function FormationEditorCanvas({
 
   function handleSvgPointerMoveForCp(e: React.PointerEvent<SVGSVGElement>) {
     if (!arrowDragCp) return;
-    const dx = (e.clientX - arrowDragCp.ox) / SCALE;
-    const dy = (e.clientY - arrowDragCp.oy) / SCALE;
+    const r = svgRef.current!.getBoundingClientRect();
+    const actualScale = r.width / CANVAS_M;
+    const dx = (e.clientX - arrowDragCp.ox) / actualScale;
+    const dy = (e.clientY - arrowDragCp.oy) / actualScale;
     dispatch({ type: "MOVE_ARROW_CP", id: arrowDragCp.id, dx, dy });
     setArrowDragCp({ ...arrowDragCp, ox: e.clientX, oy: e.clientY });
   }
