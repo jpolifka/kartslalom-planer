@@ -61,8 +61,8 @@ export default function FormationEditorCanvas({
   function toMeters(clientX: number, clientY: number) {
     const r = svgRef.current!.getBoundingClientRect();
     return {
-      x: Math.max(0, Math.min(CANVAS_M, (clientX - r.left) / SCALE)),
-      y: Math.max(0, Math.min(CANVAS_M, (clientY - r.top) / SCALE)),
+      x: Math.max(0, Math.min(CANVAS_M, ((clientX - r.left) / r.width) * CANVAS_M)),
+      y: Math.max(0, Math.min(CANVAS_M, ((clientY - r.top) / r.height) * CANVAS_M)),
     };
   }
 
