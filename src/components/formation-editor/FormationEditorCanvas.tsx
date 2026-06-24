@@ -247,6 +247,7 @@ export default function FormationEditorCanvas({
   }
 
   function handleSvgPointerUp() {
+    dragRef.current = null;
     setDrag(null);
     setArrowDragCp(null);
     setRotDrag(null);
