@@ -226,6 +226,7 @@ export default function FormationEditorPage() {
               selectedArrowId={selectedArrowId}
               tool={tool}
               gatePairIds={gatePairIds}
+              visibleM={visibleM}
               dispatch={dispatch}
               onSelectCones={setSelectedConeIds}
               onSelectArrow={setSelectedArrowId}
