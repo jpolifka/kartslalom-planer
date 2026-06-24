@@ -301,6 +301,7 @@ export default function FormationEditorCanvas({
       style={{ display: "block", width: "100%", maxHeight: "100%", aspectRatio: "1", cursor: tool === "select" ? "default" : "crosshair", userSelect: "none" }}
       onPointerMove={handleSvgPointerMove}
       onPointerUp={handleSvgPointerUp}
+      onPointerLeave={() => setCursorPos(null)}
     >
       <rect width={CANVAS_PX} height={CANVAS_PX} fill={BG_COLOR} />
       {gridLines}
