@@ -163,10 +163,26 @@ export default function FormationEditorCanvas({
     const pos = toMeters(e.clientX, e.clientY);
     if (arrowDraw) setArrowDraw((p) => p ? { ...p, curX: pos.x, curY: pos.y } : null);
     if (measureDraw) setMeasureDraw((p) => p ? { ...p, curX: pos.x, curY: pos.y } : null);
+    if (pylonLine) setPylonLine((p) => p ? { ...p, curX: pos.x, curY: pos.y } : null);
   }
 
   function handleBgPointerUp(e: React.PointerEvent<SVGRectElement>) {
     const pos = toMeters(e.clientX, e.clientY);
+    if (pylonLine) {
+      const positions = computeLinePylons(pylonLine.startX, pylonLine.startY, pos.x, pos.y);
+      const kind = tool as "standing" | "lying" | "sensor";
+      positions.forEach(({ x, y, angleDeg }) => {
+        dispatch({
+          type: "ADD_CONE",
+          cone: {
+            id: crypto.randomUUID(), x, y, kind,
+            ...(kind === "lying" ? { angleDeg } : {}),
+          },
+        });
+      });
+      setPylonLine(null);
+      return;
+    }
     if (arrowDraw) {
       const { startX: sx, startY: sy } = arrowDraw;
       if (dist(sx, sy, pos.x, pos.y) > 0.1) {
