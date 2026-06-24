@@ -326,19 +326,22 @@ export default function FormationEditorCanvas({
         const sw = sel ? 2.5 : 1.5;
 
         if (cone.kind === "lying") {
-          // Leitkegel lying on its side: rectangle = foot width × pylon height
-          const w = Math.max(4, PYLON_FOOT_SIZE * S);
-          const h = Math.max(8, PYLON_HEIGHT * S);
+          // Leitkegel lying on its side: trapezoid — 30 cm base, ~5 cm tip, 50 cm long
+          const baseW = Math.max(6, PYLON_FOOT_SIZE * S);
+          const tipW  = Math.max(2, 0.05 * S);
+          const h     = Math.max(8, PYLON_HEIGHT * S);
           const angle = cone.angleDeg ?? 0;
+          const pts = [
+            `${cx - tipW / 2},${cy - h / 2}`,
+            `${cx + tipW / 2},${cy - h / 2}`,
+            `${cx + baseW / 2},${cy + h / 2}`,
+            `${cx - baseW / 2},${cy + h / 2}`,
+          ].join(" ");
           return (
             <g key={cone.id} transform={`rotate(${angle}, ${cx}, ${cy})`}
               style={{ cursor: tool === "select" ? "move" : "crosshair" }}
               onPointerDown={(e) => handleConePointerDown(e, cone)}>
-              <rect x={cx - w / 2} y={cy - h / 2} width={w} height={h}
-                fill={fill} stroke={stroke} strokeWidth={sw} rx={1} />
-              {/* Small tick near the "top" end to show direction */}
-              <line x1={cx - w * 0.4} y1={cy - h * 0.35} x2={cx + w * 0.4} y2={cy - h * 0.35}
-                stroke={stroke} strokeWidth={1} opacity={0.7} pointerEvents="none" />
+              <polygon points={pts} fill={fill} stroke={stroke} strokeWidth={sw} />
             </g>
           );
         }
@@ -354,21 +357,24 @@ export default function FormationEditorCanvas({
           );
         }
 
-        // Standing pylon: square footprint (30 × 30 cm)
+        // Standing pylon: square footprint (30 × 30 cm), rotatable
         const sq = Math.max(4, PYLON_FOOT_SIZE * S);
+        const angle = cone.angleDeg ?? 0;
         return (
-          <rect key={cone.id} x={cx - sq / 2} y={cy - sq / 2} width={sq} height={sq}
-            fill={fill} stroke={stroke} strokeWidth={sw} rx={1}
+          <g key={cone.id} transform={`rotate(${angle}, ${cx}, ${cy})`}
             style={{ cursor: tool === "select" ? "move" : "crosshair" }}
-            onPointerDown={(e) => handleConePointerDown(e, cone)} />
+            onPointerDown={(e) => handleConePointerDown(e, cone)}>
+            <rect x={cx - sq / 2} y={cy - sq / 2} width={sq} height={sq}
+              fill={fill} stroke={stroke} strokeWidth={sw} rx={Math.max(2, sq * 0.2)} />
+          </g>
         );
       })}
 
-      {/* Rotation handle for selected lying cone — rendered after cones so it sits on top */}
-      {selectedLyingCone && (
+      {/* Rotation handle for selected standing or lying cone */}
+      {selectedRotCone && (
         <g>
           <line
-            x1={selectedLyingCone.x * S} y1={selectedLyingCone.y * S}
+            x1={selectedRotCone.x * S} y1={selectedRotCone.y * S}
             x2={rotHandleX} y2={rotHandleY}
             stroke="#f59e0b" strokeWidth={1} strokeDasharray="3 2" pointerEvents="none" />
           <circle
@@ -377,7 +383,7 @@ export default function FormationEditorCanvas({
             style={{ cursor: "grab" }}
             onPointerDown={(e) => {
               e.stopPropagation();
-              setRotDrag({ id: selectedLyingCone.id });
+              setRotDrag({ id: selectedRotCone.id });
               (e.target as SVGElement).setPointerCapture(e.pointerId);
             }}
           />
