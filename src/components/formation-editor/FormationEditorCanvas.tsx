@@ -66,6 +66,7 @@ export default function FormationEditorCanvas({
   const [arrowDragCp, setArrowDragCp] = useState<{ id: string; ox: number; oy: number } | null>(null);
   const [rotDrag, setRotDrag] = useState<{ id: string } | null>(null);
   const [snapIndicator, setSnapIndicator] = useState<SnapIndicator | null>(null);
+  const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
 
   const S = CANVAS_PX / visibleM;
 
@@ -179,6 +180,9 @@ export default function FormationEditorCanvas({
   }
 
   function handleSvgPointerMove(e: React.PointerEvent<SVGSVGElement>) {
+    if (tool === "standing" || tool === "lying" || tool === "sensor") {
+      setCursorPos(toMeters(e.clientX, e.clientY));
+    }
     if (drag) {
       const raw = toMeters(e.clientX, e.clientY);
       if (e.shiftKey) {
