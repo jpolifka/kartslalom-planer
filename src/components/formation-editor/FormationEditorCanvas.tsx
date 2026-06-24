@@ -67,6 +67,7 @@ export default function FormationEditorCanvas({
   const [rotDrag, setRotDrag] = useState<{ id: string } | null>(null);
   const [snapIndicator, setSnapIndicator] = useState<SnapIndicator | null>(null);
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
+  const [pylonLine, setPylonLine] = useState<LineDraw | null>(null);
 
   const S = CANVAS_PX / visibleM;
 
