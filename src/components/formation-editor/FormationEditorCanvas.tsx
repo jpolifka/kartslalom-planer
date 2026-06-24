@@ -140,7 +140,8 @@ export default function FormationEditorCanvas({
         setPylonLine({ startX: pos.x, startY: pos.y, curX: pos.x, curY: pos.y });
         (e.target as SVGElement).setPointerCapture(e.pointerId);
       } else {
-        dispatch({ type: "ADD_CONE", cone: { id: crypto.randomUUID(), x: pos.x, y: pos.y, kind: tool } });
+        const { x, y } = applySnap(pos.x, pos.y, "");
+        dispatch({ type: "ADD_CONE", cone: { id: crypto.randomUUID(), x, y, kind: tool } });
       }
       return;
     }
@@ -246,7 +247,6 @@ export default function FormationEditorCanvas({
 
   function handleSvgPointerUp() {
     dragRef.current = null;
-    setDrag(null);
     setArrowDragCp(null);
     setRotDrag(null);
     setSnapIndicator(null);
