@@ -52,7 +52,7 @@ const s: Record<string, React.CSSProperties> = {
   toolbar: { display: "flex", gap: 4, padding: "8px 12px", background: "white", borderBottom: "1px solid #e5e7eb", flexWrap: "wrap" as const, alignItems: "center" },
   toolBtn: { padding: "5px 10px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 6, cursor: "pointer", background: "white" },
   toolBtnActive: { padding: "5px 10px", fontSize: 12, border: "1px solid #2563eb", borderRadius: 6, cursor: "pointer", background: "#eff6ff", color: "#2563eb", fontWeight: 600 },
-  canvas: { padding: 16, flex: 1, overflow: "auto", display: "flex", alignItems: "flex-start", justifyContent: "center" },
+  canvas: { padding: 8, flex: 1, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" },
   legend: { padding: "4px 16px 8px", fontSize: 11, color: "#9ca3af", textAlign: "center" as const, flexShrink: 0, background: "white", borderTop: "1px solid #f3f4f6" },
   saveStatus: { fontSize: 12, color: "#9ca3af" },
   undoBtn: { padding: "5px 10px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 6, cursor: "pointer", background: "white" },
