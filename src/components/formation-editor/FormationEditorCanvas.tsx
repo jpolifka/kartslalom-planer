@@ -196,9 +196,8 @@ export default function FormationEditorCanvas({
   return (
     <svg
       ref={svgRef}
-      width={CANVAS_PX}
-      height={CANVAS_PX}
-      style={{ display: "block", cursor: tool === "select" ? "default" : "crosshair", userSelect: "none" }}
+      viewBox={`0 0 ${CANVAS_PX} ${CANVAS_PX}`}
+      style={{ display: "block", width: "100%", maxHeight: "100%", aspectRatio: "1", cursor: tool === "select" ? "default" : "crosshair", userSelect: "none" }}
       onPointerMove={onSvgPointerMove}
       onPointerUp={handleSvgPointerUp}
     >
