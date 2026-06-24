@@ -15,6 +15,13 @@ const CANVAS_PX = 560;
 const GRID_COLOR = "#e5e7eb";
 const BG_COLOR = "#f9fafb";
 
+// Snap: center-to-center distances corresponding to 0.5m and 1.65m lichte Breite
+const SNAP_CENTERS = [
+  PYLON_FOOT_SIZE + 0.5,   // 0.8m → 0.5m lichte Breite
+  PYLON_FOOT_SIZE + 1.65,  // 1.95m → 1.65m lichte Breite
+];
+const SNAP_THRESHOLD = 0.18; // 18cm pull radius
+
 const CONE_COLORS: Record<string, string> = {
   standing: "#e74c3c",
   lying: "#f39c12",
@@ -37,7 +44,7 @@ type Props = {
   onSelectArrow: (id: string | null) => void;
   onSelectMeasurement: (id: string | null) => void;
   onAddMeasurement: (m: MeasurementLine) => void;
-  onGatePairClick: (coneId: string) => void; // kept for compat, unused
+  onGatePairClick: (coneId: string) => void;
 };
 
 function dist(ax: number, ay: number, bx: number, by: number) {
@@ -55,10 +62,12 @@ export default function FormationEditorCanvas({
   const [arrowDraw, setArrowDraw] = useState<LineDraw | null>(null);
   const [measureDraw, setMeasureDraw] = useState<LineDraw | null>(null);
   const [arrowDragCp, setArrowDragCp] = useState<{ id: string; ox: number; oy: number } | null>(null);
+  const [rotDrag, setRotDrag] = useState<{ id: string } | null>(null);
 
   const S = CANVAS_PX / visibleM;
   const coneR = Math.max(4, (PYLON_FOOT_SIZE / 2) * S);
 
+  /** Screen coords → meters, accounting for letterbox when SVG DOM ≠ square */
   function toMeters(clientX: number, clientY: number) {
     const r = svgRef.current!.getBoundingClientRect();
     const size = Math.min(r.width, r.height);
@@ -68,6 +77,38 @@ export default function FormationEditorCanvas({
       x: Math.max(0, Math.min(visibleM, ((clientX - r.left - ox) / size) * visibleM)),
       y: Math.max(0, Math.min(visibleM, ((clientY - r.top - oy) / size) * visibleM)),
     };
+  }
+
+  /** Screen coords → SVG internal coords (0‥CANVAS_PX) */
+  function toSvgCoords(clientX: number, clientY: number) {
+    const r = svgRef.current!.getBoundingClientRect();
+    const size = Math.min(r.width, r.height);
+    const ox = (r.width - size) / 2;
+    const oy = (r.height - size) / 2;
+    return {
+      x: ((clientX - r.left - ox) / size) * CANVAS_PX,
+      y: ((clientY - r.top - oy) / size) * CANVAS_PX,
+    };
+  }
+
+  /** Magnetic snap: pull cone to 0.5m or 1.65m lichte Breite from nearest cone */
+  function applySnap(mx: number, my: number, movingId: string) {
+    let best: { x: number; y: number } | null = null;
+    let bestDiff = SNAP_THRESHOLD;
+    for (const c of cones) {
+      if (c.id === movingId) continue;
+      const d = dist(mx, my, c.x, c.y);
+      if (d < 0.001) continue;
+      for (const sd of SNAP_CENTERS) {
+        const diff = Math.abs(d - sd);
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          const ratio = sd / d;
+          best = { x: c.x + (mx - c.x) * ratio, y: c.y + (my - c.y) * ratio };
+        }
+      }
+    }
+    return best ?? { x: mx, y: my };
   }
 
   function handleBgPointerDown(e: React.PointerEvent<SVGRectElement>) {
@@ -93,8 +134,8 @@ export default function FormationEditorCanvas({
 
   function handleBgPointerMove(e: React.PointerEvent<SVGRectElement>) {
     const pos = toMeters(e.clientX, e.clientY);
-    if (arrowDraw) setArrowDraw((prev) => prev ? { ...prev, curX: pos.x, curY: pos.y } : null);
-    if (measureDraw) setMeasureDraw((prev) => prev ? { ...prev, curX: pos.x, curY: pos.y } : null);
+    if (arrowDraw) setArrowDraw((p) => p ? { ...p, curX: pos.x, curY: pos.y } : null);
+    if (measureDraw) setMeasureDraw((p) => p ? { ...p, curX: pos.x, curY: pos.y } : null);
   }
 
   function handleBgPointerUp(e: React.PointerEvent<SVGRectElement>) {
@@ -102,10 +143,7 @@ export default function FormationEditorCanvas({
     if (arrowDraw) {
       const { startX: sx, startY: sy } = arrowDraw;
       if (dist(sx, sy, pos.x, pos.y) > 0.1) {
-        dispatch({
-          type: "ADD_ARROW",
-          arrow: { id: crypto.randomUUID(), startX: sx, startY: sy, endX: pos.x, endY: pos.y, cpX: (sx + pos.x) / 2, cpY: (sy + pos.y) / 2 },
-        });
+        dispatch({ type: "ADD_ARROW", arrow: { id: crypto.randomUUID(), startX: sx, startY: sy, endX: pos.x, endY: pos.y, cpX: (sx + pos.x) / 2, cpY: (sy + pos.y) / 2 } });
       }
       setArrowDraw(null);
     }
@@ -137,22 +175,31 @@ export default function FormationEditorCanvas({
 
   function handleSvgPointerMove(e: React.PointerEvent<SVGSVGElement>) {
     if (drag) {
-      const pos = toMeters(e.clientX, e.clientY);
+      const raw = toMeters(e.clientX, e.clientY);
+      const pos = applySnap(raw.x, raw.y, drag.id);
       dispatch({ type: "MOVE_CONE", id: drag.id, x: pos.x, y: pos.y });
     }
     if (arrowDragCp) {
       const r = svgRef.current!.getBoundingClientRect();
       const scale = Math.min(r.width, r.height) / visibleM;
-      const dx = (e.clientX - arrowDragCp.ox) / scale;
-      const dy = (e.clientY - arrowDragCp.oy) / scale;
-      dispatch({ type: "MOVE_ARROW_CP", id: arrowDragCp.id, dx, dy });
+      dispatch({ type: "MOVE_ARROW_CP", id: arrowDragCp.id, dx: (e.clientX - arrowDragCp.ox) / scale, dy: (e.clientY - arrowDragCp.oy) / scale });
       setArrowDragCp({ ...arrowDragCp, ox: e.clientX, oy: e.clientY });
+    }
+    if (rotDrag) {
+      const svgPos = toSvgCoords(e.clientX, e.clientY);
+      const cone = cones.find((c) => c.id === rotDrag.id);
+      if (cone) {
+        const cx = cone.x * S, cy = cone.y * S;
+        const angle = Math.atan2(svgPos.x - cx, cy - svgPos.y) * 180 / Math.PI;
+        dispatch({ type: "UPDATE_CONE", id: rotDrag.id, patch: { angleDeg: Math.round(((angle % 360) + 360) % 360) } });
+      }
     }
   }
 
   function handleSvgPointerUp() {
     setDrag(null);
     setArrowDragCp(null);
+    setRotDrag(null);
   }
 
   function handleCpPointerDown(e: React.PointerEvent<SVGCircleElement>, arrow: PlacedArrow) {
@@ -176,15 +223,13 @@ export default function FormationEditorCanvas({
   const gridLines: React.ReactNode[] = [];
   for (let i = 0; i <= visibleM; i++) {
     const p = i * S;
-    const isMajor = i % 5 === 0;
-    gridLines.push(<line key={`h${i}`} x1={0} y1={p} x2={CANVAS_PX} y2={p} stroke={isMajor ? "#d1d5db" : GRID_COLOR} strokeWidth={isMajor ? 1.5 : 1} />);
-    gridLines.push(<line key={`v${i}`} x1={p} y1={0} x2={p} y2={CANVAS_PX} stroke={isMajor ? "#d1d5db" : GRID_COLOR} strokeWidth={isMajor ? 1.5 : 1} />);
-    if (isMajor && i > 0) {
-      gridLines.push(<text key={`l${i}`} x={4} y={p - 3} fontSize={Math.max(8, S * 0.15)} fill="#9ca3af">{i} m</text>);
-    }
+    const major = i % 5 === 0;
+    gridLines.push(<line key={`h${i}`} x1={0} y1={p} x2={CANVAS_PX} y2={p} stroke={major ? "#d1d5db" : GRID_COLOR} strokeWidth={major ? 1.5 : 1} />);
+    gridLines.push(<line key={`v${i}`} x1={p} y1={0} x2={p} y2={CANVAS_PX} stroke={major ? "#d1d5db" : GRID_COLOR} strokeWidth={major ? 1.5 : 1} />);
+    if (major && i > 0) gridLines.push(<text key={`l${i}`} x={4} y={p - 3} fontSize={Math.max(8, S * 0.15)} fill="#9ca3af">{i} m</text>);
   }
 
-  // Measurement line rendering helper
+  // Measurement line helper
   function renderMeasurement(m: MeasurementLine, preview?: boolean) {
     const x1s = m.x1 * S, y1s = m.y1 * S, x2s = m.x2 * S, y2s = m.y2 * S;
     const dxs = x2s - x1s, dys = y2s - y1s;
@@ -193,38 +238,43 @@ export default function FormationEditorCanvas({
     const d = dist(m.x1, m.y1, m.x2, m.y2);
     const sel = !preview && m.id === selectedMeasurementId;
     const color = sel ? "#1d4ed8" : preview ? "#60a5fa" : "#3b82f6";
-    const strokeW = sel ? 2.5 : 1.5;
+    const sw = sel ? 2.5 : 1.5;
     const tickLen = 10;
     const px = -dys / lens * tickLen, py = dxs / lens * tickLen;
-    // Label: offset perpendicular toward top of screen
     const midX = (x1s + x2s) / 2, midY = (y1s + y2s) / 2;
     let nx = -dys / lens, ny = dxs / lens;
     if (ny > 0) { nx = -nx; ny = -ny; }
-    const labelOffset = Math.max(10, S * 0.2);
-    const labelX = midX + nx * labelOffset;
-    const labelY = midY + ny * labelOffset;
-    const fontSize = Math.max(9, S * 0.18);
-
+    const lo = Math.max(10, S * 0.2);
+    const fs = Math.max(9, S * 0.18);
     return (
-      <g
-        key={m.id}
-        onClick={preview ? undefined : (e) => { e.stopPropagation(); onSelectMeasurement(sel ? null : m.id); }}
-        style={{ cursor: preview ? "crosshair" : "pointer" }}
-        pointerEvents={preview ? "none" : "auto"}
-      >
-        {/* Wider transparent hit area */}
+      <g key={m.id} onClick={preview ? undefined : (e) => { e.stopPropagation(); onSelectMeasurement(sel ? null : m.id); }}
+        style={{ cursor: preview ? "crosshair" : "pointer" }} pointerEvents={preview ? "none" : "auto"}>
         {!preview && <line x1={x1s} y1={y1s} x2={x2s} y2={y2s} stroke="transparent" strokeWidth={14} />}
-        {/* Main line */}
-        <line x1={x1s} y1={y1s} x2={x2s} y2={y2s} stroke={color} strokeWidth={strokeW} strokeDasharray={preview ? "4 3" : undefined} />
-        {/* End ticks */}
-        <line x1={x1s - px / 2} y1={y1s - py / 2} x2={x1s + px / 2} y2={y1s + py / 2} stroke={color} strokeWidth={strokeW} />
-        <line x1={x2s - px / 2} y1={y2s - py / 2} x2={x2s + px / 2} y2={y2s + py / 2} stroke={color} strokeWidth={strokeW} />
-        {/* Distance label */}
-        <text x={labelX} y={labelY} textAnchor="middle" fontSize={fontSize} fill={color} fontWeight="600">
+        <line x1={x1s} y1={y1s} x2={x2s} y2={y2s} stroke={color} strokeWidth={sw} strokeDasharray={preview ? "4 3" : undefined} />
+        <line x1={x1s - px / 2} y1={y1s - py / 2} x2={x1s + px / 2} y2={y1s + py / 2} stroke={color} strokeWidth={sw} />
+        <line x1={x2s - px / 2} y1={y2s - py / 2} x2={x2s + px / 2} y2={y2s + py / 2} stroke={color} strokeWidth={sw} />
+        <text x={midX + nx * lo} y={midY + ny * lo} textAnchor="middle" fontSize={fs} fill={color} fontWeight="600">
           {d.toFixed(2)} m{sel ? "  ✕ Entf" : ""}
         </text>
       </g>
     );
+  }
+
+  // Rotation handle for selected lying cone
+  const selectedLyingCone = selectedConeIds.length === 1
+    ? (cones.find((c) => c.id === selectedConeIds[0] && c.kind === "lying") ?? null)
+    : null;
+
+  let rotHandleX = 0, rotHandleY = 0;
+  if (selectedLyingCone) {
+    const cx = selectedLyingCone.x * S, cy = selectedLyingCone.y * S;
+    const w = PYLON_FOOT_SIZE * S * 0.6;
+    const h = PYLON_FOOT_SIZE * S * 1.8;
+    const tri = Math.max(3, h * 0.25);
+    const handleDist = h / 2 + tri + 12;
+    const θ = ((selectedLyingCone.angleDeg ?? 0) * Math.PI) / 180;
+    rotHandleX = cx + handleDist * Math.sin(θ);
+    rotHandleY = cy - handleDist * Math.cos(θ);
   }
 
   return (
@@ -237,59 +287,35 @@ export default function FormationEditorCanvas({
     >
       <rect width={CANVAS_PX} height={CANVAS_PX} fill={BG_COLOR} />
       {gridLines}
-      <rect
-        width={CANVAS_PX} height={CANVAS_PX} fill="transparent"
-        onPointerDown={handleBgPointerDown}
-        onPointerMove={handleBgPointerMove}
-        onPointerUp={handleBgPointerUp}
+      <rect width={CANVAS_PX} height={CANVAS_PX} fill="transparent"
+        onPointerDown={handleBgPointerDown} onPointerMove={handleBgPointerMove} onPointerUp={handleBgPointerUp}
         style={{ cursor: tool === "select" ? "default" : "crosshair" }}
       />
 
-      {/* Too-close warning lines */}
+      {/* Too-close warning */}
       {tooClosePairs.map(([a, b], i) => (
-        <line key={`tc${i}`}
-          x1={a.x * S} y1={a.y * S} x2={b.x * S} y2={b.y * S}
-          stroke="#f59e0b" strokeWidth={2} strokeDasharray="4 3" strokeLinecap="round" pointerEvents="none"
-        />
+        <line key={`tc${i}`} x1={a.x * S} y1={a.y * S} x2={b.x * S} y2={b.y * S}
+          stroke="#f59e0b" strokeWidth={2} strokeDasharray="4 3" strokeLinecap="round" pointerEvents="none" />
       ))}
 
       {/* Measurement lines */}
       {measurements.map((m) => renderMeasurement(m))}
-
-      {/* Measurement preview while drawing */}
-      {measureDraw && renderMeasurement(
-        { id: "_preview", x1: measureDraw.startX, y1: measureDraw.startY, x2: measureDraw.curX, y2: measureDraw.curY },
-        true
-      )}
+      {measureDraw && renderMeasurement({ id: "_preview", x1: measureDraw.startX, y1: measureDraw.startY, x2: measureDraw.curX, y2: measureDraw.curY }, true)}
 
       {/* Arrows */}
       {arrows.map((a) => {
         const sel = a.id === selectedArrowId;
         return (
           <g key={a.id} onClick={() => onSelectArrow(a.id)} style={{ cursor: "pointer" }}>
-            <path
-              d={`M ${a.startX * S} ${a.startY * S} Q ${a.cpX * S} ${a.cpY * S} ${a.endX * S} ${a.endY * S}`}
-              fill="none" stroke={sel ? "#2563eb" : "#334155"} strokeWidth={sel ? 2.5 : 2}
-              markerEnd="url(#arrowhead)"
-            />
-            {sel && (
-              <circle cx={a.cpX * S} cy={a.cpY * S} r={6}
-                fill="#2563eb" stroke="white" strokeWidth={1.5} style={{ cursor: "grab" }}
-                onPointerDown={(e) => handleCpPointerDown(e, a)}
-              />
-            )}
+            <path d={`M ${a.startX * S} ${a.startY * S} Q ${a.cpX * S} ${a.cpY * S} ${a.endX * S} ${a.endY * S}`}
+              fill="none" stroke={sel ? "#2563eb" : "#334155"} strokeWidth={sel ? 2.5 : 2} markerEnd="url(#arrowhead)" />
+            {sel && <circle cx={a.cpX * S} cy={a.cpY * S} r={6} fill="#2563eb" stroke="white" strokeWidth={1.5}
+              style={{ cursor: "grab" }} onPointerDown={(e) => handleCpPointerDown(e, a)} />}
           </g>
         );
       })}
-
-      {/* Arrow draw preview */}
-      {arrowDraw && (
-        <line
-          x1={arrowDraw.startX * S} y1={arrowDraw.startY * S}
-          x2={arrowDraw.curX * S} y2={arrowDraw.curY * S}
-          stroke="#2563eb" strokeWidth={1.5} strokeDasharray="4 3" pointerEvents="none"
-        />
-      )}
+      {arrowDraw && <line x1={arrowDraw.startX * S} y1={arrowDraw.startY * S} x2={arrowDraw.curX * S} y2={arrowDraw.curY * S}
+        stroke="#2563eb" strokeWidth={1.5} strokeDasharray="4 3" pointerEvents="none" />}
 
       {/* Cones */}
       {cones.map((cone) => {
@@ -307,13 +333,15 @@ export default function FormationEditorCanvas({
           return (
             <g key={cone.id} transform={`rotate(${angle}, ${cx}, ${cy})`}
               style={{ cursor: tool === "select" ? "move" : "crosshair" }}
-              onPointerDown={(e) => handleConePointerDown(e, cone)}
-            >
-              <rect x={cx - w / 2} y={cy - h / 2} width={w} height={h} fill={fill} stroke={stroke} strokeWidth={sw} rx={2} />
-              <polygon
-                points={`${cx},${cy - h / 2 - tri} ${cx - tri * 0.6},${cy - h / 2 + tri * 0.3} ${cx + tri * 0.6},${cy - h / 2 + tri * 0.3}`}
-                fill={stroke} pointerEvents="none"
-              />
+              onPointerDown={(e) => handleConePointerDown(e, cone)}>
+              {/* Capsule shape: rx = w/2 gives fully rounded ends */}
+              <rect x={cx - w / 2} y={cy - h / 2} width={w} height={h}
+                fill={fill} stroke={stroke} strokeWidth={sw} rx={w / 2} ry={w / 2} />
+              {/* Direction indicator: small arrow-line inside capsule pointing toward "front" */}
+              <line x1={cx} y1={cy + h / 4} x2={cx} y2={cy - h / 4}
+                stroke={stroke} strokeWidth={1} opacity={0.7} pointerEvents="none" />
+              <polygon points={`${cx},${cy - h / 2 - tri} ${cx - tri * 0.6},${cy - h / 2 + tri * 0.3} ${cx + tri * 0.6},${cy - h / 2 + tri * 0.3}`}
+                fill={stroke} pointerEvents="none" />
             </g>
           );
         }
@@ -324,8 +352,7 @@ export default function FormationEditorCanvas({
               fill="transparent" stroke={sel ? "#2563eb" : "#3b82f6"}
               strokeWidth={sw} strokeDasharray="4 2"
               style={{ cursor: tool === "select" ? "move" : "crosshair" }}
-              onPointerDown={(e) => handleConePointerDown(e, cone)}
-            />
+              onPointerDown={(e) => handleConePointerDown(e, cone)} />
           );
         }
 
@@ -333,10 +360,29 @@ export default function FormationEditorCanvas({
           <circle key={cone.id} cx={cx} cy={cy} r={coneR}
             fill={fill} stroke={stroke} strokeWidth={sw}
             style={{ cursor: tool === "select" ? "move" : "crosshair" }}
-            onPointerDown={(e) => handleConePointerDown(e, cone)}
-          />
+            onPointerDown={(e) => handleConePointerDown(e, cone)} />
         );
       })}
+
+      {/* Rotation handle for selected lying cone — rendered after cones so it sits on top */}
+      {selectedLyingCone && (
+        <g>
+          <line
+            x1={selectedLyingCone.x * S} y1={selectedLyingCone.y * S}
+            x2={rotHandleX} y2={rotHandleY}
+            stroke="#f59e0b" strokeWidth={1} strokeDasharray="3 2" pointerEvents="none" />
+          <circle
+            cx={rotHandleX} cy={rotHandleY} r={7}
+            fill="#f59e0b" stroke="white" strokeWidth={2}
+            style={{ cursor: "grab" }}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              setRotDrag({ id: selectedLyingCone.id });
+              (e.target as SVGElement).setPointerCapture(e.pointerId);
+            }}
+          />
+        </g>
+      )}
 
       <defs>
         <marker id="arrowhead" markerWidth={6} markerHeight={4} refX={5} refY={2} orient="auto">
