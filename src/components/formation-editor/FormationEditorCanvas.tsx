@@ -339,6 +339,25 @@ export default function FormationEditorCanvas({
       {measurements.map((m) => renderMeasurement(m))}
       {measureDraw && renderMeasurement({ id: "_preview", x1: measureDraw.startX, y1: measureDraw.startY, x2: measureDraw.curX, y2: measureDraw.curY }, true)}
 
+      {/* Ghost pylon preview in placement mode */}
+      {cursorPos && (tool === "standing" || tool === "lying" || tool === "sensor") && (() => {
+        const cx = cursorPos.x * S, cy = cursorPos.y * S;
+        const fill = CONE_COLORS[tool];
+        if (tool === "lying") {
+          const baseW = Math.max(6, PYLON_FOOT_SIZE * S);
+          const tipW  = Math.max(2, 0.05 * S);
+          const h     = Math.max(8, PYLON_HEIGHT * S);
+          const pts   = [`${cx - tipW / 2},${cy - h / 2}`, `${cx + tipW / 2},${cy - h / 2}`, `${cx + baseW / 2},${cy + h / 2}`, `${cx - baseW / 2},${cy + h / 2}`].join(" ");
+          return <polygon key="ghost" points={pts} fill={fill} opacity={0.35} pointerEvents="none" />;
+        }
+        if (tool === "sensor") {
+          const sr = Math.max(4, (PYLON_FOOT_SIZE / 2) * S);
+          return <circle key="ghost" cx={cx} cy={cy} r={sr} fill="transparent" stroke={fill} strokeWidth={1.5} strokeDasharray="4 2" opacity={0.5} pointerEvents="none" />;
+        }
+        const sq = Math.max(4, PYLON_FOOT_SIZE * S);
+        return <rect key="ghost" x={cx - sq / 2} y={cy - sq / 2} width={sq} height={sq} fill={fill} opacity={0.35} rx={Math.max(2, sq * 0.2)} pointerEvents="none" />;
+      })()}
+
       {/* Arrows */}
       {arrows.map((a) => {
         const sel = a.id === selectedArrowId;
