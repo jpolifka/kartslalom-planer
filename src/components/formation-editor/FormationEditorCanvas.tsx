@@ -175,7 +175,7 @@ export default function FormationEditorCanvas({
   function handleSvgPointerMove(e: React.PointerEvent<SVGSVGElement>) {
     if (drag) {
       const raw = toMeters(e.clientX, e.clientY);
-      const pos = applySnap(raw.x, raw.y, drag.id);
+      const pos = e.shiftKey ? applySnap(raw.x, raw.y, drag.id) : raw;
       dispatch({ type: "MOVE_CONE", id: drag.id, x: pos.x, y: pos.y });
     }
     if (arrowDragCp) {
