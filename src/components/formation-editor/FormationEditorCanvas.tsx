@@ -5,7 +5,7 @@
 import { useRef, useState } from "react";
 import type { PlacedArrow } from "../../types";
 import type { EditableCone, EditorAction } from "../../hooks/useFormationEditor";
-import { PYLON_FOOT_SIZE, PYLON_HEIGHT, PYLON_SPACING } from "../../lib/formations/common";
+import { PYLON_FOOT_SIZE, PYLON_HEIGHT, PYLON_SPACING, LANE_SPACING } from "../../lib/formations/common";
 
 export type EditorTool = "select" | "standing" | "lying" | "sensor" | "arrow" | "gatePair";
 
@@ -15,12 +15,14 @@ const CANVAS_PX = 560;
 const GRID_COLOR = "#e5e7eb";
 const BG_COLOR = "#f9fafb";
 
-// Snap: center-to-center distances corresponding to 0.5m and 1.65m lichte Breite
-const SNAP_CENTERS = [
-  PYLON_FOOT_SIZE + 0.5,   // 0.8m → 0.5m lichte Breite
-  PYLON_FOOT_SIZE + 1.65,  // 1.95m → 1.65m lichte Breite
+// Snap: PYLON_SPACING = 0.80 m (0.5 m LB), LANE_SPACING = 1.95 m (1.65 m LB)
+const SNAP_CENTERS: [number, string][] = [
+  [PYLON_SPACING, "0,50 m LB"],
+  [LANE_SPACING,  "1,65 m LB"],
 ];
-const SNAP_THRESHOLD = 0.25; // 25cm pull radius — only active when Shift is held
+const SNAP_THRESHOLD = 0.25; // 25 cm pull radius — only active when Shift is held
+
+type SnapIndicator = { x1: number; y1: number; x2: number; y2: number; label: string };
 
 const CONE_COLORS: Record<string, string> = {
   standing: "#e74c3c",
@@ -63,6 +65,7 @@ export default function FormationEditorCanvas({
   const [measureDraw, setMeasureDraw] = useState<LineDraw | null>(null);
   const [arrowDragCp, setArrowDragCp] = useState<{ id: string; ox: number; oy: number } | null>(null);
   const [rotDrag, setRotDrag] = useState<{ id: string } | null>(null);
+  const [snapIndicator, setSnapIndicator] = useState<SnapIndicator | null>(null);
 
   const S = CANVAS_PX / visibleM;
 
