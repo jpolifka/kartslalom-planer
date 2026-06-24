@@ -222,14 +222,9 @@ export default function FormationEditorCanvas({
     }
     if (drag) {
       const raw = toMeters(e.clientX, e.clientY);
-      if (e.shiftKey) {
-        const { x, y, indicator } = applySnap(raw.x, raw.y, drag.id);
-        dispatch({ type: "MOVE_CONE", id: drag.id, x, y });
-        setSnapIndicator(indicator);
-      } else {
-        dispatch({ type: "MOVE_CONE", id: drag.id, x: raw.x, y: raw.y });
-        setSnapIndicator(null);
-      }
+      const { x, y, indicator } = applySnap(raw.x, raw.y, drag.id);
+      dispatch({ type: "MOVE_CONE", id: drag.id, x, y });
+      setSnapIndicator(indicator);
     }
     if (arrowDragCp) {
       const r = svgRef.current!.getBoundingClientRect();
