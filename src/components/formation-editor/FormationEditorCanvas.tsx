@@ -20,7 +20,7 @@ const SNAP_CENTERS = [
   PYLON_FOOT_SIZE + 0.5,   // 0.8m → 0.5m lichte Breite
   PYLON_FOOT_SIZE + 1.65,  // 1.95m → 1.65m lichte Breite
 ];
-const SNAP_THRESHOLD = 0.35; // 35cm pull radius
+const SNAP_THRESHOLD = 0.12; // 12cm pull radius — noticeable but not repulsive
 
 const CONE_COLORS: Record<string, string> = {
   standing: "#e74c3c",
