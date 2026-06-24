@@ -351,9 +351,11 @@ export default function FormationEditorCanvas({
           );
         }
 
+        // Standing pylon: square footprint (30 × 30 cm)
+        const sq = Math.max(4, PYLON_FOOT_SIZE * S);
         return (
-          <circle key={cone.id} cx={cx} cy={cy} r={coneR}
-            fill={fill} stroke={stroke} strokeWidth={sw}
+          <rect key={cone.id} x={cx - sq / 2} y={cy - sq / 2} width={sq} height={sq}
+            fill={fill} stroke={stroke} strokeWidth={sw} rx={1}
             style={{ cursor: tool === "select" ? "move" : "crosshair" }}
             onPointerDown={(e) => handleConePointerDown(e, cone)} />
         );
