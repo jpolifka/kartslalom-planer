@@ -20,7 +20,7 @@ const SNAP_CENTERS = [
   PYLON_FOOT_SIZE + 0.5,   // 0.8m → 0.5m lichte Breite
   PYLON_FOOT_SIZE + 1.65,  // 1.95m → 1.65m lichte Breite
 ];
-const SNAP_THRESHOLD = 0.18; // 18cm pull radius
+const SNAP_THRESHOLD = 0.35; // 35cm pull radius
 
 const CONE_COLORS: Record<string, string> = {
   standing: "#e74c3c",
@@ -268,9 +268,8 @@ export default function FormationEditorCanvas({
   let rotHandleX = 0, rotHandleY = 0;
   if (selectedLyingCone) {
     const cx = selectedLyingCone.x * S, cy = selectedLyingCone.y * S;
-    const h = PYLON_FOOT_SIZE * S * 1.8;
-    const tri = Math.max(3, h * 0.25);
-    const handleDist = h / 2 + tri + 12;
+    const h = Math.max(16, PYLON_FOOT_SIZE * S * 2.2);
+    const handleDist = h / 2 + 14;
     const θ = ((selectedLyingCone.angleDeg ?? 0) * Math.PI) / 180;
     rotHandleX = cx + handleDist * Math.sin(θ);
     rotHandleY = cy - handleDist * Math.cos(θ);
@@ -325,22 +324,27 @@ export default function FormationEditorCanvas({
         const sw = sel ? 2.5 : 1.5;
 
         if (cone.kind === "lying") {
-          const w = PYLON_FOOT_SIZE * S * 0.6;
-          const h = PYLON_FOOT_SIZE * S * 1.8;
+          // Real Leitkegel lying on its side: trapezoid, wide at base, narrow at tip
+          const baseW = Math.max(6, PYLON_FOOT_SIZE * S);          // base width (≈ full diameter)
+          const tipW  = Math.max(2, baseW * 0.18);                  // tip width
+          const h     = Math.max(16, PYLON_FOOT_SIZE * S * 2.2);   // length (cone height)
           const angle = cone.angleDeg ?? 0;
-          const tri = Math.max(3, h * 0.25);
+          // Tip is "up" (front), base is "down" — polygon in unrotated coords
+          const pts = [
+            `${cx - tipW / 2},${cy - h / 2}`,
+            `${cx + tipW / 2},${cy - h / 2}`,
+            `${cx + baseW / 2},${cy + h / 2}`,
+            `${cx - baseW / 2},${cy + h / 2}`,
+          ].join(" ");
+          // Small direction tick near tip
+          const tickY = cy - h / 2 + h * 0.18;
           return (
             <g key={cone.id} transform={`rotate(${angle}, ${cx}, ${cy})`}
               style={{ cursor: tool === "select" ? "move" : "crosshair" }}
               onPointerDown={(e) => handleConePointerDown(e, cone)}>
-              {/* Capsule shape: rx = w/2 gives fully rounded ends */}
-              <rect x={cx - w / 2} y={cy - h / 2} width={w} height={h}
-                fill={fill} stroke={stroke} strokeWidth={sw} rx={w / 2} ry={w / 2} />
-              {/* Direction indicator: small arrow-line inside capsule pointing toward "front" */}
-              <line x1={cx} y1={cy + h / 4} x2={cx} y2={cy - h / 4}
-                stroke={stroke} strokeWidth={1} opacity={0.7} pointerEvents="none" />
-              <polygon points={`${cx},${cy - h / 2 - tri} ${cx - tri * 0.6},${cy - h / 2 + tri * 0.3} ${cx + tri * 0.6},${cy - h / 2 + tri * 0.3}`}
-                fill={stroke} pointerEvents="none" />
+              <polygon points={pts} fill={fill} stroke={stroke} strokeWidth={sw} />
+              <line x1={cx - tipW * 0.8} y1={tickY} x2={cx + tipW * 0.8} y2={tickY}
+                stroke={stroke} strokeWidth={1} opacity={0.6} pointerEvents="none" />
             </g>
           );
         }
