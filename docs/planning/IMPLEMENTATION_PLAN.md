@@ -1152,9 +1152,11 @@ alle Schreiboperationen via `.rpc(...)`, Error-Mapping für
 - [ ] `useFeatureGate('custom_formations')`: allowed=true bei null-Gate
 - [ ] Erstellen/Speichern/Löschen via RPCs, keine direkten `.insert()`/`.update()`
 - [ ] `create_custom_formation`: Premium-Gate schlägt fehl wenn Gate aktiv + Tier zu niedrig
-- [ ] "Meine Hindernisse"-Sektion im Dashboard zeigt eigene Custom-Formationen
-- [ ] `BasisAuswahl` ergänzt: eigene Custom-Formation duplizieren
-- [ ] Autosave im FormationEditorPage (analog Editor-Autosave aus 1.12)
+- [ ] **`/formations`-Übersichtsseite**: eigene Formationen als Karten-Grid (Name, Pylonenzahl, Kategorie, Datum); von Dashboard verlinkbar
+- [ ] Formation öffnen / weiterbearbeiten (Draft aus Cloud laden)
+- [ ] Formation löschen (mit Bestätigungs-Dialog)
+- [ ] `BasisAuswahl` ergänzt: eigene Cloud-Formation als Startbasis duplizieren
+- [ ] Autosave im FormationEditorPage speichert in Supabase (analog Editor-Autosave aus 1.12)
 
 ---
 
