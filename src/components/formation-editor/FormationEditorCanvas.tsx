@@ -260,16 +260,19 @@ export default function FormationEditorCanvas({
   }
 
   // Rotation handle for selected lying cone
-  const selectedLyingCone = selectedConeIds.length === 1
-    ? (cones.find((c) => c.id === selectedConeIds[0] && c.kind === "lying") ?? null)
+  // Rotation handle for selected standing or lying cone
+  const selectedRotCone = selectedConeIds.length === 1
+    ? (cones.find((c) => c.id === selectedConeIds[0] && (c.kind === "lying" || c.kind === "standing")) ?? null)
     : null;
 
   let rotHandleX = 0, rotHandleY = 0;
-  if (selectedLyingCone) {
-    const cx = selectedLyingCone.x * S, cy = selectedLyingCone.y * S;
-    const h = Math.max(16, PYLON_FOOT_SIZE * S * 2.2);
-    const handleDist = h / 2 + 14;
-    const θ = ((selectedLyingCone.angleDeg ?? 0) * Math.PI) / 180;
+  if (selectedRotCone) {
+    const cx = selectedRotCone.x * S, cy = selectedRotCone.y * S;
+    const halfExtent = selectedRotCone.kind === "lying"
+      ? Math.max(8, PYLON_HEIGHT * S) / 2
+      : Math.max(4, PYLON_FOOT_SIZE * S) / 2;
+    const handleDist = halfExtent + 14;
+    const θ = ((selectedRotCone.angleDeg ?? 0) * Math.PI) / 180;
     rotHandleX = cx + handleDist * Math.sin(θ);
     rotHandleY = cy - handleDist * Math.cos(θ);
   }
