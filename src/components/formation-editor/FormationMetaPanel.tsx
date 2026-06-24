@@ -142,10 +142,21 @@ export default function FormationMetaPanel({
           </div>
           {selectedCone.kind === "lying" && (
             <div>
-              <label style={s.label}>Winkel (°)</label>
-              <div style={{ display: "flex", gap: 4 }}>
-                {[0, 45, 90, 135, 180].map((deg) => (
-                  <button key={deg} style={{ ...s.btn, padding: "4px 0", fontSize: 11, background: selectedCone.angleDeg === deg ? "#eff6ff" : "white" }}
+              <label style={s.label}>Winkel (°) — oder gelben Griff ziehen</label>
+              <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 6 }}>
+                <input
+                  type="number"
+                  min={0} max={359} step={1}
+                  value={selectedCone.angleDeg ?? 0}
+                  onChange={(e) => onRotateSelectedCone(((Number(e.target.value) % 360) + 360) % 360)}
+                  style={{ ...s.input, width: 70, boxSizing: "border-box" }}
+                />
+                <span style={{ fontSize: 12, color: "#6b7280" }}>°</span>
+              </div>
+              <div style={{ display: "flex", gap: 3 }}>
+                {[0, 45, 90, 135].map((deg) => (
+                  <button key={deg}
+                    style={{ flex: 1, padding: "3px 0", fontSize: 11, border: "1px solid #d1d5db", borderRadius: 5, cursor: "pointer", background: selectedCone.angleDeg === deg ? "#eff6ff" : "white" }}
                     onClick={() => onRotateSelectedCone(deg)}>
                     {deg}°
                   </button>
