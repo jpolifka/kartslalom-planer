@@ -223,10 +223,10 @@ export default function FormationEditorCanvas({
     if (tool === "standing" || tool === "lying" || tool === "sensor") {
       setCursorPos(toMeters(e.clientX, e.clientY));
     }
-    if (drag) {
+    if (dragRef.current) {
       const raw = toMeters(e.clientX, e.clientY);
-      const { x, y, indicator } = applySnap(raw.x, raw.y, drag.id);
-      dispatch({ type: "MOVE_CONE", id: drag.id, x, y });
+      const { x, y, indicator } = applySnap(raw.x, raw.y, dragRef.current.id);
+      dispatch({ type: "MOVE_CONE", id: dragRef.current.id, x, y });
       setSnapIndicator(indicator);
     }
     if (arrowDragCp) {
