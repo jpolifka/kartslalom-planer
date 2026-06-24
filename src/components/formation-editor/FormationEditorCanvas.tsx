@@ -311,6 +311,25 @@ export default function FormationEditorCanvas({
           stroke="#f59e0b" strokeWidth={2} strokeDasharray="4 3" strokeLinecap="round" pointerEvents="none" />
       ))}
 
+      {/* Snap indicator — shown while Shift+dragging */}
+      {snapIndicator && (() => {
+        const x1 = snapIndicator.x1 * S, y1 = snapIndicator.y1 * S;
+        const x2 = snapIndicator.x2 * S, y2 = snapIndicator.y2 * S;
+        const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+        const fs = Math.max(10, S * 0.18);
+        return (
+          <g pointerEvents="none">
+            <line x1={x1} y1={y1} x2={x2} y2={y2}
+              stroke="#10b981" strokeWidth={2} strokeDasharray="5 3" />
+            <rect x={mx - fs * 2.2} y={my - fs * 0.9} width={fs * 4.4} height={fs * 1.5}
+              fill="white" opacity={0.85} rx={3} />
+            <text x={mx} y={my + fs * 0.4} textAnchor="middle" fontSize={fs} fill="#10b981" fontWeight="700">
+              ⇧ {snapIndicator.label}
+            </text>
+          </g>
+        );
+      })()}
+
       {/* Measurement lines */}
       {measurements.map((m) => renderMeasurement(m))}
       {measureDraw && renderMeasurement({ id: "_preview", x1: measureDraw.startX, y1: measureDraw.startY, x2: measureDraw.curX, y2: measureDraw.curY }, true)}
