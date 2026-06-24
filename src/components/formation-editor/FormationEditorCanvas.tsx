@@ -20,7 +20,7 @@ const SNAP_CENTERS: [number, string][] = [
   [PYLON_SPACING, "0,50 m LB"],
   [LANE_SPACING,  "1,65 m LB"],
 ];
-const SNAP_THRESHOLD = 0.25; // 25 cm pull radius — only active when Shift is held
+const SNAP_THRESHOLD = 0.12; // 12 cm pull radius — always active when dragging existing cones
 
 type SnapIndicator = { x1: number; y1: number; x2: number; y2: number; label: string };
 
