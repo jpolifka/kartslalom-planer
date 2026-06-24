@@ -65,7 +65,6 @@ export default function FormationEditorCanvas({
   const [rotDrag, setRotDrag] = useState<{ id: string } | null>(null);
 
   const S = CANVAS_PX / visibleM;
-  const coneR = Math.max(4, (PYLON_FOOT_SIZE / 2) * S);
 
   /** Screen coords → meters, accounting for letterbox when SVG DOM ≠ square */
   function toMeters(clientX: number, clientY: number) {
@@ -342,8 +341,9 @@ export default function FormationEditorCanvas({
         }
 
         if (cone.kind === "sensor") {
+          const sr = Math.max(4, (PYLON_FOOT_SIZE / 2) * S);
           return (
-            <circle key={cone.id} cx={cx} cy={cy} r={coneR}
+            <circle key={cone.id} cx={cx} cy={cy} r={sr}
               fill="transparent" stroke={sel ? "#2563eb" : "#3b82f6"}
               strokeWidth={sw} strokeDasharray="4 2"
               style={{ cursor: tool === "select" ? "move" : "crosshair" }}
