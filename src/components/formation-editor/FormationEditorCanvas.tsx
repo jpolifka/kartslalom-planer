@@ -61,6 +61,7 @@ export default function FormationEditorCanvas({
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<{ id: string } | null>(null);
+  const dragRef = useRef<{ id: string } | null>(null);
   const [arrowDraw, setArrowDraw] = useState<LineDraw | null>(null);
   const [measureDraw, setMeasureDraw] = useState<LineDraw | null>(null);
   const [arrowDragCp, setArrowDragCp] = useState<{ id: string; ox: number; oy: number } | null>(null);
