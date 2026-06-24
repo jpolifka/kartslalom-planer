@@ -143,7 +143,7 @@ export default function FormationEditorCanvas({
     }
     if (arrowDragCp) {
       const r = svgRef.current!.getBoundingClientRect();
-      const actualScale = r.width / visibleM;
+      const actualScale = Math.min(r.width, r.height) / visibleM;
       const dx = (e.clientX - arrowDragCp.ox) / actualScale;
       const dy = (e.clientY - arrowDragCp.oy) / actualScale;
       dispatch({ type: "MOVE_ARROW_CP", id: arrowDragCp.id, dx, dy });
