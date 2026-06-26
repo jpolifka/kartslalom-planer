@@ -9,6 +9,7 @@ import AuthCallbackPage from "./pages/AuthCallbackPage";
 import DashboardPage from "./pages/DashboardPage";
 import EditorPage from "./pages/EditorPage";
 import FormationEditorPage from "./pages/FormationEditorPage";
+import FormationsPage from "./pages/FormationsPage";
 import ImpressumPage from "./pages/ImpressumPage";
 import SettingsPage from "./pages/SettingsPage";
 import AuthGuard from "./components/auth/AuthGuard";
@@ -27,13 +28,15 @@ export default function AppRouter() {
       <Route path="/editor/new" element={<EditorPage />} />
       <Route path="/editor/:trackId" element={<EditorPage />} />
 
-      {/* Hindernis-Editor: ohne Login nutzbar, localStorage-Draft */}
+      {/* Hindernis-Editor: ohne Login nutzbar (localStorage), mit Login Cloud-Save */}
       <Route path="/formations/new" element={<FormationEditorPage />} />
+      <Route path="/formations/:id" element={<FormationEditorPage />} />
 
       <Route element={<AuthGuard />}>
         <Route element={<AppShell />}>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/formations" element={<FormationsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Route>

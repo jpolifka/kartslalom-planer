@@ -1,0 +1,119 @@
+// Kartslalom Streckenplaner
+// Copyright (c) Jens Polifka
+// All rights reserved.
+//
+// Alle Schreiboperationen laufen durch SECURITY DEFINER RPCs — kein direktes .insert()/.update()
+
+import { supabase } from "../supabase";
+import type { FormationCategory, ConePoint, PlacedArrow } from "../../types";
+
+export type CustomFormationRow = {
+  id: string;
+  owner_id: string;
+  name: string;
+  description: string | null;
+  category: FormationCategory;
+  status: string;
+  is_library: boolean;
+  pylon_count: number;
+  lichte_breite: number | null;
+  duration_seconds: number | null;
+  cones_json: ConePoint[];
+  arrows_json: PlacedArrow[];
+  default_direction: string | null;
+  source_formation_key: string | null;
+  source_custom_formation_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CreateFormationParams = {
+  name: string;
+  description: string | null;
+  category: FormationCategory;
+  cones_json: ConePoint[];
+  arrows_json: PlacedArrow[];
+  default_direction: string | null;
+  lichte_breite: number | null;
+  duration_seconds: number | null;
+  source_formation_key: string | null;
+  source_custom_formation_id: string | null;
+};
+
+function mapError(msg: string): Error {
+  if (msg.includes("premium_required"))              return new Error("PREMIUM_REQUIRED");
+  if (msg.includes("custom_formation_limit_reached")) return new Error("FORMATION_LIMIT_REACHED");
+  if (msg.includes("too_many_cones"))                return new Error("TOO_MANY_CONES");
+  if (msg.includes("too_many_arrows"))               return new Error("TOO_MANY_ARROWS");
+  if (msg.includes("invalid_name"))                  return new Error("INVALID_NAME");
+  if (msg.includes("invalid_category"))              return new Error("INVALID_CATEGORY");
+  if (msg.includes("not_authorized"))                return new Error("NOT_AUTHORIZED");
+  if (msg.includes("account_deleted"))               return new Error("ACCOUNT_DELETED");
+  return new Error(msg);
+}
+
+export async function createCustomFormation(p: CreateFormationParams): Promise<string> {
+  const { data, error } = await supabase.rpc("create_custom_formation", {
+    p_name:                       p.name,
+    p_description:                p.description,
+    p_category:                   p.category,
+    p_cones_json:                 p.cones_json,
+    p_arrows_json:                p.arrows_json,
+    p_default_direction:          p.default_direction,
+    p_lichte_breite:              p.lichte_breite,
+    p_duration_seconds:           p.duration_seconds,
+    p_source_formation_key:       p.source_formation_key,
+    p_source_custom_formation_id: p.source_custom_formation_id,
+  });
+  if (error) throw mapError(error.message);
+  return data as string;
+}
+
+export async function updateCustomFormation(id: string, p: Omit<CreateFormationParams, "source_formation_key" | "source_custom_formation_id">): Promise<void> {
+  const { error } = await supabase.rpc("update_custom_formation", {
+    p_id:               id,
+    p_name:             p.name,
+    p_description:      p.description,
+    p_category:         p.category,
+    p_cones_json:       p.cones_json,
+    p_arrows_json:      p.arrows_json,
+    p_default_direction: p.default_direction,
+    p_lichte_breite:    p.lichte_breite,
+    p_duration_seconds: p.duration_seconds,
+  });
+  if (error) throw mapError(error.message);
+}
+
+export async function deleteCustomFormation(id: string): Promise<void> {
+  const { error } = await supabase.rpc("delete_custom_formation", { p_id: id });
+  if (error) throw mapError(error.message);
+}
+
+export async function fetchCustomFormations(): Promise<CustomFormationRow[]> {
+  const { data, error } = await supabase
+    .from("custom_formations")
+    .select("*")
+    .order("updated_at", { ascending: false });
+  if (error) throw error;
+  return data as CustomFormationRow[];
+}
+
+export async function fetchCustomFormation(id: string): Promise<CustomFormationRow> {
+  const { data, error } = await supabase
+    .from("custom_formations")
+    .select("*")
+    .eq("id", id)
+    .single();
+  if (error) throw error;
+  return data as CustomFormationRow;
+}
+
+export async function fetchLibraryFormations(): Promise<CustomFormationRow[]> {
+  const { data, error } = await supabase
+    .from("custom_formations")
+    .select("*")
+    .eq("is_library", true)
+    .order("name");
+  if (error) throw error;
+  return data as CustomFormationRow[];
+}

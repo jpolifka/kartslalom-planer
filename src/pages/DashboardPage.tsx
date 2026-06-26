@@ -99,7 +99,7 @@ export default function DashboardPage() {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "28px 0 14px" }}>
         <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Meine Hindernisse</h2>
         <button
-          onClick={() => navigate("/formations/new")}
+          onClick={() => navigate("/formations")}
           style={{
             display: "inline-flex", alignItems: "center", gap: 6,
             border: "1px solid var(--c-primary-border)", borderRadius: 10,
@@ -107,14 +107,17 @@ export default function DashboardPage() {
             padding: "9px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer",
           }}
         >
-          <Plus size={15} /> Neues Hindernis
+          <Layers size={15} /> Hindernisse verwalten
         </button>
       </div>
-      <div style={{
-        background: "white", borderRadius: 14, padding: "16px 18px",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.06)", display: "flex", alignItems: "center", gap: 14,
-        fontSize: 13, color: "#64748b",
-      }}>
+      <div
+        onClick={() => navigate("/formations")}
+        style={{
+          background: "white", borderRadius: 14, padding: "16px 18px",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.06)", display: "flex", alignItems: "center", gap: 14,
+          fontSize: 13, color: "#64748b", cursor: "pointer",
+        }}
+      >
         <Layers size={20} color="#94a3b8" style={{ flexShrink: 0 }} />
         <div>
           Erstelle eigene Hindernisse und nutze sie in deinen Strecken.
