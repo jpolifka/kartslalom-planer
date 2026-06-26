@@ -5,7 +5,6 @@
 // Integration: Custom-Formation-Lifecycle + Payload-Validierung.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   createTestUser, loginAsUser, cleanupUsers,
   assertNoError, assertRpcError, ts,
@@ -25,8 +24,8 @@ const BASE_FORMATION = {
 };
 
 describe("Formation lifecycle", () => {
-  let clientA: SupabaseClient;
-  let clientB: SupabaseClient;
+  let clientA: Awaited<ReturnType<typeof loginAsUser>>;
+  let clientB: Awaited<ReturnType<typeof loginAsUser>>;
   const userIds: string[] = [];
   let formationId: string;
 
@@ -133,7 +132,7 @@ describe("Formation lifecycle", () => {
 });
 
 describe("Formation payload validation", () => {
-  let client: SupabaseClient;
+  let client: Awaited<ReturnType<typeof loginAsUser>>;
   const userIds: string[] = [];
 
   beforeAll(async () => {

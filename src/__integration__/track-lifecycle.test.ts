@@ -6,14 +6,13 @@
 // create_track → save_track → fetch → fetch-by-id → delete → weg
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   createTestUser, loginAsUser, cleanupUsers, admin,
   assertNoError, assertRpcError, ts,
 } from "./helpers";
 
 describe("Track lifecycle", () => {
-  let client: SupabaseClient;
+  let client: Awaited<ReturnType<typeof loginAsUser>>;
   const userIds: string[] = [];
   let trackId: string;
 

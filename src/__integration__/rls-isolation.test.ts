@@ -5,15 +5,14 @@
 // Integration: RLS-Isolation — User A kann Daten von User B nicht lesen oder schreiben.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   createTestUser, loginAsUser, cleanupUsers,
   assertNoError, assertRpcError, ts,
 } from "./helpers";
 
 describe("RLS isolation (Tracks)", () => {
-  let clientA: SupabaseClient;
-  let clientB: SupabaseClient;
+  let clientA: Awaited<ReturnType<typeof loginAsUser>>;
+  let clientB: Awaited<ReturnType<typeof loginAsUser>>;
   const userIds: string[] = [];
   let trackAId: string;
 

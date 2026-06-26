@@ -5,7 +5,9 @@
 // Integration test helpers — connect to a real local Supabase instance.
 // Requires SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY in env.
 
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
+
+type Client = ReturnType<typeof createClient>;
 import ws from "ws";
 
 // Node 20 hat kein natives WebSocket — ws als Transport für Supabase Realtime
@@ -36,7 +38,7 @@ export async function createTestUser(email: string) {
   return data.user;
 }
 
-export async function loginAsUser(email: string): Promise<SupabaseClient> {
+export async function loginAsUser(email: string): Promise<Client> {
   const { data, error } = await admin.auth.admin.generateLink({
     type: "magiclink",
     email,
