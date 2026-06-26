@@ -10,7 +10,8 @@
     "type-check": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:security": "tsx scripts/security-smoke-test.ts"
+    "test:security": "tsx scripts/security-smoke-test.ts",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.2",
@@ -33,6 +34,7 @@
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^6.0.2",
+    "@vitest/coverage-v8": "^4.1.9",
     "esbuild": "^0.28.1",
     "jsdom": "^26.0.0",
     "typescript": "^5.4.0",
