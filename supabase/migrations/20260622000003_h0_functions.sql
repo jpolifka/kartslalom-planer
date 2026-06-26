@@ -276,6 +276,12 @@ begin
   end if;
 
   if not exists (
+    select 1 from public.profiles where id = auth.uid() and is_deleted = false
+  ) then
+    raise exception 'account_deleted';
+  end if;
+
+  if not exists (
     select 1 from public.custom_formations
     where id = p_formation_id and owner_id = auth.uid()
   ) then
