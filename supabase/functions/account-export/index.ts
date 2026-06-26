@@ -17,7 +17,7 @@ function serviceHeaders() {
   };
 }
 
-Deno.serve(async (req) => {
+export async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
 
   const bearer = req.headers.get("authorization");
@@ -66,4 +66,6 @@ Deno.serve(async (req) => {
       "Content-Disposition": `attachment; filename="kartslalom-export-${new Date().toISOString().slice(0, 10)}.json"`,
     },
   });
-});
+}
+
+Deno.serve(handler);
