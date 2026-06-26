@@ -12,7 +12,7 @@ const cors = {
   "Access-Control-Allow-Headers": "authorization, content-type",
 };
 
-Deno.serve(async (req) => {
+export async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
 
   const bearer = req.headers.get("authorization");
