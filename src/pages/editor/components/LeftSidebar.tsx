@@ -152,22 +152,34 @@ export default function LeftSidebar({
                   {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
                 </button>
                 {open && (
-                  <div style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: 5, paddingLeft: 2,
-                  }}>
-                    {defs.map((formation) => (
-                      <PaletteCard
-                        key={formation.key}
-                        formation={formation}
-                        onClick={(rotDeg) => onAddFormation(formation.key, rotDeg)}
-                        showRotationSubMenu={group.rotationSubMenu}
-                        subMenuOpen={subMenuKey === formation.key}
-                        onToggleSubMenu={() => onToggleSubMenu(formation.key)}
-                      />
-                    ))}
-                  </div>
+                  group.isCustom && defs.length === 0 ? (
+                    <div style={{ padding: "10px 4px 4px", fontSize: 12, color: "#94a3b8", lineHeight: 1.5 }}>
+                      Noch keine eigenen Hindernisse.{" "}
+                      <a
+                        href="/formations/new"
+                        style={{ color: "var(--c-primary)", fontWeight: 600, textDecoration: "none" }}
+                      >
+                        Jetzt erstellen →
+                      </a>
+                    </div>
+                  ) : (
+                    <div style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 5, paddingLeft: 2,
+                    }}>
+                      {defs.map((formation) => (
+                        <PaletteCard
+                          key={formation.key}
+                          formation={formation}
+                          onClick={(rotDeg) => onAddFormation(formation.key, rotDeg)}
+                          showRotationSubMenu={group.rotationSubMenu}
+                          subMenuOpen={subMenuKey === formation.key}
+                          onToggleSubMenu={() => onToggleSubMenu(formation.key)}
+                        />
+                      ))}
+                    </div>
+                  )
                 )}
               </div>
             );

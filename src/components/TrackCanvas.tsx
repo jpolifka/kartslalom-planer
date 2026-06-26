@@ -6,7 +6,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { PlacedArrow, PlacedFormation } from "../types";
 import type { ValidationIssue } from "../lib/validation/types";
 import { boundsFromCones, rotateConesAroundOwnCenter } from "../lib/geometry";
-import { getFormation } from "../lib/formationRegistry";
+import { resolveFormation } from "../lib/formationRegistry";
 import MapBackground from "./MapBackground";
 import type { AreaSelection } from "../lib/areaSelection";
 
@@ -41,7 +41,7 @@ import type { ConePoint } from "../types";
 
 type PreparedItem = {
   item: PlacedFormation;
-  formation: ReturnType<typeof getFormation>;
+  formation: ReturnType<typeof resolveFormation>;
   normalized: ConePoint[];
   width: number;
   height: number;
@@ -171,7 +171,7 @@ export default function TrackCanvas(props: TrackCanvasProps) {
   }, [selectedIds]);
 
   const prepared = useMemo<PreparedItem[]>(() => items.map((item) => {
-    const formation = getFormation(item.key);
+    const formation = resolveFormation(item);
     const src = formation.cones;
     // Pre-rotate cones mathematically so the bounding box is always correct.
     // This avoids the CSS-rotation bug where an asymmetric container clips rotated content.
