@@ -27,7 +27,7 @@ async function patchProfile(uid: string, patch: Record<string, unknown>) {
   });
 }
 
-Deno.serve(async (req) => {
+export async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null);
 
   if (!CRON_SECRET || req.headers.get("x-cron-secret") !== CRON_SECRET) {
