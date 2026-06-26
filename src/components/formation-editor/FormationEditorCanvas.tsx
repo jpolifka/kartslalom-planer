@@ -220,7 +220,10 @@ export default function FormationEditorCanvas({
 
   function handleSvgPointerMove(e: React.PointerEvent<SVGSVGElement>) {
     if (tool === "standing" || tool === "lying" || tool === "sensor") {
-      setCursorPos(toMeters(e.clientX, e.clientY));
+      const raw = toMeters(e.clientX, e.clientY);
+      const { x, y, indicator } = applySnap(raw.x, raw.y, "");
+      setCursorPos({ x, y });
+      if (!dragRef.current) setSnapIndicator(indicator);
     }
     if (dragRef.current) {
       const raw = toMeters(e.clientX, e.clientY);
