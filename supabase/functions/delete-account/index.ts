@@ -9,7 +9,7 @@ const cors = {
   "Access-Control-Allow-Headers": "authorization, content-type",
 };
 
-Deno.serve(async (req) => {
+export async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   if (req.method !== "POST") return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers: cors });
 
@@ -49,4 +49,6 @@ Deno.serve(async (req) => {
   return new Response(JSON.stringify({ deleted: true }), {
     headers: { ...cors, "Content-Type": "application/json" },
   });
-});
+}
+
+Deno.serve(handler);
