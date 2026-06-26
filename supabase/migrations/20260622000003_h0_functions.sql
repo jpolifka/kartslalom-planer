@@ -178,6 +178,12 @@ begin
     raise exception 'not_authenticated';
   end if;
 
+  if not exists (
+    select 1 from public.profiles where id = auth.uid() and is_deleted = false
+  ) then
+    raise exception 'account_deleted';
+  end if;
+
   delete from public.custom_formations where id = p_id and owner_id = auth.uid();
   if not found then
     raise exception 'not_authorized';
