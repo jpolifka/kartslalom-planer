@@ -47,7 +47,7 @@ begin
     raise exception 'invalid_arrows_json';
   end if;
 
-  if jsonb_array_length(p_arrows_json) > 20 then
+  if jsonb_array_length(p_arrows_json) > 100 then
     raise exception 'too_many_arrows';
   end if;
 
@@ -178,7 +178,7 @@ begin
     raise exception 'too_many_cones';
   end if;
 
-  if jsonb_array_length(p_arrows_json) > 20 then
+  if jsonb_array_length(p_arrows_json) > 100 then
     raise exception 'too_many_arrows';
   end if;
 
@@ -522,7 +522,7 @@ begin
     raise exception 'too_many_cones';
   end if;
 
-  if jsonb_array_length(p_arrows_json) > 20 then
+  if jsonb_array_length(p_arrows_json) > 100 then
     raise exception 'too_many_arrows';
   end if;
 
