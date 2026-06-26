@@ -472,7 +472,7 @@ begin
     raise exception 'too_many_cones';
   end if;
 
-  select role into v_role from public.profiles where id = auth.uid();
+  select role into v_role from public.profiles where id = auth.uid() and is_deleted = false;
   if v_role is distinct from 'admin' then
     raise exception 'not_authorized';
   end if;
