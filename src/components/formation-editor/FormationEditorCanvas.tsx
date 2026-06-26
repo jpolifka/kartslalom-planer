@@ -5,7 +5,13 @@
 import { useRef, useState } from "react";
 import type { PlacedArrow } from "../../types";
 import type { EditableCone, EditorAction } from "../../hooks/useFormationEditor";
-import { PYLON_FOOT_SIZE, PYLON_HEIGHT, PYLON_SPACING, LANE_SPACING } from "../../lib/formations/common";
+import { PYLON_FOOT_SIZE, PYLON_HEIGHT, PYLON_SPACING } from "../../lib/formations/common";
+import {
+  dist,
+  applySnap as applySnapUtil,
+  computeLinePylons as computeLinePylonsUtil,
+  type SnapIndicator,
+} from "../../lib/formations/formationEditorUtils";
 
 export type EditorTool = "select" | "standing" | "lying" | "sensor" | "arrow" | "gatePair";
 
@@ -14,15 +20,6 @@ export type MeasurementLine = { id: string; x1: number; y1: number; x2: number; 
 const CANVAS_PX = 560;
 const GRID_COLOR = "#e5e7eb";
 const BG_COLOR = "#f9fafb";
-
-// Snap: PYLON_SPACING = 0.80 m (0.5 m LB), LANE_SPACING = 1.95 m (1.65 m LB)
-const SNAP_CENTERS: [number, string][] = [
-  [PYLON_SPACING, "0,50 m LB"],
-  [LANE_SPACING,  "1,65 m LB"],
-];
-const SNAP_THRESHOLD = 0.20; // 20 cm pull radius — always active when dragging existing cones
-
-type SnapIndicator = { x1: number; y1: number; x2: number; y2: number; label: string };
 
 const CONE_COLORS: Record<string, string> = {
   standing: "#e74c3c",
@@ -48,10 +45,6 @@ type Props = {
   onAddMeasurement: (m: MeasurementLine) => void;
   onGatePairClick: (coneId: string) => void;
 };
-
-function dist(ax: number, ay: number, bx: number, by: number) {
-  return Math.sqrt((ax - bx) ** 2 + (ay - by) ** 2);
-}
 
 export default function FormationEditorCanvas({
   cones, arrows, measurements,
@@ -95,42 +88,12 @@ export default function FormationEditorCanvas({
     };
   }
 
-  /** Magnetic snap: pull cone to 0.5m or 1.65m lichte Breite from nearest cone.
-   *  Returns snapped position + optional indicator for rendering. */
-  function applySnap(mx: number, my: number, movingId: string): { x: number; y: number; indicator: SnapIndicator | null } {
-    let bestPos: { x: number; y: number } | null = null;
-    let bestIndicator: SnapIndicator | null = null;
-    let bestDiff = SNAP_THRESHOLD;
-    for (const c of cones) {
-      if (c.id === movingId) continue;
-      const d = dist(mx, my, c.x, c.y);
-      if (d < 0.001) continue;
-      for (const [sd, label] of SNAP_CENTERS) {
-        const diff = Math.abs(d - sd);
-        if (diff < bestDiff) {
-          bestDiff = diff;
-          const ratio = sd / d;
-          bestPos = { x: c.x + (mx - c.x) * ratio, y: c.y + (my - c.y) * ratio };
-          bestIndicator = { x1: c.x, y1: c.y, x2: bestPos.x, y2: bestPos.y, label };
-        }
-      }
-    }
-    return { x: bestPos?.x ?? mx, y: bestPos?.y ?? my, indicator: bestIndicator };
+  function applySnap(mx: number, my: number, movingId: string) {
+    return applySnapUtil(mx, my, movingId, cones);
   }
 
-  /** Positions of pylons spaced at PYLON_SPACING along a drag line. */
   function computeLinePylons(sx: number, sy: number, ex: number, ey: number) {
-    const dx = ex - sx, dy = ey - sy;
-    const d = Math.sqrt(dx * dx + dy * dy);
-    if (d < 0.001) return [{ x: sx, y: sy, angleDeg: 0 }];
-    const ux = dx / d, uy = dy / d;
-    const angleDeg = Math.round(((Math.atan2(ux, -uy) * 180 / Math.PI) % 360 + 360) % 360);
-    const count = Math.max(1, Math.floor(d / PYLON_SPACING) + 1);
-    return Array.from({ length: count }, (_, i) => ({
-      x: sx + ux * PYLON_SPACING * i,
-      y: sy + uy * PYLON_SPACING * i,
-      angleDeg,
-    }));
+    return computeLinePylonsUtil(sx, sy, ex, ey);
   }
 
   function handleBgPointerDown(e: React.PointerEvent<SVGRectElement>) {
