@@ -225,6 +225,22 @@ begin
   end if;
 
   if not exists (
+    select 1 from public.profiles where id = auth.uid() and is_deleted = false
+  ) then
+    raise exception 'account_deleted';
+  end if;
+
+  if p_target_id = auth.uid() then
+    raise exception 'cannot_share_with_self';
+  end if;
+
+  if not exists (
+    select 1 from public.profiles where id = p_target_id and is_deleted = false
+  ) then
+    raise exception 'target_not_found';
+  end if;
+
+  if not exists (
     select 1 from public.custom_formations
     where id = p_formation_id and owner_id = auth.uid()
   ) then
