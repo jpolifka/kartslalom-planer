@@ -4,8 +4,10 @@
 
 import { vi, describe, it, expect, beforeEach } from "vitest";
 
-const mockRpc = vi.fn();
-const mockFrom = vi.fn();
+const { mockRpc, mockFrom } = vi.hoisted(() => ({
+  mockRpc: vi.fn(),
+  mockFrom: vi.fn(),
+}));
 
 vi.mock("../supabase", () => ({
   supabase: { rpc: mockRpc, from: mockFrom },
@@ -31,13 +33,21 @@ function err(message: string) {
   return Promise.resolve({ data: null, error: { message } });
 }
 
-/** Builder für Supabase-Chaining: gibt bei jedem .method() sich selbst zurück, bis terminal() aufgerufen wird. */
+/** Builder für Supabase-Chaining.
+ *  eq() gibt ein Thenable zurück das auch .single() hat — damit funktioniert
+ *  sowohl `await from().delete().eq()` als auch `await from().select().eq().single()`.
+ */
 function chain(terminal: Promise<unknown>) {
-  const c: Record<string, unknown> = {};
-  const methods = ["select", "order", "eq", "delete", "single"];
-  for (const m of methods) {
-    c[m] = () => (m === "order" || m === "single" ? terminal : c);
-  }
+  const eqResult = Object.assign(Promise.resolve(terminal).then((v) => v), {
+    single: () => terminal,
+  });
+  const c = {
+    select: () => c,
+    delete: () => c,
+    order: () => terminal,
+    eq: () => eqResult,
+    single: () => terminal,
+  };
   return c;
 }
 
