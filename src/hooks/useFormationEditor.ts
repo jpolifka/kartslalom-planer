@@ -25,7 +25,9 @@ export type EditorAction =
   | { type: "REDO" }
   | { type: "RESET"; snap: EditorSnap };
 
-function reducer(s: HistState, action: EditorAction): HistState {
+export type HistState = { past: EditorSnap[]; present: EditorSnap; future: EditorSnap[] };
+
+export function reducer(s: HistState, action: EditorAction): HistState {
   const { past, present, future } = s;
 
   const live = (p: EditorSnap): HistState => ({ past, present: p, future });
