@@ -83,4 +83,6 @@ export async function handler(req: Request): Promise<Response> {
   return new Response(JSON.stringify({ ok: true, stats }), {
     headers: { "Content-Type": "application/json" },
   });
-});
+}
+
+Deno.serve(handler);
