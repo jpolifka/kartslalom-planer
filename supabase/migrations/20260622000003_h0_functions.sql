@@ -55,7 +55,7 @@ begin
     raise exception 'invalid_lichte_breite';
   end if;
 
-  if p_duration_seconds is not null and (p_duration_seconds <= 0 or p_duration_seconds > 300) then
+  if p_duration_seconds is not null and (p_duration_seconds <= 0 or p_duration_seconds > 120) then
     raise exception 'invalid_duration_seconds';
   end if;
 
@@ -186,7 +186,7 @@ begin
     raise exception 'invalid_lichte_breite';
   end if;
 
-  if p_duration_seconds is not null and (p_duration_seconds <= 0 or p_duration_seconds > 300) then
+  if p_duration_seconds is not null and (p_duration_seconds <= 0 or p_duration_seconds > 120) then
     raise exception 'invalid_duration_seconds';
   end if;
 
@@ -530,7 +530,7 @@ begin
     raise exception 'invalid_lichte_breite';
   end if;
 
-  if p_duration_seconds is not null and (p_duration_seconds <= 0 or p_duration_seconds > 300) then
+  if p_duration_seconds is not null and (p_duration_seconds <= 0 or p_duration_seconds > 120) then
     raise exception 'invalid_duration_seconds';
   end if;
 
