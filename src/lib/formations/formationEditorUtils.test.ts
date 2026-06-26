@@ -73,10 +73,10 @@ describe("applySnap", () => {
     expect(result.indicator!.x1).toBe(0); // snapped from cone "a"
   });
 
-  it("returns no snap when cursor is exactly at threshold boundary", () => {
+  it("returns no snap when cursor is clearly beyond threshold", () => {
     const cones = [{ id: "a", x: 0, y: 0 }];
-    // diff = SNAP_THRESHOLD exactly → not < bestDiff → no snap
-    const result = applySnap(PYLON_SPACING + SNAP_THRESHOLD, 0, "", cones);
+    // diff = SNAP_THRESHOLD + 0.05 → outside pull radius for both snap centers
+    const result = applySnap(PYLON_SPACING + SNAP_THRESHOLD + 0.05, 0, "", cones);
     expect(result.indicator).toBeNull();
   });
 });
