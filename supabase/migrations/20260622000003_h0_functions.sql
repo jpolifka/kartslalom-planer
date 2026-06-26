@@ -47,6 +47,31 @@ begin
     raise exception 'invalid_arrows_json';
   end if;
 
+  if jsonb_array_length(p_arrows_json) > 20 then
+    raise exception 'too_many_arrows';
+  end if;
+
+  if p_lichte_breite is not null and (p_lichte_breite <= 0 or p_lichte_breite > 20) then
+    raise exception 'invalid_lichte_breite';
+  end if;
+
+  if p_duration_seconds is not null and (p_duration_seconds <= 0 or p_duration_seconds > 300) then
+    raise exception 'invalid_duration_seconds';
+  end if;
+
+  if p_default_direction is not null and p_default_direction not in ('cw', 'ccw', 'none') then
+    raise exception 'invalid_default_direction';
+  end if;
+
+  if exists (
+    select 1 from jsonb_array_elements(p_cones_json) c
+    where (c->>'x') is null or (c->>'y') is null
+       or (c->>'x')::numeric not between -50 and 50
+       or (c->>'y')::numeric not between -50 and 50
+  ) then
+    raise exception 'invalid_cone_coordinates';
+  end if;
+
   -- Premium-Gate: heute null -> kein Limit
   select value into v_required_tier from public.app_config
     where key = 'custom_formations_required_tier';
