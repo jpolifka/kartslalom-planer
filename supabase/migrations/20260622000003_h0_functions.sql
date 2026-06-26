@@ -16,6 +16,7 @@ create or replace function public.create_custom_formation(
 declare
   v_required_tier jsonb;
   v_tier          text;
+  v_is_deleted    boolean;
   v_count         integer;
   v_cone_count    integer;
   v_pylon_count   integer;
@@ -23,6 +24,12 @@ declare
 begin
   if auth.uid() is null then
     raise exception 'not_authenticated';
+  end if;
+
+  select tier, is_deleted into v_tier, v_is_deleted
+    from public.profiles where id = auth.uid();
+  if coalesce(v_is_deleted, true) then
+    raise exception 'account_deleted';
   end if;
 
   if length(trim(p_name)) < 1 or length(p_name) > 80 then
@@ -45,7 +52,6 @@ begin
     where key = 'custom_formations_required_tier';
 
   if v_required_tier is not null and v_required_tier <> 'null'::jsonb then
-    select tier into v_tier from public.profiles where id = auth.uid();
     if not (
       (v_required_tier #>> '{}') = 'free'
       or ((v_required_tier #>> '{}') = 'pro'  and v_tier in ('pro', 'team'))
@@ -106,6 +112,12 @@ declare
 begin
   if auth.uid() is null then
     raise exception 'not_authenticated';
+  end if;
+
+  if not exists (
+    select 1 from public.profiles where id = auth.uid() and is_deleted = false
+  ) then
+    raise exception 'account_deleted';
   end if;
 
   if length(trim(p_name)) < 1 or length(p_name) > 80 then
