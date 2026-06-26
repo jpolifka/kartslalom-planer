@@ -7,6 +7,32 @@ export default defineConfig({
     globals: true,
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
     setupFiles: ["src/test-setup.ts"],
+    coverage: {
+      provider: "v8",
+      include: ["src/**/*.ts", "src/**/*.tsx"],
+      exclude: [
+        // Test-Infrastruktur
+        "src/**/*.test.ts",
+        "src/**/*.test.tsx",
+        "src/test-setup.ts",
+        "src/main.tsx",
+        "src/router.tsx",
+        // Pages + Editor-UI: brauchen Router/Auth/QueryProvider → Playwright
+        "src/pages/**",
+        "src/store/**",
+        "src/pages/editor/components/**",
+        "src/pages/editor/hooks/**",
+        "src/pages/editor/editorStyles.ts",
+        "src/components/FormationThumbnail.tsx",
+      ],
+      thresholds: {
+        statements: 80,
+        branches: 70,
+        functions: 80,
+        lines: 80,
+      },
+      reporter: ["text", "html"],
+    },
   },
   plugins: [react()],
   server: {
