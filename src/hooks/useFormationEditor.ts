@@ -9,8 +9,6 @@ export type EditableCone = ConePoint & { id: string };
 
 export type EditorSnap = { cones: EditableCone[]; arrows: PlacedArrow[] };
 
-type HistState = { past: EditorSnap[]; present: EditorSnap; future: EditorSnap[] };
-
 export type EditorAction =
   | { type: "ADD_CONE"; cone: EditableCone }
   | { type: "DELETE_CONES"; ids: string[] }
