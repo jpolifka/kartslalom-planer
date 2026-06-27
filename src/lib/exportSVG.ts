@@ -2,7 +2,7 @@
 // Copyright (c) Jens Polifka
 // All rights reserved.
 
-import { getFormation } from "./formationRegistry";
+import { resolveFormation } from "./formationRegistry";
 import { boundsFromCones, rotateConesAroundOwnCenter } from "./geometry";
 import { lngToGlobalX, latToGlobalY } from "./geo";
 import { areaSelectionToBounds } from "./areaSelection";
@@ -150,7 +150,7 @@ export function generateTrackSVG(
 
   // Formations
   for (const item of items) {
-    const formation = getFormation(item.key);
+    const formation = resolveFormation(item);
 
     // Pre-rotate cones mathematically (same approach as TrackCanvas) to avoid rotation bbox bugs
     const src = formation.cones;

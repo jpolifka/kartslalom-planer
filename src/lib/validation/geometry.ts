@@ -4,7 +4,7 @@
 
 import type { PlacedFormation } from "../../types";
 import { boundsFromCones, rotateConesAroundOwnCenter } from "../geometry";
-import { getFormation } from "../formationRegistry";
+import { resolveFormation } from "../formationRegistry";
 import type { ValidationContext, ValidationIssue, WorldCone } from "./types";
 
 function distance(ax: number, ay: number, bx: number, by: number) {
@@ -25,7 +25,7 @@ function worldPos(itemX: number, itemY: number, coneX: number, coneY: number, bo
 
 export function buildWorldCones(items: PlacedFormation[]): WorldCone[] {
   return items.flatMap((item) => {
-    const formation = getFormation(item.key);
+    const formation = resolveFormation(item);
     if (formation.arrow) return [];
 
     const rotated = rotateConesAroundOwnCenter(formation.cones, item.rotationDeg);
@@ -51,7 +51,7 @@ export function validateGeometry(ctx: ValidationContext): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
 
   for (const item of ctx.items) {
-    const formation = getFormation(item.key);
+    const formation = resolveFormation(item);
     if (formation.arrow) {
       const width = formation.arrow.width;
       const height = formation.arrow.height;

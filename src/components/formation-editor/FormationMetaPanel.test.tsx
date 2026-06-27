@@ -54,14 +54,14 @@ describe("FormationMetaPanel", () => {
     expect(baseProps.onChangeName).toHaveBeenCalledWith("Neu");
   });
 
-  it("shows pylonCount (standing + lying only, not sensor)", () => {
+  it("shows pylonCount (standing + lying only) and sensor count separately", () => {
     const cones = [cone("a", "standing"), cone("b", "lying"), cone("c", "sensor")];
     render(<FormationMetaPanel {...baseProps} cones={cones} />);
-    // Pylone badge = 2, Cones gesamt = 3
+    // Pylone = 2, Sensoren = 1 (shown separately when there are sensors)
     const badges = screen.getAllByText(/^\d+$/);
     const values = badges.map((b) => b.textContent);
     expect(values).toContain("2");
-    expect(values).toContain("3");
+    expect(values).toContain("1");
   });
 
   it("shows lichte Breite warning when below 1.65 m", () => {
@@ -111,9 +111,10 @@ describe("FormationMetaPanel", () => {
     expect(baseProps.onRotateSelectedCone).toHaveBeenCalledWith(90);
   });
 
-  it("calls onChangeCategory when select changes", () => {
+  it("shows category as read-only text (not a select)", () => {
     render(<FormationMetaPanel {...baseProps} />);
-    fireEvent.change(screen.getByDisplayValue("Individuell"), { target: { value: "basis" } });
-    expect(baseProps.onChangeCategory).toHaveBeenCalledWith("basis");
+    // Category is now a read-only div, not an interactive select
+    expect(screen.getByText("Individuell")).toBeInTheDocument();
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
   });
 });

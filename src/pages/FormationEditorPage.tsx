@@ -298,12 +298,11 @@ export default function FormationEditorPage() {
             Neu anfangen
           </button>
         )}
-        {saveStatus === "saved" && <span style={{ fontSize: 12, color: "#16a34a" }}>Gespeichert ✓</span>}
-        {saveStatus === "error" && <span style={{ fontSize: 12, color: "#dc2626" }}>Fehler ✗</span>}
         <button
           style={{ ...s.saveBtn, opacity: saveStatus === "saving" ? 0.6 : 1 }}
           onClick={handleSave}
           disabled={saveStatus === "saving" || !name.trim()}
+          title={saveStatus === "saved" ? "Gespeichert ✓" : saveStatus === "error" ? "Fehler beim Speichern" : undefined}
         >
           {saveStatus === "saving" ? "Speichern…" : isCloudMode ? "In Cloud speichern" : "Lokal speichern"}
         </button>
@@ -341,8 +340,8 @@ export default function FormationEditorPage() {
 
           <div style={s.legend}>
             <span style={{ color: "#f59e0b", letterSpacing: 2 }}>━ ━</span>
-            {" "}Pylone zu nah (&lt;&nbsp;0,8 m)
-            <span style={{ marginLeft: 16, color: "#6b7280" }}>| ⇧ Shift = Cursor snappen (0,80/1,95 m) | ⇧ Shift + Ziehen = Pylonen-Reihe | Cmd+C/V = Kopieren</span>
+            {" "}Pylone zu nah (&lt;&nbsp;0,50 m LB)
+            <span style={{ marginLeft: 16, color: "#6b7280" }}>| ⇧ Hover: Snap auf 0 m / 0,50 m LB / 1,65 m LB | ⇧ Drag: Pylonen-Reihe | Cmd+C/V: Kopieren/Einfügen | Cmd+A: Alles</span>
             {selDist !== null ? (
               <span style={{ marginLeft: 16, color: "#3b82f6" }}>
                 Maßlinie: <strong>{selDist.toFixed(2)} m</strong>

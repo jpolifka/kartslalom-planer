@@ -10,6 +10,7 @@ import {
   dist,
   applySnap as applySnapUtil,
   computeLinePylons as computeLinePylonsUtil,
+  MERGE_THRESHOLD,
   getNearestIndicator as getNearestIndicatorUtil,
   type SnapIndicator,
 } from "../../lib/formations/formationEditorUtils";
@@ -272,6 +273,17 @@ export default function FormationEditorCanvas({
   }
 
   function handleSvgPointerUp() {
+    if (dragRef.current) {
+      // Merge: gezogene Cones die auf einem anderen landen → löschen
+      const draggedIds = new Set(Object.keys(dragRef.current.initialPositions));
+      const toMerge = cones
+        .filter((c) => draggedIds.has(c.id))
+        .filter((dragged) =>
+          cones.some((other) => !draggedIds.has(other.id) && dist(dragged.x, dragged.y, other.x, other.y) < MERGE_THRESHOLD)
+        )
+        .map((c) => c.id);
+      if (toMerge.length > 0) dispatch({ type: "DELETE_CONES", ids: toMerge });
+    }
     dragRef.current = null;
     setArrowDragCp(null);
     setRotDrag(null);

@@ -49,7 +49,7 @@ const pylonCount = (cones: EditableCone[]) =>
 export default function FormationMetaPanel({
   name, description, category, durationSeconds, lichteBreite,
   cones, selectedConeIds,
-  onChangeName, onChangeDescription, onChangeCategory,
+  onChangeName, onChangeDescription,
   onChangeDuration, onChangeLichteBreite,
   onRotateSelectedCone, onRotateSelection, onDeleteSelected,
 }: Props) {
@@ -84,26 +84,23 @@ export default function FormationMetaPanel({
 
       <div>
         <label style={s.label}>Kategorie</label>
-        <select
-          style={s.input}
-          value={category}
-          onChange={(e) => onChangeCategory(e.target.value as FormationCategory)}
-        >
-          {CATEGORIES.map((c) => (
-            <option key={c.value} value={c.value}>{c.label}</option>
-          ))}
-        </select>
+        {/* Kategorie ist festgelegt auf "individuell" — Admin-Funktion folgt später */}
+        <div style={{ ...s.input, color: "#6b7280", background: "#f9fafb", cursor: "default" }}>
+          {CATEGORIES.find((c) => c.value === category)?.label ?? category}
+        </div>
       </div>
 
-      <div style={s.row}>
+      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
         <div>
           <label style={s.label}>Pylone</label>
           <span style={s.badge}>{pylonCount(cones)}</span>
         </div>
-        <div>
-          <label style={s.label}>Cones gesamt</label>
-          <span style={s.badge}>{cones.length}</span>
-        </div>
+        {cones.length !== pylonCount(cones) && (
+          <div>
+            <label style={s.label}>Sensoren</label>
+            <span style={s.badge}>{cones.length - pylonCount(cones)}</span>
+          </div>
+        )}
       </div>
 
       <div>
@@ -119,21 +116,22 @@ export default function FormationMetaPanel({
         />
       </div>
 
-      <div>
-        <label style={s.label}>Lichte Breite (m)</label>
-        <input
-          style={s.input}
-          type="number"
-          min={0}
-          step={0.05}
-          value={lichteBreite ?? ""}
-          onChange={(e) => onChangeLichteBreite(e.target.value === "" ? null : Number(e.target.value))}
-          placeholder='via "Breite messen"'
-        />
-        {lichteBreite !== null && lichteBreite < TASK_LANE_WIDTH && (
-          <span style={{ fontSize: 11, color: "#dc2626" }}>⚠ Zu schmal (min. 1,65 m)</span>
-        )}
-      </div>
+      {lichteBreite !== null && (
+        <div>
+          <label style={s.label}>Lichte Breite (m)</label>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: lichteBreite < TASK_LANE_WIDTH ? "#dc2626" : "#16a34a" }}>
+              {lichteBreite.toFixed(2)} m {lichteBreite < TASK_LANE_WIDTH ? "⚠ zu schmal" : "✓"}
+            </span>
+            <button
+              style={{ fontSize: 11, padding: "2px 6px", border: "1px solid #d1d5db", borderRadius: 4, cursor: "pointer", background: "white", color: "#6b7280" }}
+              onClick={() => onChangeLichteBreite(null)}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       {selectedCone && (
         <div style={s.section}>

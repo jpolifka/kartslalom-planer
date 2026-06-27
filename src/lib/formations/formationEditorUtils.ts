@@ -8,7 +8,10 @@ export type SnapIndicator = { x1: number; y1: number; x2: number; y2: number; la
 
 export const SNAP_THRESHOLD = 0.20;
 
+export const MERGE_THRESHOLD = 0.15; // Cones innerhalb 15 cm → verschmelzen
+
 const SNAP_CENTERS: [number, string][] = [
+  [0,            "0 m (aufeinander)"],
   [PYLON_SPACING, "0,50 m LB"],
   [LANE_SPACING,  "1,65 m LB"],
 ];
