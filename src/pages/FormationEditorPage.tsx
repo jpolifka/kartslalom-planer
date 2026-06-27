@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useFormationEditor, type EditorSnap } from "../hooks/useFormationEditor";
+import { useFormationEditor, type EditorSnap, type EditableCone } from "../hooks/useFormationEditor";
 import FormationEditorCanvas, { type EditorTool, type MeasurementLine } from "../components/formation-editor/FormationEditorCanvas";
 import FormationMetaPanel from "../components/formation-editor/FormationMetaPanel";
 import BasisAuswahl from "../components/formation-editor/BasisAuswahl";
@@ -102,6 +102,7 @@ export default function FormationEditorPage() {
   const [sourceFormationKey, setSourceFormationKey] = useState<FormationKey | undefined>(draft?.sourceFormationKey);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [visibleM, setVisibleM] = useState(20);
+  const [clipboard, setClipboard] = useState<EditableCone[]>([]);
 
   const ZOOM_STEPS = [5, 8, 10, 12, 15, 20, 30];
   const zoomIdx = ZOOM_STEPS.indexOf(visibleM);
@@ -209,6 +210,16 @@ export default function FormationEditorPage() {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if ((e.metaKey || e.ctrlKey) && e.key === "a") {
         e.preventDefault(); setTool("select"); setSelectedConeIds(cones.map((c) => c.id)); setSelectedArrowId(null);
+      } else if ((e.metaKey || e.ctrlKey) && e.key === "c") {
+        // Kopieren
+        if (selectedConeIds.length) setClipboard(cones.filter((c) => selectedConeIds.includes(c.id)));
+      } else if ((e.metaKey || e.ctrlKey) && e.key === "v") {
+        // Einfügen mit +1m Versatz
+        if (clipboard.length) {
+          const pasted: EditableCone[] = clipboard.map((c) => ({ ...c, id: crypto.randomUUID(), x: c.x + 1, y: c.y + 1 }));
+          dispatch({ type: "ADD_CONES", cones: pasted });
+          setSelectedConeIds(pasted.map((c) => c.id));
+        }
       } else if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) {
         dispatch({ type: "UNDO" });
       } else if ((e.metaKey || e.ctrlKey) && (e.key === "y" || (e.key === "z" && e.shiftKey))) {
@@ -224,7 +235,7 @@ export default function FormationEditorPage() {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [dispatch, selectedConeIds, selectedArrowId, selectedMeasurementId, cones]);
+  }, [dispatch, selectedConeIds, selectedArrowId, selectedMeasurementId, cones, clipboard]);
 
   function handleBasisConfirm(initialSnap: EditorSnap, sourceKey?: FormationKey) {
     // Mathematisches Zentrum der Formation auf Canvas-Mitte legen
@@ -240,7 +251,13 @@ export default function FormationEditorPage() {
   }
 
   function handleRotateSelected(angleDeg: number) {
+    // Einzelcone: visuelle Ausrichtung des Pylons setzen
     if (selectedConeIds.length === 1) dispatch({ type: "UPDATE_CONE", id: selectedConeIds[0], patch: { angleDeg } });
+  }
+
+  function handleRotateSelection(deltaDeg: number) {
+    // Mehrfachauswahl: Positionen um gemeinsamen Zentroid drehen
+    if (selectedConeIds.length > 1) dispatch({ type: "ROTATE_SELECTION", ids: selectedConeIds, angleDeg: deltaDeg });
   }
 
   function handleDeleteSelected() {
@@ -255,11 +272,6 @@ export default function FormationEditorPage() {
 
   const lichteBreiteWarning = lichteBreite !== null && lichteBreite < TASK_LANE_WIDTH;
 
-  const saveLabel =
-    saveStatus === "saving" ? "Speichern…" :
-    saveStatus === "saved"  ? "Gespeichert ✓" :
-    saveStatus === "error"  ? "Fehler ✗" :
-    isCloudMode ? "In Cloud speichern" : "Lokal speichern";
 
   if (isEdit && cloudLoading) {
     return <div style={{ padding: 40, color: "#6b7280" }}>Lädt Hindernis…</div>;
@@ -286,12 +298,14 @@ export default function FormationEditorPage() {
             Neu anfangen
           </button>
         )}
+        {saveStatus === "saved" && <span style={{ fontSize: 12, color: "#16a34a" }}>Gespeichert ✓</span>}
+        {saveStatus === "error" && <span style={{ fontSize: 12, color: "#dc2626" }}>Fehler ✗</span>}
         <button
           style={{ ...s.saveBtn, opacity: saveStatus === "saving" ? 0.6 : 1 }}
           onClick={handleSave}
           disabled={saveStatus === "saving" || !name.trim()}
         >
-          {saveLabel}
+          {saveStatus === "saving" ? "Speichern…" : isCloudMode ? "In Cloud speichern" : "Lokal speichern"}
         </button>
       </header>
 
@@ -328,7 +342,7 @@ export default function FormationEditorPage() {
           <div style={s.legend}>
             <span style={{ color: "#f59e0b", letterSpacing: 2 }}>━ ━</span>
             {" "}Pylone zu nah (&lt;&nbsp;0,8 m)
-            <span style={{ marginLeft: 16, color: "#6b7280" }}>| Ziehen = frei + Abstand | ⇧ Shift + Ziehen = Snap (0,80/1,95 m) | ⇧ Shift + Platzieren = Pylonen-Reihe</span>
+            <span style={{ marginLeft: 16, color: "#6b7280" }}>| ⇧ Shift = Cursor snappen (0,80/1,95 m) | ⇧ Shift + Ziehen = Pylonen-Reihe | Cmd+C/V = Kopieren</span>
             {selDist !== null ? (
               <span style={{ marginLeft: 16, color: "#3b82f6" }}>
                 Maßlinie: <strong>{selDist.toFixed(2)} m</strong>
@@ -365,6 +379,7 @@ export default function FormationEditorPage() {
           onChangeName={setName} onChangeDescription={setDescription}
           onChangeCategory={setCategory} onChangeDuration={setDurationSeconds}
           onChangeLichteBreite={setLichteBreite} onRotateSelectedCone={handleRotateSelected}
+          onRotateSelection={handleRotateSelection}
           onDeleteSelected={handleDeleteSelected}
         />
       </div>

@@ -11,8 +11,11 @@ export type EditorSnap = { cones: EditableCone[]; arrows: PlacedArrow[] };
 
 export type EditorAction =
   | { type: "ADD_CONE"; cone: EditableCone }
+  | { type: "ADD_CONES"; cones: EditableCone[] }
   | { type: "DELETE_CONES"; ids: string[] }
   | { type: "MOVE_CONE"; id: string; x: number; y: number }
+  | { type: "BATCH_MOVE"; moves: Array<{ id: string; x: number; y: number }> }
+  | { type: "ROTATE_SELECTION"; ids: string[]; angleDeg: number }
   | { type: "UPDATE_CONE"; id: string; patch: Partial<EditableCone> }
   | { type: "ADD_ARROW"; arrow: PlacedArrow }
   | { type: "DELETE_ARROW"; id: string }
@@ -38,6 +41,8 @@ export function reducer(s: HistState, action: EditorAction): HistState {
   switch (action.type) {
     case "ADD_CONE":
       return commit({ ...present, cones: [...present.cones, action.cone] });
+    case "ADD_CONES":
+      return commit({ ...present, cones: [...present.cones, ...action.cones] });
     case "DELETE_CONES":
       return commit({ ...present, cones: present.cones.filter((c) => !action.ids.includes(c.id)) });
     case "MOVE_CONE":
@@ -45,6 +50,29 @@ export function reducer(s: HistState, action: EditorAction): HistState {
         ...present,
         cones: present.cones.map((c) => c.id === action.id ? { ...c, x: action.x, y: action.y } : c),
       });
+    case "BATCH_MOVE": {
+      const moveMap = new Map(action.moves.map((m) => [m.id, m]));
+      return live({
+        ...present,
+        cones: present.cones.map((c) => { const m = moveMap.get(c.id); return m ? { ...c, x: m.x, y: m.y } : c; }),
+      });
+    }
+    case "ROTATE_SELECTION": {
+      const sel = present.cones.filter((c) => action.ids.includes(c.id));
+      if (sel.length === 0) return s;
+      const cx = sel.reduce((s, c) => s + c.x, 0) / sel.length;
+      const cy = sel.reduce((s, c) => s + c.y, 0) / sel.length;
+      const rad = (action.angleDeg * Math.PI) / 180;
+      const cos = Math.cos(rad), sin = Math.sin(rad);
+      return commit({
+        ...present,
+        cones: present.cones.map((c) => {
+          if (!action.ids.includes(c.id)) return c;
+          const dx = c.x - cx, dy = c.y - cy;
+          return { ...c, x: cx + dx * cos - dy * sin, y: cy + dx * sin + dy * cos };
+        }),
+      });
+    }
     case "UPDATE_CONE":
       return commit({
         ...present,

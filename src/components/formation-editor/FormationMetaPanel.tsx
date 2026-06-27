@@ -28,6 +28,7 @@ type Props = {
   onChangeDuration: (v: number | null) => void;
   onChangeLichteBreite: (v: number | null) => void;
   onRotateSelectedCone: (angleDeg: number) => void;
+  onRotateSelection: (deltaDeg: number) => void;
   onDeleteSelected: () => void;
 };
 
@@ -50,11 +51,12 @@ export default function FormationMetaPanel({
   cones, selectedConeIds,
   onChangeName, onChangeDescription, onChangeCategory,
   onChangeDuration, onChangeLichteBreite,
-  onRotateSelectedCone, onDeleteSelected,
+  onRotateSelectedCone, onRotateSelection, onDeleteSelected,
 }: Props) {
   const selectedCone = selectedConeIds.length === 1
     ? cones.find((c) => c.id === selectedConeIds[0])
     : null;
+  const isMultiSelect = selectedConeIds.length > 1;
 
   return (
     <div style={s.panel}>
@@ -164,6 +166,32 @@ export default function FormationMetaPanel({
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {isMultiSelect && (
+        <div style={s.section}>
+          <label style={s.label}>Auswahl drehen ({selectedConeIds.length} Pylone)</label>
+          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" as const }}>
+            {[-90, -45, -15, 15, 45, 90].map((deg) => (
+              <button key={deg}
+                style={{ flex: 1, minWidth: 40, padding: "4px 2px", fontSize: 11, border: "1px solid #d1d5db", borderRadius: 5, cursor: "pointer", background: "white" }}
+                onClick={() => onRotateSelection(deg)}
+              >
+                {deg > 0 ? "+" : ""}{deg}°
+              </button>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
+            {[-180, 180].map((deg) => (
+              <button key={deg}
+                style={{ flex: 1, padding: "4px 0", fontSize: 11, border: "1px solid #d1d5db", borderRadius: 5, cursor: "pointer", background: "white" }}
+                onClick={() => onRotateSelection(deg)}
+              >
+                {deg > 0 ? "+" : ""}{deg}°
+              </button>
+            ))}
+          </div>
         </div>
       )}
 

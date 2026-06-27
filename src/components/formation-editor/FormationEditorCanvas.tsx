@@ -54,7 +54,12 @@ export default function FormationEditorCanvas({
   onSelectCones, onSelectArrow, onSelectMeasurement, onAddMeasurement,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const dragRef = useRef<{ id: string } | null>(null);
+  type DragState = {
+    id: string;
+    startX: number; startY: number;
+    initialPositions: Record<string, { x: number; y: number }>;
+  };
+  const dragRef = useRef<DragState | null>(null);
   const [arrowDraw, setArrowDraw] = useState<LineDraw | null>(null);
   const [measureDraw, setMeasureDraw] = useState<LineDraw | null>(null);
   const [arrowDragCp, setArrowDragCp] = useState<{ id: string; ox: number; oy: number } | null>(null);
@@ -105,10 +110,12 @@ export default function FormationEditorCanvas({
     const pos = toMeters(e.clientX, e.clientY);
     if (tool === "standing" || tool === "lying" || tool === "sensor") {
       if (e.shiftKey) {
-        setPylonLine({ startX: pos.x, startY: pos.y, curX: pos.x, curY: pos.y });
+        // Shift: Pylon-Reihe starten — von gesnappler Position aus (cursorPos ist bereits gesnapped)
+        const start = cursorPos ?? pos;
+        setPylonLine({ startX: start.x, startY: start.y, curX: start.x, curY: start.y });
         (e.target as SVGElement).setPointerCapture(e.pointerId);
       } else {
-        // Kein Snap beim Platzieren — Cone landet exakt wo geklickt wurde
+        // Kein Snap: Cone landet exakt wo geklickt wurde
         dispatch({ type: "ADD_CONE", cone: { id: crypto.randomUUID(), x: pos.x, y: pos.y, kind: tool } });
       }
       return;
@@ -171,7 +178,9 @@ export default function FormationEditorCanvas({
   function handleConePointerDown(e: React.PointerEvent<SVGElement>, cone: EditableCone) {
     e.stopPropagation();
     if (tool !== "select") return;
-    if (e.shiftKey) {
+
+    // Shift ODER Cmd/Ctrl = zur Auswahl hinzufügen/entfernen
+    if (e.shiftKey || e.metaKey || e.ctrlKey) {
       onSelectCones(selectedConeIds.includes(cone.id)
         ? selectedConeIds.filter((id) => id !== cone.id)
         : [...selectedConeIds, cone.id]);
@@ -181,29 +190,68 @@ export default function FormationEditorCanvas({
     onSelectArrow(null);
     onSelectMeasurement(null);
     dispatch({ type: "CHECKPOINT" });
-    dragRef.current = { id: cone.id };
-    // Use currentTarget (the <g> or <circle> with the handler), not target (inner child element)
+
+    // Drag-Startposition + Initialpositionen aller selektierten Cones merken
+    const start = toMeters(e.clientX, e.clientY);
+    const idsToTrack = (e.shiftKey || e.metaKey || e.ctrlKey)
+      ? [cone.id] // bei Toggle nur diesen Cone draggen
+      : (selectedConeIds.includes(cone.id) ? selectedConeIds : [cone.id]);
+    const initialPositions: Record<string, { x: number; y: number }> = {};
+    for (const id of idsToTrack) {
+      const c = cones.find((c) => c.id === id);
+      if (c) initialPositions[id] = { x: c.x, y: c.y };
+    }
+    dragRef.current = { id: cone.id, startX: start.x, startY: start.y, initialPositions };
     (e.currentTarget as SVGElement).setPointerCapture(e.pointerId);
   }
 
   function handleSvgPointerMove(e: React.PointerEvent<SVGSVGElement>) {
     if (tool === "standing" || tool === "lying" || tool === "sensor") {
-      // Kein Snap in Platzierungs-Modus — cursor folgt exakt dem Zeiger
       const raw = toMeters(e.clientX, e.clientY);
-      setCursorPos(raw);
-      if (!dragRef.current) setSnapIndicator(null);
+      if (!dragRef.current) {
+        if (e.shiftKey) {
+          // Shift + Hover in Platzierungs-Modus: Cursor auf Snap-Distanz ziehen
+          const { x, y, indicator } = applySnap(raw.x, raw.y, "");
+          setCursorPos({ x, y });
+          setSnapIndicator(indicator);
+        } else {
+          // Kein Shift: freie Cursor-Position, Entfernung zu nächster Pylone anzeigen
+          setCursorPos(raw);
+          setSnapIndicator(getNearestIndicator(raw.x, raw.y, ""));
+        }
+      }
     }
     if (dragRef.current) {
       const raw = toMeters(e.clientX, e.clientY);
-      if (e.shiftKey) {
-        // Shift gehalten: snap auf 0,80 m / 1,95 m
-        const { x, y, indicator } = applySnap(raw.x, raw.y, dragRef.current.id);
-        dispatch({ type: "MOVE_CONE", id: dragRef.current.id, x, y });
+      const dx = raw.x - dragRef.current.startX;
+      const dy = raw.y - dragRef.current.startY;
+      const initPos = dragRef.current.initialPositions;
+      const ids = Object.keys(initPos);
+      const isSingle = ids.length === 1;
+
+      if (e.shiftKey && isSingle) {
+        // Shift + Einzelcone: snap auf 0,80 m / 1,95 m
+        const refX = initPos[dragRef.current.id].x + dx;
+        const refY = initPos[dragRef.current.id].y + dy;
+        const { x, y, indicator } = applySnap(refX, refY, dragRef.current.id);
+        dispatch({ type: "BATCH_MOVE", moves: [{ id: dragRef.current.id, x, y }] });
         setSnapIndicator(indicator);
+      } else if (e.shiftKey && !isSingle) {
+        // Shift + Mehrfachauswahl: Referenz-Cone snappen, Delta auf alle übertragen
+        const refInit = initPos[dragRef.current.id];
+        const { x: rx, y: ry } = applySnap(refInit.x + dx, refInit.y + dy, dragRef.current.id);
+        const snapDx = rx - refInit.x, snapDy = ry - refInit.y;
+        dispatch({ type: "BATCH_MOVE", moves: ids.map((id) => ({ id, x: initPos[id].x + snapDx, y: initPos[id].y + snapDy })) });
+        setSnapIndicator(null);
       } else {
-        // Kein Snap: freie Bewegung, Abstand zur nächsten Pylone anzeigen
-        dispatch({ type: "MOVE_CONE", id: dragRef.current.id, x: raw.x, y: raw.y });
-        setSnapIndicator(getNearestIndicator(raw.x, raw.y, dragRef.current.id));
+        // Kein Snap: freie Bewegung
+        const moves = ids.map((id) => ({ id, x: initPos[id].x + dx, y: initPos[id].y + dy }));
+        dispatch({ type: "BATCH_MOVE", moves });
+        if (isSingle) {
+          setSnapIndicator(getNearestIndicator(moves[0].x, moves[0].y, dragRef.current.id));
+        } else {
+          setSnapIndicator(null);
+        }
       }
     }
     if (arrowDragCp) {
