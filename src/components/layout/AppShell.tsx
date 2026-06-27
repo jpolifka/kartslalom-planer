@@ -30,6 +30,7 @@ export default function AppShell() {
         </Link>
         <nav style={{ display: "flex", alignItems: "center", gap: 14, fontSize: 13 }}>
           <Link to="/dashboard" style={{ color: "#475569", textDecoration: "none" }}>Strecken</Link>
+          <Link to="/formations" style={{ color: "#475569", textDecoration: "none" }}>Hindernisse</Link>
           <Link to="/settings" style={{ color: "#475569", textDecoration: "none" }}>Einstellungen</Link>
           {profile && <span style={{ color: "#94a3b8" }}>{profile.email}</span>}
           <button

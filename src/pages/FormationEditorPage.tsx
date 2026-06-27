@@ -11,7 +11,8 @@ import BasisAuswahl from "../components/formation-editor/BasisAuswahl";
 import { useCustomFormation, useCreateCustomFormation, useUpdateCustomFormation } from "../hooks/useCustomFormations";
 import { useFeatureGate } from "../hooks/useFeatureGate";
 import { useAuthStore } from "../store/authStore";
-import type { FormationCategory, FormationKey } from "../types";
+import { normalizeCones } from "../lib/geometry";
+import type { FormationCategory, FormationKey, ConePoint } from "../types";
 import { TASK_LANE_WIDTH } from "../lib/formations/common";
 
 const DRAFT_KEY = "kartslalom-formation-draft";
@@ -98,7 +99,7 @@ export default function FormationEditorPage() {
   const [lichteBreite, setLichteBreite] = useState<number | null>(draft?.lichteBreite ?? null);
   const [sourceFormationKey, setSourceFormationKey] = useState<FormationKey | undefined>(draft?.sourceFormationKey);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
-  const [visibleM, setVisibleM] = useState(10);
+  const [visibleM, setVisibleM] = useState(isEdit ? 10 : 10);
 
   const ZOOM_STEPS = [5, 8, 10, 12, 15, 20, 30];
   const zoomIdx = ZOOM_STEPS.indexOf(visibleM);
@@ -114,7 +115,23 @@ export default function FormationEditorPage() {
   useEffect(() => {
     if (!isEdit || !cloudFormation || initializedRef.current) return;
     initializedRef.current = true;
-    dispatch({ type: "RESET", snap: { cones: cloudFormation.cones_json as never, arrows: cloudFormation.arrows_json as never } });
+
+    const raw = cloudFormation.cones_json as ConePoint[];
+    // Normalize so minimum x/y starts at 0.5 m — prevents cones appearing off-canvas edge
+    const norm = raw.length > 0 ? normalizeCones(raw).map((c) => ({ ...c, x: c.x + 0.5, y: c.y + 0.5 })) : raw;
+    const cones = norm.map((c) => ({ ...c, id: crypto.randomUUID() }));
+
+    // Auto-set zoom so all cones are visible with 2 m padding
+    if (cones.length > 0) {
+      const maxX = Math.max(...cones.map((c) => c.x));
+      const maxY = Math.max(...cones.map((c) => c.y));
+      const needed = Math.ceil(Math.max(maxX, maxY) + 2);
+      const ZOOM_STEPS = [5, 8, 10, 12, 15, 20, 30];
+      const fit = ZOOM_STEPS.find((s) => s >= needed) ?? 30;
+      setVisibleM(fit);
+    }
+
+    dispatch({ type: "RESET", snap: { cones: cones as never, arrows: cloudFormation.arrows_json as never } });
     setName(cloudFormation.name);
     setDescription(cloudFormation.description ?? "");
     setCategory(cloudFormation.category);

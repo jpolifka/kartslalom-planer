@@ -6,7 +6,7 @@ import { useState } from "react";
 import { FORMATIONS } from "../../lib/formationRegistry";
 import { normalizeCones } from "../../lib/geometry";
 import type { EditorSnap, EditableCone } from "../../hooks/useFormationEditor";
-import type { FormationKey } from "../../types";
+import type { FormationKey, ConePoint } from "../../types";
 import { useCustomFormationList } from "../../hooks/useCustomFormations";
 import { useAuthStore } from "../../store/authStore";
 
@@ -53,7 +53,9 @@ export default function BasisAuswahl({ onConfirm }: Props) {
     }
     if (mode === "own" && selectedOwnId && ownFormations) {
       const f = ownFormations.find((x) => x.id === selectedOwnId)!;
-      const cones: EditableCone[] = (f.cones_json as EditableCone[]).map((c) => ({ ...c, id: crypto.randomUUID() }));
+      const raw = f.cones_json as ConePoint[];
+      const norm = raw.length > 0 ? normalizeCones(raw).map((c) => ({ ...c, x: c.x + 0.5, y: c.y + 0.5 })) : raw;
+      const cones: EditableCone[] = norm.map((c) => ({ ...c, id: crypto.randomUUID() }));
       onConfirm({ cones, arrows: f.arrows_json as never });
     }
   }

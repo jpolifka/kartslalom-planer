@@ -128,6 +128,31 @@ export default function LeftSidebar({
         )}
       </section>
 
+      {/* Hindernis-Editor Shortcut */}
+      <section style={card}>
+        <SectionLabel>Eigene Hindernisse</SectionLabel>
+        <a
+          href="/formations/new"
+          style={{
+            display: "block", textAlign: "center", padding: "7px 0",
+            background: "var(--c-primary-bg)", border: "1px solid var(--c-primary-border)",
+            borderRadius: 8, color: "var(--c-primary)", fontWeight: 600, fontSize: 12,
+            textDecoration: "none",
+          }}
+        >
+          + Neues Hindernis erstellen
+        </a>
+        <a
+          href="/formations"
+          style={{
+            display: "block", textAlign: "center", padding: "5px 0", marginTop: 4,
+            color: "#64748b", fontSize: 11, textDecoration: "none",
+          }}
+        >
+          Alle Hindernisse verwalten →
+        </a>
+      </section>
+
       {/* Formation palette */}
       <section style={card}>
         <SectionLabel>Formationen</SectionLabel>
