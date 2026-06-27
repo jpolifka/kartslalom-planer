@@ -14,7 +14,7 @@ import { useAuthStore } from "../store/authStore";
 import { useProfile } from "../hooks/useProfile";
 import { normalizeCones, boundsFromCones, translateCones } from "../lib/geometry";
 import type { FormationCategory, FormationKey, ConePoint } from "../types";
-import { TASK_LANE_WIDTH } from "../lib/formations/common";
+import { TASK_LANE_WIDTH, PYLON_FOOT_SIZE } from "../lib/formations/common";
 
 const DRAFT_KEY = "kartslalom-formation-draft";
 
@@ -90,6 +90,7 @@ export default function FormationEditorPage() {
 
   const [tool, setTool] = useState<EditorTool>("select");
   const [selectedConeIds, setSelectedConeIds] = useState<string[]>([]);
+  const [gateFirstConeId, setGateFirstConeId] = useState<string | null>(null);
   const [selectedArrowId, setSelectedArrowId] = useState<string | null>(null);
   const [measurements, setMeasurements] = useState<MeasurementLine[]>([]);
   const [selectedMeasurementId, setSelectedMeasurementId] = useState<string | null>(null);
@@ -255,6 +256,29 @@ export default function FormationEditorPage() {
     if (selectedConeIds.length === 1) dispatch({ type: "UPDATE_CONE", id: selectedConeIds[0], patch: { angleDeg } });
   }
 
+  function handleGatePairClick(id: string) {
+    if (!gateFirstConeId) {
+      setGateFirstConeId(id);
+      return;
+    }
+    if (gateFirstConeId === id) {
+      // Gleichen Cone nochmal → abwählen
+      setGateFirstConeId(null);
+      return;
+    }
+    // Zweiten Cone gewählt → Lichte Breite berechnen
+    const c1 = cones.find((c) => c.id === gateFirstConeId);
+    const c2 = cones.find((c) => c.id === id);
+    if (c1 && c2) {
+      const centerDist = Math.sqrt((c1.x - c2.x) ** 2 + (c1.y - c2.y) ** 2);
+      const lb = Math.max(0, centerDist - PYLON_FOOT_SIZE);
+      setLichteBreite(Math.round(lb * 1000) / 1000);
+    }
+    setGateFirstConeId(null);
+    // Zurück zu Auswahl-Modus
+    setTool("select");
+  }
+
   function handleRotateSelection(deltaDeg: number) {
     // Mehrfachauswahl: Positionen um gemeinsamen Zentroid drehen
     if (selectedConeIds.length > 1) dispatch({ type: "ROTATE_SELECTION", ids: selectedConeIds, angleDeg: deltaDeg });
@@ -312,12 +336,16 @@ export default function FormationEditorPage() {
         <div style={s.left}>
           <div style={s.toolbar}>
             {TOOLS.map((t) => (
-              <button key={t} style={tool === t ? s.toolBtnActive : s.toolBtn} onClick={() => setTool(tool === t && t === "gatePair" ? "select" : t)} title={TOOL_LABELS[t]}>
+              <button key={t} style={tool === t ? s.toolBtnActive : s.toolBtn} onClick={() => { const next = tool === t && t === "gatePair" ? "select" : t; setTool(next); if (next !== "gatePair") setGateFirstConeId(null); }} title={TOOL_LABELS[t]}>
                 {TOOL_LABELS[t]}
               </button>
             ))}
             <div style={{ flex: 1 }} />
-            {tool === "gatePair" && <span style={{ fontSize: 11, color: "#2563eb", marginRight: 8 }}>→ Ziehen zum Messen</span>}
+            {tool === "gatePair" && (
+              <span style={{ fontSize: 11, color: "#2563eb", marginRight: 8 }}>
+                {gateFirstConeId ? "→ 2. Pylone anklicken" : "→ 1. Pylone anklicken"}
+              </span>
+            )}
             <button style={{ ...s.undoBtn, opacity: canUndo ? 1 : 0.4 }} onClick={() => dispatch({ type: "UNDO" })} disabled={!canUndo}>↩ Undo</button>
             <button style={{ ...s.undoBtn, opacity: canRedo ? 1 : 0.4 }} onClick={() => dispatch({ type: "REDO" })} disabled={!canRedo}>↪ Redo</button>
             <div style={{ width: 1, background: "#e5e7eb", margin: "0 4px", alignSelf: "stretch" }} />
@@ -334,7 +362,8 @@ export default function FormationEditorPage() {
               dispatch={dispatch} onSelectCones={setSelectedConeIds} onSelectArrow={setSelectedArrowId}
               onSelectMeasurement={setSelectedMeasurementId}
               onAddMeasurement={(m) => setMeasurements((ms) => [...ms, m])}
-              onGatePairClick={() => {}}
+              onGatePairClick={handleGatePairClick}
+              gatePairFirstId={gateFirstConeId}
             />
           </div>
 

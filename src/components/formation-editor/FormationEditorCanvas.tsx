@@ -46,6 +46,7 @@ type Props = {
   onSelectMeasurement: (id: string | null) => void;
   onAddMeasurement: (m: MeasurementLine) => void;
   onGatePairClick: (coneId: string) => void;
+  gatePairFirstId?: string | null;
 };
 
 export default function FormationEditorCanvas({
@@ -53,6 +54,7 @@ export default function FormationEditorCanvas({
   selectedConeIds, selectedArrowId, selectedMeasurementId,
   tool, visibleM, dispatch,
   onSelectCones, onSelectArrow, onSelectMeasurement, onAddMeasurement,
+  onGatePairClick, gatePairFirstId,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   type DragState = {
@@ -178,6 +180,10 @@ export default function FormationEditorCanvas({
 
   function handleConePointerDown(e: React.PointerEvent<SVGElement>, cone: EditableCone) {
     e.stopPropagation();
+    if (tool === "gatePair") {
+      onGatePairClick(cone.id);
+      return;
+    }
     if (tool !== "select") return;
 
     // Shift ODER Cmd/Ctrl = zur Auswahl hinzufügen/entfernen
@@ -485,9 +491,10 @@ export default function FormationEditorCanvas({
       {cones.map((cone) => {
         const cx = cone.x * S, cy = cone.y * S;
         const sel = selectedConeIds.includes(cone.id);
+        const isGateFirst = cone.id === gatePairFirstId;
         const fill = CONE_COLORS[cone.kind];
-        const stroke = sel ? "#2563eb" : "white";
-        const sw = sel ? 2.5 : 1.5;
+        const stroke = isGateFirst ? "#f59e0b" : sel ? "#2563eb" : "white";
+        const sw = (isGateFirst || sel) ? 3 : 1.5;
 
         if (cone.kind === "lying") {
           // Leitkegel lying on its side: trapezoid — 30 cm base, ~5 cm tip, 50 cm long
