@@ -40,6 +40,9 @@ type Props = {
   subMenuKey: string | null;
   onToggleSubMenu: (key: string) => void;
   onAddFormation: (key: FormationKey, rotDeg?: number) => void;
+  // custom formations (Individuell-Palette)
+  customFormations?: Array<{ id: string; name: string; pylon_count: number }>;
+  onAddCustomFormation?: (id: string) => void;
 };
 
 export default function LeftSidebar({
@@ -52,6 +55,8 @@ export default function LeftSidebar({
   onManualWidthBlur, onManualLengthBlur,
   openGroups, onToggleGroup, subMenuKey, onToggleSubMenu,
   onAddFormation,
+  customFormations,
+  onAddCustomFormation,
 }: Props) {
   const style = isMobile
     ? mobileDrawerStyle("left", mobileOpen)
@@ -177,22 +182,38 @@ export default function LeftSidebar({
                   {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
                 </button>
                 {open && (
-                  group.isCustom && defs.length === 0 ? (
-                    <div style={{ padding: "10px 4px 4px", fontSize: 12, color: "#94a3b8", lineHeight: 1.5 }}>
-                      Noch keine eigenen Hindernisse.{" "}
-                      <a
-                        href="/formations/new"
-                        style={{ color: "var(--c-primary)", fontWeight: 600, textDecoration: "none" }}
-                      >
-                        Jetzt erstellen →
-                      </a>
-                    </div>
+                  group.isCustom ? (
+                    customFormations && customFormations.length > 0 ? (
+                      <div style={{ display: "grid", gap: 4, paddingLeft: 2 }}>
+                        {customFormations.map((f) => (
+                          <button
+                            key={f.id}
+                            onClick={() => onAddCustomFormation?.(f.id)}
+                            style={{
+                              width: "100%", textAlign: "left", padding: "7px 10px",
+                              border: "1px solid #e2e8f0", borderRadius: 8, cursor: "pointer",
+                              background: "white", fontSize: 12,
+                              display: "flex", justifyContent: "space-between", alignItems: "center",
+                            }}
+                          >
+                            <span style={{ fontWeight: 600, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+                            <span style={{ fontSize: 11, color: "#94a3b8", flexShrink: 0, marginLeft: 6 }}>{f.pylon_count} P</span>
+                          </button>
+                        ))}
+                        <a href="/formations" style={{ fontSize: 11, color: "#94a3b8", textDecoration: "none", padding: "4px 2px", display: "block" }}>
+                          Verwalten →
+                        </a>
+                      </div>
+                    ) : (
+                      <div style={{ padding: "10px 4px 4px", fontSize: 12, color: "#94a3b8", lineHeight: 1.5 }}>
+                        Noch keine eigenen Hindernisse.{" "}
+                        <a href="/formations/new" style={{ color: "var(--c-primary)", fontWeight: 600, textDecoration: "none" }}>
+                          Jetzt erstellen →
+                        </a>
+                      </div>
+                    )
                   ) : (
-                    <div style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr",
-                      gap: 5, paddingLeft: 2,
-                    }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 5, paddingLeft: 2 }}>
                       {defs.map((formation) => (
                         <PaletteCard
                           key={formation.key}

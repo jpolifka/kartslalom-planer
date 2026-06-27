@@ -18,6 +18,7 @@ import { supabase } from "../lib/supabase";
 import { useAuthStore } from "../store/authStore";
 import { useTrack, useCreateTrack, useSaveTrack, useRenameTrack } from "../hooks/useTracks";
 import { useTier } from "../hooks/useTier";
+import { useCustomFormationList } from "../hooks/useCustomFormations";
 import { getFormation } from "../lib/formationRegistry";
 import { trackReducer, INITIAL_TRACK } from "./editor/trackReducer";
 import { useIsMobile } from "./editor/hooks/useIsMobile";
@@ -93,6 +94,7 @@ export default function EditorPage() {
   const [nameFocused, setNameFocused] = useState(false);
   const isMobile = useIsMobile();
   const [mobilePanel, setMobilePanel] = useState<"formations" | "properties" | null>(null);
+  const { data: customFormations } = useCustomFormationList();
   useEffect(() => { if (!isMobile) setMobilePanel(null); }, [isMobile]);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedFadeRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -223,6 +225,28 @@ export default function EditorPage() {
     setSelectedIds(new Set([newItem.id]));
     setSelectedArrowId(null);
     setSubMenuKey(null);
+  }
+
+  function addCustomFormation(id: string) {
+    const f = customFormations?.find((c) => c.id === id);
+    if (!f) return;
+    const newItem: PlacedFormation = {
+      id: crypto.randomUUID(),
+      key: "custom",
+      x: 1,
+      y: 1,
+      rotationDeg: 0,
+      direction: (f as { default_direction?: string }).default_direction as never ?? "none",
+      customFormationId: f.id,
+      customSnapshot: {
+        cones: f.cones_json as never,
+        arrows: f.arrows_json as never,
+        label: f.name,
+      },
+    };
+    dispatch({ type: "ADD_FORMATION", formation: newItem });
+    setSelectedIds(new Set([newItem.id]));
+    setSelectedArrowId(null);
   }
 
   function updateFormation(id: string, patch: Partial<PlacedFormation>) {
@@ -452,6 +476,8 @@ export default function EditorPage() {
             subMenuKey={subMenuKey}
             onToggleSubMenu={(key) => setSubMenuKey(subMenuKey === key ? null : key)}
             onAddFormation={addFormation}
+            customFormations={customFormations}
+            onAddCustomFormation={addCustomFormation}
           />
 
           {/* Canvas */}
