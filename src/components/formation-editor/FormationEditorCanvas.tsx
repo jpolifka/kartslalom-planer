@@ -10,6 +10,7 @@ import {
   dist,
   applySnap as applySnapUtil,
   computeLinePylons as computeLinePylonsUtil,
+  getNearestIndicator as getNearestIndicatorUtil,
   type SnapIndicator,
 } from "../../lib/formations/formationEditorUtils";
 
@@ -90,6 +91,10 @@ export default function FormationEditorCanvas({
 
   function applySnap(mx: number, my: number, movingId: string) {
     return applySnapUtil(mx, my, movingId, cones);
+  }
+
+  function getNearestIndicator(mx: number, my: number, movingId: string) {
+    return getNearestIndicatorUtil(mx, my, movingId, cones);
   }
 
   function computeLinePylons(sx: number, sy: number, ex: number, ey: number) {
@@ -190,9 +195,16 @@ export default function FormationEditorCanvas({
     }
     if (dragRef.current) {
       const raw = toMeters(e.clientX, e.clientY);
-      const { x, y, indicator } = applySnap(raw.x, raw.y, dragRef.current.id);
-      dispatch({ type: "MOVE_CONE", id: dragRef.current.id, x, y });
-      setSnapIndicator(indicator);
+      if (e.shiftKey) {
+        // Shift gehalten: snap auf 0,80 m / 1,95 m
+        const { x, y, indicator } = applySnap(raw.x, raw.y, dragRef.current.id);
+        dispatch({ type: "MOVE_CONE", id: dragRef.current.id, x, y });
+        setSnapIndicator(indicator);
+      } else {
+        // Kein Snap: freie Bewegung, Abstand zur nächsten Pylone anzeigen
+        dispatch({ type: "MOVE_CONE", id: dragRef.current.id, x: raw.x, y: raw.y });
+        setSnapIndicator(getNearestIndicator(raw.x, raw.y, dragRef.current.id));
+      }
     }
     if (arrowDragCp) {
       const r = svgRef.current!.getBoundingClientRect();

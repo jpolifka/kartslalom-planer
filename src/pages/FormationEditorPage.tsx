@@ -309,7 +309,7 @@ export default function FormationEditorPage() {
           <div style={s.legend}>
             <span style={{ color: "#f59e0b", letterSpacing: 2 }}>━ ━</span>
             {" "}Pylone zu nah (&lt;&nbsp;0,8 m)
-            <span style={{ marginLeft: 16, color: "#6b7280" }}>| ⇧ Shift + Ziehen = Pylonen-Reihe</span>
+            <span style={{ marginLeft: 16, color: "#6b7280" }}>| Ziehen = frei + Abstand | ⇧ Shift + Ziehen = Snap (0,80/1,95 m) | ⇧ Shift + Platzieren = Pylonen-Reihe</span>
             {selDist !== null ? (
               <span style={{ marginLeft: 16, color: "#3b82f6" }}>
                 Maßlinie: <strong>{selDist.toFixed(2)} m</strong>

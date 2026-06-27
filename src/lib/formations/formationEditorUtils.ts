@@ -17,6 +17,24 @@ export function dist(ax: number, ay: number, bx: number, by: number) {
   return Math.sqrt((ax - bx) ** 2 + (ay - by) ** 2);
 }
 
+/** Zeigt die Entfernung zur nächsten Pylone ohne zu snappen — rein informativ. */
+export function getNearestIndicator(
+  mx: number,
+  my: number,
+  movingId: string,
+  cones: Array<{ id: string; x: number; y: number }>
+): SnapIndicator | null {
+  let nearest: { d: number; x: number; y: number } | null = null;
+  for (const c of cones) {
+    if (c.id === movingId) continue;
+    const d = dist(mx, my, c.x, c.y);
+    if (d < 0.001) continue;
+    if (!nearest || d < nearest.d) nearest = { d, x: c.x, y: c.y };
+  }
+  if (!nearest) return null;
+  return { x1: nearest.x, y1: nearest.y, x2: mx, y2: my, label: `${nearest.d.toFixed(2)} m` };
+}
+
 export function applySnap(
   mx: number,
   my: number,
