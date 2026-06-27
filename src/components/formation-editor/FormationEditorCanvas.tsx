@@ -508,10 +508,12 @@ export default function FormationEditorCanvas({
             `${cx + baseW / 2},${cy + h / 2}`,
             `${cx - baseW / 2},${cy + h / 2}`,
           ].join(" ");
+          const hitH = Math.max(22, h);
           return (
             <g key={cone.id} transform={`rotate(${angle}, ${cx}, ${cy})`}
               style={{ cursor: tool === "select" ? "move" : "crosshair" }}
               onPointerDown={(e) => handleConePointerDown(e, cone)}>
+              <rect x={cx - baseW / 2} y={cy - hitH / 2} width={baseW} height={hitH} fill="transparent" />
               <polygon points={pts} fill={fill} stroke={stroke} strokeWidth={sw} />
             </g>
           );
@@ -519,22 +521,27 @@ export default function FormationEditorCanvas({
 
         if (cone.kind === "sensor") {
           const sr = Math.max(4, (PYLON_FOOT_SIZE / 2) * S);
+          const hitR = Math.max(11, sr);
           return (
-            <circle key={cone.id} cx={cx} cy={cy} r={sr}
-              fill="transparent" stroke={sel ? "#2563eb" : "#3b82f6"}
-              strokeWidth={sw} strokeDasharray="4 2"
-              style={{ cursor: tool === "select" ? "move" : "crosshair" }}
-              onPointerDown={(e) => handleConePointerDown(e, cone)} />
+            <g key={cone.id} style={{ cursor: tool === "select" ? "move" : "crosshair" }}
+              onPointerDown={(e) => handleConePointerDown(e, cone)}>
+              <circle cx={cx} cy={cy} r={hitR} fill="transparent" />
+              <circle cx={cx} cy={cy} r={sr}
+                fill="transparent" stroke={isGateFirst ? "#f59e0b" : sel ? "#2563eb" : "#3b82f6"}
+                strokeWidth={sw} strokeDasharray="4 2" />
+            </g>
           );
         }
 
         // Standing pylon: square footprint (30 × 30 cm), rotatable
         const sq = Math.max(4, PYLON_FOOT_SIZE * S);
+        const hit = Math.max(22, sq); // min. 22px Hit-Area für einfaches Klicken
         const angle = cone.angleDeg ?? 0;
         return (
           <g key={cone.id} transform={`rotate(${angle}, ${cx}, ${cy})`}
             style={{ cursor: tool === "select" ? "move" : "crosshair" }}
             onPointerDown={(e) => handleConePointerDown(e, cone)}>
+            <rect x={cx - hit / 2} y={cy - hit / 2} width={hit} height={hit} fill="transparent" />
             <rect x={cx - sq / 2} y={cy - sq / 2} width={sq} height={sq}
               fill={fill} stroke={stroke} strokeWidth={sw} rx={Math.max(2, sq * 0.2)} />
           </g>

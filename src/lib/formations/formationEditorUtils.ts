@@ -44,24 +44,31 @@ export function applySnap(
   movingId: string,
   cones: Array<{ id: string; x: number; y: number }>
 ): { x: number; y: number; indicator: SnapIndicator | null } {
-  let bestPos: { x: number; y: number } | null = null;
-  let bestIndicator: SnapIndicator | null = null;
-  let bestDiff = SNAP_THRESHOLD;
+  // Immer von der nächsten Pylone aus snappen
+  let nearest: { x: number; y: number; d: number } | null = null;
   for (const c of cones) {
     if (c.id === movingId) continue;
     const d = dist(mx, my, c.x, c.y);
     if (d < 0.001) continue;
-    for (const [sd, label] of SNAP_CENTERS) {
-      const diff = Math.abs(d - sd);
-      if (diff < bestDiff) {
-        bestDiff = diff;
-        const ratio = sd / d;
-        bestPos = { x: c.x + (mx - c.x) * ratio, y: c.y + (my - c.y) * ratio };
-        bestIndicator = { x1: c.x, y1: c.y, x2: bestPos.x, y2: bestPos.y, label };
-      }
+    if (!nearest || d < nearest.d) nearest = { x: c.x, y: c.y, d };
+  }
+  if (!nearest) return { x: mx, y: my, indicator: null };
+
+  let bestPos: { x: number; y: number } | null = null;
+  let bestLabel = "";
+  let bestDiff = SNAP_THRESHOLD;
+  for (const [sd, label] of SNAP_CENTERS) {
+    const diff = Math.abs(nearest.d - sd);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      const ratio = sd / nearest.d;
+      bestPos = { x: nearest.x + (mx - nearest.x) * ratio, y: nearest.y + (my - nearest.y) * ratio };
+      bestLabel = label;
     }
   }
-  return { x: bestPos?.x ?? mx, y: bestPos?.y ?? my, indicator: bestIndicator };
+  if (!bestPos) return { x: mx, y: my, indicator: null };
+  const indicator: SnapIndicator = { x1: nearest.x, y1: nearest.y, x2: bestPos.x, y2: bestPos.y, label: bestLabel };
+  return { x: bestPos.x, y: bestPos.y, indicator };
 }
 
 export function computeLinePylons(sx: number, sy: number, ex: number, ey: number) {
