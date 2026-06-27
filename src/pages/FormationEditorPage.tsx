@@ -101,7 +101,7 @@ export default function FormationEditorPage() {
   const [lichteBreite, setLichteBreite] = useState<number | null>(draft?.lichteBreite ?? null);
   const [sourceFormationKey, setSourceFormationKey] = useState<FormationKey | undefined>(draft?.sourceFormationKey);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
-  const [visibleM, setVisibleM] = useState(isEdit ? 10 : 10);
+  const [visibleM, setVisibleM] = useState(20);
 
   const ZOOM_STEPS = [5, 8, 10, 12, 15, 20, 30];
   const zoomIdx = ZOOM_STEPS.indexOf(visibleM);
