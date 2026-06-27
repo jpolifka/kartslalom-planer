@@ -103,8 +103,8 @@ export default function FormationEditorCanvas({
         setPylonLine({ startX: pos.x, startY: pos.y, curX: pos.x, curY: pos.y });
         (e.target as SVGElement).setPointerCapture(e.pointerId);
       } else {
-        const { x, y } = applySnap(pos.x, pos.y, "");
-        dispatch({ type: "ADD_CONE", cone: { id: crypto.randomUUID(), x, y, kind: tool } });
+        // Kein Snap beim Platzieren — Cone landet exakt wo geklickt wurde
+        dispatch({ type: "ADD_CONE", cone: { id: crypto.randomUUID(), x: pos.x, y: pos.y, kind: tool } });
       }
       return;
     }
@@ -183,10 +183,10 @@ export default function FormationEditorCanvas({
 
   function handleSvgPointerMove(e: React.PointerEvent<SVGSVGElement>) {
     if (tool === "standing" || tool === "lying" || tool === "sensor") {
+      // Kein Snap in Platzierungs-Modus — cursor folgt exakt dem Zeiger
       const raw = toMeters(e.clientX, e.clientY);
-      const { x, y, indicator } = applySnap(raw.x, raw.y, "");
-      setCursorPos({ x, y });
-      if (!dragRef.current) setSnapIndicator(indicator);
+      setCursorPos(raw);
+      if (!dragRef.current) setSnapIndicator(null);
     }
     if (dragRef.current) {
       const raw = toMeters(e.clientX, e.clientY);

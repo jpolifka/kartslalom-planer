@@ -120,7 +120,7 @@ export default function FormationEditorPage() {
 
     const raw = cloudFormation.cones_json as ConePoint[];
     // Normalize so minimum x/y starts at 0.5 m — prevents cones appearing off-canvas edge
-    const norm = raw.length > 0 ? normalizeCones(raw).map((c) => ({ ...c, x: c.x + 0.5, y: c.y + 0.5 })) : raw;
+    const norm = raw.length > 0 ? normalizeCones(raw).map((c) => ({ ...c, x: c.x + 3.0, y: c.y + 3.0 })) : raw;
     const cones = norm.map((c) => ({ ...c, id: crypto.randomUUID() }));
 
     // Auto-set zoom so all cones are visible with 2 m padding
