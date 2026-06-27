@@ -4,7 +4,7 @@
 create table public.profiles (
   id                      uuid primary key references auth.users(id) on delete cascade,
   email                   text not null,
-  tier                    text not null default 'free'
+  tier                    text not null default 'pro'
                             check (tier in ('free', 'pro', 'team')),
   last_active_at          timestamptz not null default now(),
   reminder_150_sent_at    timestamptz,
