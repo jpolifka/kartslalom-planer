@@ -51,7 +51,7 @@ const TOOL_LABELS: Record<EditorTool, string> = {
 const TOOLS: EditorTool[] = ["select", "standing", "lying", "sensor", "arrow", "gatePair"];
 
 const s: Record<string, React.CSSProperties> = {
-  page: { display: "flex", flexDirection: "column", height: "100vh", fontFamily: "system-ui, sans-serif", background: "#f9fafb" },
+  page: { display: "flex", flexDirection: "column", flex: 1, minHeight: 0, fontFamily: "system-ui, sans-serif", background: "#f9fafb" },
   header: { display: "flex", alignItems: "center", gap: 12, padding: "0 16px", height: 52, background: "white", borderBottom: "1px solid #e5e7eb", flexShrink: 0 },
   title: { fontSize: 15, fontWeight: 700, color: "#111827", flex: 1 },
   body: { display: "flex", flex: 1, overflow: "hidden" },

@@ -4,6 +4,7 @@
 
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "./store/authStore";
+import GlobalLayout from "./components/layout/GlobalLayout";
 import LoginPage from "./pages/LoginPage";
 import AuthCallbackPage from "./pages/AuthCallbackPage";
 import DashboardPage from "./pages/DashboardPage";
@@ -13,7 +14,6 @@ import FormationsPage from "./pages/FormationsPage";
 import ImpressumPage from "./pages/ImpressumPage";
 import SettingsPage from "./pages/SettingsPage";
 import AuthGuard from "./components/auth/AuthGuard";
-import AppShell from "./components/layout/AppShell";
 
 export default function AppRouter() {
   const { isLoading } = useAuthStore();
@@ -21,30 +21,30 @@ export default function AppRouter() {
 
   return (
     <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/auth/callback" element={<AuthCallbackPage />} />
+      <Route element={<GlobalLayout />}>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
-      {/* Editor: ohne Login (Gast-Modus, localStorage) oder eingeloggt (Cloud-Save) */}
-      <Route path="/editor/new" element={<EditorPage />} />
-      <Route path="/editor/:trackId" element={<EditorPage />} />
+        {/* Editor: ohne Login (Gast-Modus, localStorage) oder eingeloggt (Cloud-Save) */}
+        <Route path="/editor/new" element={<EditorPage />} />
+        <Route path="/editor/:trackId" element={<EditorPage />} />
 
-      {/* Hindernis-Editor: ohne Login nutzbar (localStorage), mit Login Cloud-Save */}
-      <Route path="/formations/new" element={<FormationEditorPage />} />
-      <Route path="/formations/:id" element={<FormationEditorPage />} />
+        {/* Hindernis-Editor: ohne Login nutzbar (localStorage), mit Login Cloud-Save */}
+        <Route path="/formations/new" element={<FormationEditorPage />} />
+        <Route path="/formations/:id" element={<FormationEditorPage />} />
 
-      <Route element={<AuthGuard />}>
-        <Route element={<AppShell />}>
+        <Route element={<AuthGuard />}>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/formations" element={<FormationsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
+
+        <Route path="/impressum" element={<ImpressumPage />} />
+        <Route path="/datenschutz" element={<Navigate to="/impressum#datenschutz" replace />} />
+
+        <Route path="*" element={<Navigate to="/editor/new" replace />} />
       </Route>
-
-      <Route path="/impressum" element={<ImpressumPage />} />
-      <Route path="/datenschutz" element={<Navigate to="/impressum#datenschutz" replace />} />
-
-      <Route path="*" element={<Navigate to="/editor/new" replace />} />
     </Routes>
   );
 }

@@ -374,7 +374,7 @@ export default function EditorPage() {
   }
 
   return (
-    <div style={{ height: "100vh", overflow: "hidden", background: "#f1f5f9", color: "#0f172a", display: "flex", flexDirection: "column" }}>
+    <div style={{ flex: 1, minHeight: 0, overflow: "hidden", background: "#f1f5f9", color: "#0f172a", display: "flex", flexDirection: "column" }}>
 
       {/* ── Modal: Map Selector ─────────────────────────────────────── */}
       {showMapSelector && (
