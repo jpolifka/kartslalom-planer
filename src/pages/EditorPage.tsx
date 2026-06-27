@@ -14,7 +14,6 @@ import { generateTrackSVG, downloadSVG, printAsPDF } from "../lib/exportSVG";
 import type { AreaSelection } from "../lib/areaSelection";
 import type { FormationKey, PlacedArrow, PlacedFormation } from "../types";
 import { saveState, loadState, clearSavedState, exportAsFile, parseImportFile } from "../lib/storage";
-import { supabase } from "../lib/supabase";
 import { useAuthStore } from "../store/authStore";
 import { useTrack, useCreateTrack, useSaveTrack, useRenameTrack } from "../hooks/useTracks";
 import { useTier } from "../hooks/useTier";
@@ -448,7 +447,6 @@ export default function EditorPage() {
           onNameBlur={handleNameBlur}
           onNameKeyDown={handleNameKeyDown}
           onShowHelp={() => setShowHelp(true)}
-          onSignOut={async () => { await supabase.auth.signOut(); navigate("/login"); }}
         />
 
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "276px 1fr 296px", gap: 14, flex: 1, minHeight: 0, overflow: "hidden" }}>

@@ -23,7 +23,7 @@ export default function GlobalNav() {
     <header style={{
       display: "flex", alignItems: "center", justifyContent: "space-between",
       padding: "0 20px", height: 48, background: "white", flexShrink: 0,
-      boxShadow: "0 1px 3px rgba(0,0,0,0.06)", zIndex: 100,
+      borderBottom: "1px solid #e5e7eb", zIndex: 100,
     }}>
       <Link to={session ? "/dashboard" : "/"} style={{ fontWeight: 800, fontSize: 16, color: "var(--c-primary)", textDecoration: "none" }}>
         Kartslalom Streckenplaner
