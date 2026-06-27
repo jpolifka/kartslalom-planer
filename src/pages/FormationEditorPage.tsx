@@ -11,6 +11,7 @@ import BasisAuswahl from "../components/formation-editor/BasisAuswahl";
 import { useCustomFormation, useCreateCustomFormation, useUpdateCustomFormation } from "../hooks/useCustomFormations";
 import { useFeatureGate } from "../hooks/useFeatureGate";
 import { useAuthStore } from "../store/authStore";
+import { useProfile } from "../hooks/useProfile";
 import { normalizeCones } from "../lib/geometry";
 import type { FormationCategory, FormationKey, ConePoint } from "../types";
 import { TASK_LANE_WIDTH } from "../lib/formations/common";
@@ -70,6 +71,7 @@ export default function FormationEditorPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id?: string }>();
   const { session } = useAuthStore();
+  useProfile(); // Lädt profile.tier in den AuthStore — nötig da diese Route außerhalb AppShell liegt
   const { allowed } = useFeatureGate("custom_formations");
 
   // Cloud load when editing existing formation
