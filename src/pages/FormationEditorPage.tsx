@@ -12,7 +12,7 @@ import { useCustomFormation, useCreateCustomFormation, useUpdateCustomFormation 
 import { useFeatureGate } from "../hooks/useFeatureGate";
 import { useAuthStore } from "../store/authStore";
 import { useProfile } from "../hooks/useProfile";
-import { normalizeCones } from "../lib/geometry";
+import { normalizeCones, boundsFromCones, translateCones } from "../lib/geometry";
 import type { FormationCategory, FormationKey, ConePoint } from "../types";
 import { TASK_LANE_WIDTH } from "../lib/formations/common";
 
@@ -119,9 +119,12 @@ export default function FormationEditorPage() {
     initializedRef.current = true;
 
     const raw = cloudFormation.cones_json as ConePoint[];
-    // Normalize so minimum x/y starts at 0.5 m — prevents cones appearing off-canvas edge
-    const norm = raw.length > 0 ? normalizeCones(raw).map((c) => ({ ...c, x: c.x + 3.0, y: c.y + 3.0 })) : raw;
-    const cones = norm.map((c) => ({ ...c, id: crypto.randomUUID() }));
+    // Cones auf Ursprung normalisieren; Zentrieren auf Canvas-Mitte danach
+    const norm = raw.length > 0 ? normalizeCones(raw) : raw;
+    const normCentered = norm.length > 0
+      ? (() => { const b = boundsFromCones(norm); return translateCones(norm, visibleM / 2 - b.cx, visibleM / 2 - b.cy); })()
+      : norm;
+    const cones = normCentered.map((c) => ({ ...c, id: crypto.randomUUID() }));
 
     // Auto-set zoom so all cones are visible with 2 m padding
     if (cones.length > 0) {
@@ -224,7 +227,14 @@ export default function FormationEditorPage() {
   }, [dispatch, selectedConeIds, selectedArrowId, selectedMeasurementId, cones]);
 
   function handleBasisConfirm(initialSnap: EditorSnap, sourceKey?: FormationKey) {
-    dispatch({ type: "RESET", snap: initialSnap });
+    // Mathematisches Zentrum der Formation auf Canvas-Mitte legen
+    const centered = initialSnap.cones.length > 0
+      ? (() => {
+          const b = boundsFromCones(initialSnap.cones as never);
+          return translateCones(initialSnap.cones as never, visibleM / 2 - b.cx, visibleM / 2 - b.cy) as never;
+        })()
+      : initialSnap.cones;
+    dispatch({ type: "RESET", snap: { ...initialSnap, cones: centered } });
     setSourceFormationKey(sourceKey);
     setShowBasis(false);
   }

@@ -54,7 +54,7 @@ export default function BasisAuswahl({ onConfirm }: Props) {
     if (mode === "own" && selectedOwnId && ownFormations) {
       const f = ownFormations.find((x) => x.id === selectedOwnId)!;
       const raw = f.cones_json as ConePoint[];
-      const norm = raw.length > 0 ? normalizeCones(raw).map((c) => ({ ...c, x: c.x + 3.0, y: c.y + 3.0 })) : raw;
+      const norm = raw.length > 0 ? normalizeCones(raw) : raw;
       const cones: EditableCone[] = norm.map((c) => ({ ...c, id: crypto.randomUUID() }));
       onConfirm({ cones, arrows: f.arrows_json as never });
     }
