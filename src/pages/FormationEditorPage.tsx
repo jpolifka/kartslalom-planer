@@ -267,6 +267,15 @@ export default function FormationEditorPage() {
             {session ? "Feature nicht freigeschaltet" : "Nicht eingeloggt"} — nur lokal
           </span>
         )}
+        {!isEdit && (
+          <button
+            style={s.headerBtn}
+            onClick={() => { clearDraft(); setShowBasis(true); dispatch({ type: "RESET", snap: { cones: [], arrows: [] } }); setName(""); setDescription(""); setCategory("individuell"); setDurationSeconds(null); setLichteBreite(null); setSourceFormationKey(undefined); }}
+            title="Draft verwerfen und neu anfangen"
+          >
+            Neu anfangen
+          </button>
+        )}
         <button
           style={{ ...s.saveBtn, opacity: saveStatus === "saving" ? 0.6 : 1 }}
           onClick={handleSave}

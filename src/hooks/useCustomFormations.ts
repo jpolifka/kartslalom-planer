@@ -20,6 +20,7 @@ export function useCustomFormationList() {
     queryKey: ["custom_formations"],
     queryFn: fetchCustomFormations,
     enabled: !!session,
+    staleTime: 0, // immer frisch laden wenn Fenster/Tab fokussiert wird
   });
 }
 
