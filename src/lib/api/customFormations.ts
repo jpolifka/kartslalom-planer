@@ -47,6 +47,10 @@ function mapError(msg: string): Error {
   if (msg.includes("too_many_arrows"))               return new Error("TOO_MANY_ARROWS");
   if (msg.includes("invalid_name"))                  return new Error("INVALID_NAME");
   if (msg.includes("invalid_category"))              return new Error("INVALID_CATEGORY");
+  if (msg.includes("invalid_lichte_breite"))         return new Error("INVALID_LICHTE_BREITE");
+  if (msg.includes("invalid_duration_seconds"))      return new Error("INVALID_DURATION_SECONDS");
+  if (msg.includes("invalid_default_direction"))     return new Error("INVALID_DEFAULT_DIRECTION");
+  if (msg.includes("invalid_cone_coordinates"))      return new Error("INVALID_CONE_COORDINATES");
   if (msg.includes("not_authorized"))                return new Error("NOT_AUTHORIZED");
   if (msg.includes("account_deleted"))               return new Error("ACCOUNT_DELETED");
   return new Error(msg);

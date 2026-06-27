@@ -153,8 +153,9 @@ export default function FormationEditorPage() {
         cones_json: cones as never,
         arrows_json: arrows as never,
         default_direction: null,
-        lichte_breite: lichteBreite,
-        duration_seconds: durationSeconds,
+        // 0 ist semantisch leer — RPC lehnt <= 0 ab
+        lichte_breite: lichteBreite && lichteBreite > 0 ? lichteBreite : null,
+        duration_seconds: durationSeconds && durationSeconds > 0 ? durationSeconds : null,
       };
       if (isEdit && id) {
         await updateMutation.mutateAsync({ id, ...params });
