@@ -476,16 +476,23 @@ export default function FormationEditorCanvas({
       {snapIndicator && (() => {
         const x1 = snapIndicator.x1 * S, y1 = snapIndicator.y1 * S;
         const x2 = snapIndicator.x2 * S, y2 = snapIndicator.y2 * S;
-        const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+        const dx = x2 - x1, dy = y2 - y1;
+        const len = Math.sqrt(dx * dx + dy * dy) || 1;
+        // Label näher am Startpunkt (Referenz-Pylone), seitlich versetzt
+        const lx = x1 + dx * 0.2, ly = y1 + dy * 0.2;
+        // Senkrecht zur Linie, weg vom Canvas-Zentrum
+        const nx = -dy / len, ny = dx / len;
         const fs = Math.max(10, S * 0.18);
+        const lo = fs * 1.4;
+        const tx = lx + nx * lo, ty = ly + ny * lo;
         return (
           <g pointerEvents="none">
             <line x1={x1} y1={y1} x2={x2} y2={y2}
               stroke="#10b981" strokeWidth={2} strokeDasharray="5 3" />
-            <rect x={mx - fs * 2.2} y={my - fs * 0.9} width={fs * 4.4} height={fs * 1.5}
-              fill="white" opacity={0.85} rx={3} />
-            <text x={mx} y={my + fs * 0.4} textAnchor="middle" fontSize={fs} fill="#10b981" fontWeight="700">
-              ⇧ {snapIndicator.label}
+            <rect x={tx - fs * 2.2} y={ty - fs * 0.9} width={fs * 4.4} height={fs * 1.5}
+              fill="white" opacity={0.9} rx={3} />
+            <text x={tx} y={ty + fs * 0.4} textAnchor="middle" fontSize={fs} fill="#10b981" fontWeight="700">
+              {snapIndicator.label}
             </text>
           </g>
         );
