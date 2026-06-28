@@ -15,9 +15,10 @@ import {
   type SnapIndicator,
 } from "../../lib/formations/formationEditorUtils";
 
-export type EditorTool = "select" | "standing" | "lying" | "sensor" | "arrow" | "gatePair";
+export type EditorTool = "select" | "standing" | "lying" | "sensor" | "arrow" | "gatePair" | "guideH" | "guideV";
 
 export type MeasurementLine = { id: string; x1: number; y1: number; x2: number; y2: number };
+export type GuideLine = { id: string; axis: "h" | "v"; pos: number };
 
 const CANVAS_PX = 560;
 const GRID_COLOR = "#e5e7eb";
@@ -47,6 +48,10 @@ type Props = {
   onAddMeasurement: (m: MeasurementLine) => void;
   onGatePairClick: (coneId: string) => void;
   gatePairFirstId?: string | null;
+  guides?: GuideLine[];
+  onAddGuide?: (g: GuideLine) => void;
+  onRemoveGuide?: (id: string) => void;
+  onMoveGuide?: (id: string, pos: number) => void;
 };
 
 export default function FormationEditorCanvas({
@@ -55,6 +60,7 @@ export default function FormationEditorCanvas({
   tool, visibleM, dispatch,
   onSelectCones, onSelectArrow, onSelectMeasurement, onAddMeasurement,
   onGatePairClick, gatePairFirstId,
+  guides = [], onAddGuide, onRemoveGuide, onMoveGuide,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   type DragState = {
@@ -67,6 +73,7 @@ export default function FormationEditorCanvas({
   const [measureDraw, setMeasureDraw] = useState<LineDraw | null>(null);
   const [arrowDragCp, setArrowDragCp] = useState<{ id: string; ox: number; oy: number } | null>(null);
   const [rotDrag, setRotDrag] = useState<{ id: string } | null>(null);
+  const guideDragRef = useRef<{ id: string } | null>(null);
   const [snapIndicator, setSnapIndicator] = useState<SnapIndicator | null>(null);
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
   const [pylonLine, setPylonLine] = useState<LineDraw | null>(null);
@@ -111,6 +118,10 @@ export default function FormationEditorCanvas({
 
   function handleBgPointerDown(e: React.PointerEvent<SVGRectElement>) {
     const pos = toMeters(e.clientX, e.clientY);
+    if (tool === "guideH" || tool === "guideV") {
+      onAddGuide?.({ id: crypto.randomUUID(), axis: tool === "guideH" ? "h" : "v", pos: tool === "guideH" ? pos.y : pos.x });
+      return;
+    }
     if (tool === "standing" || tool === "lying" || tool === "sensor") {
       if (e.shiftKey) {
         // Shift: Pylon-Reihe starten — von gesnappler Position aus (cursorPos ist bereits gesnapped)
@@ -213,6 +224,11 @@ export default function FormationEditorCanvas({
   }
 
   function handleSvgPointerMove(e: React.PointerEvent<SVGSVGElement>) {
+    if (guideDragRef.current) {
+      const raw = toMeters(e.clientX, e.clientY);
+      const g = guides.find((g) => g.id === guideDragRef.current!.id);
+      if (g) onMoveGuide?.(g.id, g.axis === "h" ? raw.y : raw.x);
+    }
     if (tool === "standing" || tool === "lying" || tool === "sensor") {
       const raw = toMeters(e.clientX, e.clientY);
       if (!dragRef.current) {
@@ -279,6 +295,9 @@ export default function FormationEditorCanvas({
   }
 
   function handleSvgPointerUp() {
+    if (guideDragRef.current) {
+      guideDragRef.current = null;
+    }
     if (dragRef.current) {
       // Merge: gezogene Cones die auf einem anderen landen → löschen
       const draggedIds = new Set(Object.keys(dragRef.current.initialPositions));
@@ -348,7 +367,7 @@ export default function FormationEditorCanvas({
         <line x1={x1s - px / 2} y1={y1s - py / 2} x2={x1s + px / 2} y2={y1s + py / 2} stroke={color} strokeWidth={sw} />
         <line x1={x2s - px / 2} y1={y2s - py / 2} x2={x2s + px / 2} y2={y2s + py / 2} stroke={color} strokeWidth={sw} />
         <text x={midX + nx * lo} y={midY + ny * lo} textAnchor="middle" fontSize={fs} fill={color} fontWeight="600">
-          {d.toFixed(2)} m{sel ? "  ✕ Entf" : ""}
+          {d.toFixed(2)} m · LB: {Math.max(0, d - PYLON_FOOT_SIZE).toFixed(2)} m{sel ? "  ✕" : ""}
         </text>
       </g>
     );
@@ -387,6 +406,42 @@ export default function FormationEditorCanvas({
         onPointerDown={handleBgPointerDown} onPointerMove={handleBgPointerMove} onPointerUp={handleBgPointerUp}
         style={{ cursor: tool === "select" ? "default" : "crosshair" }}
       />
+
+      {/* Hilfslinien */}
+      {guides.map((g) => {
+        const pos = g.pos * S;
+        const isH = g.axis === "h";
+        return (
+          <g key={g.id}
+            style={{ cursor: "ns-resize" }}
+            onPointerDown={(e) => { e.stopPropagation(); guideDragRef.current = { id: g.id }; (e.currentTarget as SVGElement).setPointerCapture(e.pointerId); }}
+            onDoubleClick={() => onRemoveGuide?.(g.id)}>
+            <line
+              x1={isH ? 0 : pos} y1={isH ? pos : 0}
+              x2={isH ? CANVAS_PX : pos} y2={isH ? pos : CANVAS_PX}
+              stroke="#3b82f6" strokeWidth={1.5} strokeDasharray="6 4" opacity={0.5}
+            />
+            <line
+              x1={isH ? 0 : pos} y1={isH ? pos : 0}
+              x2={isH ? CANVAS_PX : pos} y2={isH ? pos : CANVAS_PX}
+              stroke="transparent" strokeWidth={12}
+            />
+          </g>
+        );
+      })}
+      {/* Preview-Hilfslinie beim Hover */}
+      {(tool === "guideH" || tool === "guideV") && cursorPos && (() => {
+        const isH = tool === "guideH";
+        const pos = (isH ? cursorPos.y : cursorPos.x) * S;
+        return (
+          <line
+            x1={isH ? 0 : pos} y1={isH ? pos : 0}
+            x2={isH ? CANVAS_PX : pos} y2={isH ? pos : CANVAS_PX}
+            stroke="#3b82f6" strokeWidth={1.5} strokeDasharray="6 4" opacity={0.3}
+            pointerEvents="none"
+          />
+        );
+      })()}
 
       {/* Too-close warning */}
       {tooClosePairs.map(([a, b], i) => (

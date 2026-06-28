@@ -4,6 +4,7 @@
 
 import type { EditableCone } from "../../hooks/useFormationEditor";
 import type { FormationCategory } from "../../types";
+import type { GuideLine } from "./FormationEditorCanvas";
 import { TASK_LANE_WIDTH } from "../../lib/formations/common";
 
 const CATEGORIES: { value: FormationCategory; label: string }[] = [
@@ -30,6 +31,10 @@ type Props = {
   onRotateSelectedCone: (angleDeg: number) => void;
   onRotateSelection: (deltaDeg: number) => void;
   onDeleteSelected: () => void;
+  guides?: GuideLine[];
+  onMoveGuide?: (id: string, pos: number) => void;
+  onRemoveGuide?: (id: string) => void;
+  onClearGuides?: () => void;
 };
 
 const s: Record<string, React.CSSProperties> = {
@@ -52,6 +57,7 @@ export default function FormationMetaPanel({
   onChangeName, onChangeDescription,
   onChangeDuration, onChangeLichteBreite,
   onRotateSelectedCone, onRotateSelection, onDeleteSelected,
+  guides = [], onMoveGuide, onRemoveGuide, onClearGuides,
 }: Props) {
   const selectedCone = selectedConeIds.length === 1
     ? cones.find((c) => c.id === selectedConeIds[0])
@@ -199,6 +205,34 @@ export default function FormationMetaPanel({
             <button style={s.btnDanger} onClick={onDeleteSelected}>
               Löschen ({selectedConeIds.length})
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Hilfslinien */}
+      {guides.length > 0 && (
+        <div style={s.section}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <label style={s.label}>Hilfslinien</label>
+            <button onClick={onClearGuides} style={{ fontSize: 11, color: "#94a3b8", background: "none", border: "none", cursor: "pointer" }}>
+              Alle löschen
+            </button>
+          </div>
+          <div style={{ display: "grid", gap: 4 }}>
+            {guides.map((g) => (
+              <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 11, color: "#3b82f6", fontWeight: 700, width: 14, flexShrink: 0 }}>
+                  {g.axis === "h" ? "─" : "│"}
+                </span>
+                <input
+                  type="number" step={0.1} value={g.pos.toFixed(2)}
+                  onChange={(e) => onMoveGuide?.(g.id, Number(e.target.value))}
+                  style={{ ...s.input, flex: 1, padding: "3px 6px", fontSize: 12 }}
+                />
+                <span style={{ fontSize: 10, color: "#94a3b8" }}>m</span>
+                <button onClick={() => onRemoveGuide?.(g.id)} style={{ fontSize: 11, color: "#94a3b8", background: "none", border: "none", cursor: "pointer" }}>✕</button>
+              </div>
+            ))}
           </div>
         </div>
       )}

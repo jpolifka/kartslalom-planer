@@ -5,7 +5,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useFormationEditor, type EditorSnap, type EditableCone } from "../hooks/useFormationEditor";
-import FormationEditorCanvas, { type EditorTool, type MeasurementLine } from "../components/formation-editor/FormationEditorCanvas";
+import FormationEditorCanvas, { type EditorTool, type MeasurementLine, type GuideLine } from "../components/formation-editor/FormationEditorCanvas";
 import FormationMetaPanel from "../components/formation-editor/FormationMetaPanel";
 import BasisAuswahl from "../components/formation-editor/BasisAuswahl";
 import { useCustomFormation, useCreateCustomFormation, useUpdateCustomFormation } from "../hooks/useCustomFormations";
@@ -46,9 +46,11 @@ const TOOL_LABELS: Record<EditorTool, string> = {
   sensor: "Sensor",
   arrow: "Pfeil",
   gatePair: "Breite messen",
+  guideH: "─ H-Linie",
+  guideV: "│ V-Linie",
 };
 
-const TOOLS: EditorTool[] = ["select", "standing", "lying", "sensor", "arrow", "gatePair"];
+const TOOLS: EditorTool[] = ["select", "standing", "lying", "sensor", "arrow", "gatePair", "guideH", "guideV"];
 
 const s: Record<string, React.CSSProperties> = {
   page: { display: "flex", flexDirection: "column", flex: 1, minHeight: 0, fontFamily: "system-ui, sans-serif", background: "#f9fafb" },
@@ -104,6 +106,7 @@ export default function FormationEditorPage() {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [visibleM, setVisibleM] = useState(20);
   const [clipboard, setClipboard] = useState<EditableCone[]>([]);
+  const [guides, setGuides] = useState<GuideLine[]>([]);
 
   const ZOOM_STEPS = [5, 8, 10, 12, 15, 20, 30];
   const zoomIdx = ZOOM_STEPS.indexOf(visibleM);
@@ -273,9 +276,12 @@ export default function FormationEditorPage() {
       const centerDist = Math.sqrt((c1.x - c2.x) ** 2 + (c1.y - c2.y) ** 2);
       const lb = Math.max(0, centerDist - PYLON_FOOT_SIZE);
       setLichteBreite(Math.round(lb * 1000) / 1000);
+      // Sichtbare Maßlinie auf dem Canvas erstellen
+      const mid: MeasurementLine = { id: crypto.randomUUID(), x1: c1.x, y1: c1.y, x2: c2.x, y2: c2.y };
+      setMeasurements((ms) => [...ms, mid]);
+      setSelectedMeasurementId(mid.id);
     }
     setGateFirstConeId(null);
-    // Zurück zu Auswahl-Modus
     setTool("select");
   }
 
@@ -346,6 +352,11 @@ export default function FormationEditorPage() {
                 {gateFirstConeId ? "→ 2. Pylone anklicken" : "→ 1. Pylone anklicken"}
               </span>
             )}
+            {(tool === "guideH" || tool === "guideV") && (
+              <span style={{ fontSize: 11, color: "#3b82f6", marginRight: 8 }}>
+                → Klicken zum Platzieren · Doppelklick auf Linie zum Löschen
+              </span>
+            )}
             <button style={{ ...s.undoBtn, opacity: canUndo ? 1 : 0.4 }} onClick={() => dispatch({ type: "UNDO" })} disabled={!canUndo}>↩ Undo</button>
             <button style={{ ...s.undoBtn, opacity: canRedo ? 1 : 0.4 }} onClick={() => dispatch({ type: "REDO" })} disabled={!canRedo}>↪ Redo</button>
             <div style={{ width: 1, background: "#e5e7eb", margin: "0 4px", alignSelf: "stretch" }} />
@@ -364,6 +375,10 @@ export default function FormationEditorPage() {
               onAddMeasurement={(m) => setMeasurements((ms) => [...ms, m])}
               onGatePairClick={handleGatePairClick}
               gatePairFirstId={gateFirstConeId}
+              guides={guides}
+              onAddGuide={(g) => setGuides((gs) => [...gs, g])}
+              onRemoveGuide={(id) => setGuides((gs) => gs.filter((g) => g.id !== id))}
+              onMoveGuide={(id, pos) => setGuides((gs) => gs.map((g) => g.id === id ? { ...g, pos } : g))}
             />
           </div>
 
@@ -409,6 +424,10 @@ export default function FormationEditorPage() {
           onChangeLichteBreite={setLichteBreite} onRotateSelectedCone={handleRotateSelected}
           onRotateSelection={handleRotateSelection}
           onDeleteSelected={handleDeleteSelected}
+          guides={guides}
+          onMoveGuide={(id, pos) => setGuides((gs) => gs.map((g) => g.id === id ? { ...g, pos } : g))}
+          onRemoveGuide={(id) => setGuides((gs) => gs.filter((g) => g.id !== id))}
+          onClearGuides={() => setGuides([])}
         />
       </div>
     </div>
