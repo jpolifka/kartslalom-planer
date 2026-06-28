@@ -129,8 +129,9 @@ export default function FormationEditorCanvas({
         setPylonLine({ startX: start.x, startY: start.y, curX: start.x, curY: start.y });
         (e.target as SVGElement).setPointerCapture(e.pointerId);
       } else {
-        // Kein Snap: Cone landet exakt wo geklickt wurde
-        dispatch({ type: "ADD_CONE", cone: { id: crypto.randomUUID(), x: pos.x, y: pos.y, kind: tool } });
+        // Guide-Snap passiv anwenden
+        const snapped = snapToGuide(pos.x, pos.y);
+        dispatch({ type: "ADD_CONE", cone: { id: crypto.randomUUID(), x: snapped.x, y: snapped.y, kind: tool } });
       }
       return;
     }
@@ -223,6 +224,17 @@ export default function FormationEditorCanvas({
     (e.currentTarget as SVGElement).setPointerCapture(e.pointerId);
   }
 
+  /** Snap auf Hilfslinie wenn nah genug (innerhalb 5% des visibleM) */
+  function snapToGuide(x: number, y: number): { x: number; y: number } {
+    const guideThreshold = visibleM * 0.025; // ~2,5% = 0.5m bei 20m Zoom
+    let rx = x, ry = y;
+    for (const g of guides) {
+      if (g.axis === "v" && Math.abs(x - g.pos) < guideThreshold) rx = g.pos;
+      if (g.axis === "h" && Math.abs(y - g.pos) < guideThreshold) ry = g.pos;
+    }
+    return { x: rx, y: ry };
+  }
+
   function handleSvgPointerMove(e: React.PointerEvent<SVGSVGElement>) {
     if (guideDragRef.current) {
       const raw = toMeters(e.clientX, e.clientY);
@@ -233,14 +245,17 @@ export default function FormationEditorCanvas({
       const raw = toMeters(e.clientX, e.clientY);
       if (!dragRef.current) {
         if (e.shiftKey) {
-          // Shift + Hover in Platzierungs-Modus: Cursor auf Snap-Distanz ziehen
-          const { x, y, indicator } = applySnap(raw.x, raw.y, "");
-          setCursorPos({ x, y });
-          setSnapIndicator(indicator);
+          // Shift + Hover: Pylonen-Snap (0m / 0,50 LB / 1,65 LB)
+          const snapped = applySnap(raw.x, raw.y, "");
+          // Zusätzlich: Hilfslinie-Snap überschreibt falls näher
+          const withGuide = snapToGuide(snapped.x, snapped.y);
+          setCursorPos(withGuide);
+          setSnapIndicator(snapped.indicator);
         } else {
-          // Kein Shift: freie Cursor-Position, Entfernung zu nächster Pylone anzeigen
-          setCursorPos(raw);
-          setSnapIndicator(getNearestIndicator(raw.x, raw.y, ""));
+          // Kein Shift: Hilfslinie-Snap passiv
+          const withGuide = snapToGuide(raw.x, raw.y);
+          setCursorPos(withGuide);
+          setSnapIndicator(getNearestIndicator(withGuide.x, withGuide.y, ""));
         }
       }
     }
@@ -413,18 +428,26 @@ export default function FormationEditorCanvas({
         const isH = g.axis === "h";
         return (
           <g key={g.id}
-            style={{ cursor: "ns-resize" }}
-            onPointerDown={(e) => { e.stopPropagation(); guideDragRef.current = { id: g.id }; (e.currentTarget as SVGElement).setPointerCapture(e.pointerId); }}
+            style={{ cursor: tool === "select" ? (isH ? "ns-resize" : "ew-resize") : "inherit" }}
+            onPointerDown={(e) => {
+              // Im Platzierungs-Modus: Linie nicht abfangen, Cone soll platziert werden
+              if (tool !== "select") return;
+              e.stopPropagation();
+              guideDragRef.current = { id: g.id };
+              (e.currentTarget as SVGElement).setPointerCapture(e.pointerId);
+            }}
             onDoubleClick={() => onRemoveGuide?.(g.id)}>
             <line
               x1={isH ? 0 : pos} y1={isH ? pos : 0}
               x2={isH ? CANVAS_PX : pos} y2={isH ? pos : CANVAS_PX}
               stroke="#3b82f6" strokeWidth={1.5} strokeDasharray="6 4" opacity={0.5}
+              pointerEvents={tool === "select" ? "auto" : "none"}
             />
             <line
               x1={isH ? 0 : pos} y1={isH ? pos : 0}
               x2={isH ? CANVAS_PX : pos} y2={isH ? pos : CANVAS_PX}
               stroke="transparent" strokeWidth={12}
+              pointerEvents={tool === "select" ? "auto" : "none"}
             />
           </g>
         );
