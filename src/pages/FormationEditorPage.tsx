@@ -322,7 +322,24 @@ export default function FormationEditorPage() {
         {!isEdit && (
           <button
             style={s.headerBtn}
-            onClick={() => { clearDraft(); setShowBasis(true); dispatch({ type: "RESET", snap: { cones: [], arrows: [] } }); setName(""); setDescription(""); setCategory("individuell"); setDurationSeconds(null); setLichteBreite(null); setSourceFormationKey(undefined); }}
+            onClick={() => {
+              clearDraft();
+              setShowBasis(true);
+              dispatch({ type: "RESET", snap: { cones: [], arrows: [] } });
+              setName("");
+              setDescription("");
+              setCategory("individuell");
+              setDurationSeconds(null);
+              setLichteBreite(null);
+              setSourceFormationKey(undefined);
+              setMeasurements([]);
+              setGuides([]);
+              setSelectedConeIds([]);
+              setSelectedArrowId(null);
+              setSelectedMeasurementId(null);
+              setGateFirstConeId(null);
+              setClipboard([]);
+            }}
             title="Draft verwerfen und neu anfangen"
           >
             Neu anfangen
