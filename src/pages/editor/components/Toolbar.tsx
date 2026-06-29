@@ -128,7 +128,8 @@ export default function Toolbar({
       display: "flex", alignItems: "center", gap: 8,
       boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
       flexShrink: 0,
-      overflowX: "auto", WebkitOverflowScrolling: "touch",
+      overflowX: isMobile ? "auto" : "visible",
+      ...(isMobile ? { WebkitOverflowScrolling: "touch" as const } : {}),
     }}>
       {isMobile && (
         <>
