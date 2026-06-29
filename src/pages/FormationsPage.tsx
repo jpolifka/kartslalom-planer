@@ -4,7 +4,7 @@
 
 import { useNavigate } from "react-router-dom";
 import { Plus, Trash2, Pencil, Layers, Share2, Eye } from "lucide-react";
-import { useCustomFormationList, useDeleteCustomFormation, useSharedWithMe } from "../hooks/useCustomFormations";
+import { useCustomFormationList, useDeleteCustomFormation, useSharedFormations } from "../hooks/useCustomFormations";
 import { useFeatureGate } from "../hooks/useFeatureGate";
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -66,7 +66,7 @@ const iconBtn = (extra?: React.CSSProperties): React.CSSProperties => ({
 export default function FormationsPage() {
   const navigate = useNavigate();
   const { data: formations, isLoading } = useCustomFormationList();
-  const { data: sharedWithMe, isLoading: sharedLoading } = useSharedWithMe();
+  const { data: sharedWithMe, isLoading: sharedLoading } = useSharedFormations();
   const deleteMutation = useDeleteCustomFormation();
   const { allowed, requiredTier } = useFeatureGate("custom_formations");
 

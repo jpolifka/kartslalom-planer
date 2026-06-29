@@ -112,14 +112,25 @@ export async function fetchCustomFormation(id: string): Promise<CustomFormationR
   return data as CustomFormationRow;
 }
 
-export async function fetchLibraryFormations(): Promise<CustomFormationRow[]> {
-  const { data, error } = await supabase
-    .from("custom_formations")
-    .select("*")
-    .eq("is_library", true)
-    .order("name");
+export type LibraryFormationRow = {
+  id: string;
+  name: string;
+  description: string | null;
+  category: FormationCategory;
+  pylon_count: number;
+  lichte_breite: number | null;
+  duration_seconds: number | null;
+  cones_json: ConePoint[];
+  arrows_json: PlacedArrow[];
+  default_direction: string | null;
+  source_formation_key: string | null;
+  created_at: string;
+};
+
+export async function fetchLibraryFormations(): Promise<LibraryFormationRow[]> {
+  const { data, error } = await supabase.rpc("get_library_formations");
   if (error) throw error;
-  return data as CustomFormationRow[];
+  return data as LibraryFormationRow[];
 }
 
 // --- Sharing ---
@@ -166,12 +177,10 @@ export async function fetchFormationShares(formationId: string): Promise<Formati
   return data as FormationShareEntry[];
 }
 
-export async function fetchSharedWithMe(userId: string): Promise<CustomFormationRow[]> {
-  const { data, error } = await supabase
-    .from("custom_formations")
-    .select("*")
-    .neq("owner_id", userId)
-    .order("updated_at", { ascending: false });
+export type SharedFormationRow = CustomFormationRow & { permission: "view" | "edit" };
+
+export async function fetchSharedFormations(): Promise<SharedFormationRow[]> {
+  const { data, error } = await supabase.rpc("get_shared_formations");
   if (error) throw error;
-  return data as CustomFormationRow[];
+  return data as SharedFormationRow[];
 }

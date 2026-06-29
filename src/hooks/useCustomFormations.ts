@@ -15,7 +15,7 @@ import {
   shareFormation,
   unshareFormation,
   fetchFormationShares,
-  fetchSharedWithMe,
+  fetchSharedFormations,
   type CreateFormationParams,
 } from "../lib/api/customFormations";
 
@@ -109,11 +109,11 @@ export function useFindShareableUser() {
   });
 }
 
-export function useSharedWithMe() {
+export function useSharedFormations() {
   const { session } = useAuthStore();
   return useQuery({
-    queryKey: ["shared_with_me"],
-    queryFn: () => fetchSharedWithMe(session!.user.id),
+    queryKey: ["shared_formations"],
+    queryFn: fetchSharedFormations,
     enabled: !!session,
   });
 }
