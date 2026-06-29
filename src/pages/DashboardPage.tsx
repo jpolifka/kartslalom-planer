@@ -211,7 +211,7 @@ export default function DashboardPage() {
       )}
 
       {!!formations?.length && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 10 }}>
+        <div style={{ display: "grid", gap: 10 }}>
           {formations.map((f) => (
             <div
               key={f.id}
@@ -219,41 +219,32 @@ export default function DashboardPage() {
               style={{
                 background: "white", borderRadius: 14, padding: "14px 16px",
                 boxShadow: "0 1px 3px rgba(0,0,0,0.06)", cursor: "pointer",
-                display: "flex", flexDirection: "column", gap: 8,
+                display: "flex", alignItems: "center", gap: 12,
               }}
             >
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
-                <div style={{ fontWeight: 700, fontSize: 14, color: "#111827", flex: 1, minWidth: 0 }}>{f.name}</div>
-                <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); navigate(`/formations/${f.id}/share`); }}
-                    style={iconActionBtn} title="Teilen"
-                  >
-                    <Share2 size={12} color="var(--c-primary)" />
-                  </button>
-                  <button
-                    onClick={(e) => handleDeleteFormation(e, f.id, f.name)}
-                    style={{ ...iconActionBtn, borderColor: "#fecaca", color: "#b91c1c" }} title="Löschen"
-                  >
-                    <Trash2 size={12} />
-                  </button>
+              <Share2 size={18} color="var(--c-primary)" style={{ flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 14, color: "#111827" }}>{f.name}</div>
+                <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2, display: "flex", gap: 8 }}>
+                  <span>{CATEGORY_LABELS[f.category] ?? f.category}</span>
+                  <span>{f.pylon_count} Pylone</span>
+                  {f.duration_seconds && <span>{f.duration_seconds} s</span>}
+                  <span>· {new Date(f.updated_at).toLocaleString("de-DE")}</span>
                 </div>
               </div>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                <span style={{ fontSize: 11, background: "#f1f5f9", borderRadius: 4, padding: "2px 7px", color: "#475569", fontWeight: 500 }}>
-                  {CATEGORY_LABELS[f.category] ?? f.category}
-                </span>
-                <span style={{ fontSize: 11, background: "#f1f5f9", borderRadius: 4, padding: "2px 7px", color: "#475569" }}>
-                  {f.pylon_count} Pylone
-                </span>
-                {f.duration_seconds && (
-                  <span style={{ fontSize: 11, background: "#f1f5f9", borderRadius: 4, padding: "2px 7px", color: "#475569" }}>
-                    {f.duration_seconds} s
-                  </span>
-                )}
-              </div>
-              <div style={{ fontSize: 11, color: "#94a3b8" }}>
-                {new Date(f.updated_at).toLocaleString("de-DE")}
+              <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                <button
+                  onClick={(e) => { e.stopPropagation(); navigate(`/formations/${f.id}/share`); }}
+                  style={iconActionBtn} title="Teilen"
+                >
+                  <Share2 size={13} color="var(--c-primary)" />
+                </button>
+                <button
+                  onClick={(e) => handleDeleteFormation(e, f.id, f.name)}
+                  style={{ ...iconActionBtn, borderColor: "#fecaca", color: "#b91c1c" }} title="Löschen"
+                >
+                  <Trash2 size={13} />
+                </button>
               </div>
             </div>
           ))}
