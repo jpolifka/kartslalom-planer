@@ -150,9 +150,9 @@ export default function FormationEditorPage() {
     setInitialized(true);
   }, [cloudFormation, isEdit, dispatch]);
 
-  const saveToCloud = useCallback(async () => {
+  const saveToCloud = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (!isCloudMode || !name.trim()) return;
-    setSaveStatus("saving");
+    if (!silent) setSaveStatus("saving");
     try {
       const params = {
         name: name.trim(),
@@ -175,35 +175,37 @@ export default function FormationEditorPage() {
         });
         clearDraft();
         navigate(`/formations/${newId}`, { replace: true });
-        setSaveStatus("saved");
+        if (!silent) setSaveStatus("saved");
         return;
       }
-      setSaveStatus("saved");
+      if (!silent) setSaveStatus("saved");
     } catch {
-      setSaveStatus("error");
+      if (!silent) setSaveStatus("error");
     }
-    setTimeout(() => setSaveStatus("idle"), 2500);
+    if (!silent) setTimeout(() => setSaveStatus("idle"), 2500);
   }, [isCloudMode, isEdit, id, name, description, category, cones, arrows, lichteBreite, durationSeconds, sourceFormationKey, updateMutation, createMutation, navigate]);
 
-  const saveToLocalStorage = useCallback(() => {
+  const saveToLocalStorage = useCallback(({ silent = false }: { silent?: boolean } = {}) => {
     const data: DraftData = { snap, name, description, category, durationSeconds, lichteBreite, sourceFormationKey };
     localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
-    setSaveStatus("saved");
-    setTimeout(() => setSaveStatus("idle"), 2000);
+    if (!silent) {
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2000);
+    }
   }, [snap, name, description, category, durationSeconds, lichteBreite, sourceFormationKey]);
 
-  const handleSave = isCloudMode ? saveToCloud : saveToLocalStorage;
+  const handleSave = isCloudMode ? () => saveToCloud() : () => saveToLocalStorage();
 
   // Autosave
   useEffect(() => {
     if (showBasis || !initialized) return;
     const t = setTimeout(() => {
       if (isCloudMode) {
-        if (isEdit) saveToCloud();
+        if (isEdit) saveToCloud({ silent: true });
         // For new formations: only autosave to localStorage until first explicit save
-        else saveToLocalStorage();
+        else saveToLocalStorage({ silent: true });
       } else {
-        saveToLocalStorage();
+        saveToLocalStorage({ silent: true });
       }
     }, 800);
     return () => clearTimeout(t);

@@ -25,6 +25,8 @@ type Props = {
   onSelectFormation: (id: string, addToSelection?: boolean) => void;
   totalDurationSeconds: number;
   hasItems: boolean;
+  fieldWidth: number;
+  fieldLength: number;
   issues: ValidationIssue[];
 };
 
@@ -34,6 +36,7 @@ export default function RightPanel({
   onUpdateFormation, onDeleteFormation, onDeleteSelectedFormations, onDeleteArrow,
   onSelectFormation,
   totalDurationSeconds, hasItems,
+  fieldWidth, fieldLength,
   issues,
 }: Props) {
   const style = isMobile
@@ -155,9 +158,12 @@ export default function RightPanel({
         )}
       </section>
 
-      {/* Course duration */}
+      {/* Course duration + field size */}
       <section style={card}>
-        <SectionLabel>Kursdauer</SectionLabel>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+          <SectionLabel>Kursdauer</SectionLabel>
+          <span style={{ fontSize: 11, color: "#94a3b8" }}>{fieldWidth.toFixed(1)} × {fieldLength.toFixed(1)} m</span>
+        </div>
         {!hasItems ? (
           <div style={{ fontSize: 13, color: "#94a3b8" }}>Noch keine Formationen platziert.</div>
         ) : (

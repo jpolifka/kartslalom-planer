@@ -84,6 +84,7 @@ export default function EditorPage() {
   // UI state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const selectedId = selectedIds.size === 1 ? [...selectedIds][0] : null;
+  const [clipboard, setClipboard] = useState<PlacedFormation[]>([]);
   const [selectedArrowId, setSelectedArrowId] = useState<string | null>(null);
   const [mode, setMode] = useState<"select" | "drawArrow">("select");
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
@@ -113,8 +114,12 @@ export default function EditorPage() {
   // Keyboard shortcuts — refs to avoid stale closures
   const selectedIdsRef = useRef(selectedIds);
   const selectedArrowIdRef = useRef(selectedArrowId);
+  const clipboardRef = useRef(clipboard);
+  const itemsRef = useRef(items);
   useEffect(() => { selectedIdsRef.current = selectedIds; }, [selectedIds]);
   useEffect(() => { selectedArrowIdRef.current = selectedArrowId; }, [selectedArrowId]);
+  useEffect(() => { clipboardRef.current = clipboard; }, [clipboard]);
+  useEffect(() => { itemsRef.current = items; }, [items]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -124,6 +129,29 @@ export default function EditorPage() {
 
       if (meta && e.key === "z" && !e.shiftKey) { e.preventDefault(); dispatch({ type: "UNDO" }); return; }
       if (meta && (e.key === "y" || (e.key === "z" && e.shiftKey))) { e.preventDefault(); dispatch({ type: "REDO" }); return; }
+      if (meta && e.key === "a" && !inputFocused) {
+        e.preventDefault();
+        setSelectedIds(new Set(itemsRef.current.map((it) => it.id)));
+        return;
+      }
+      if (meta && e.key === "c" && !inputFocused) {
+        const sel = selectedIdsRef.current;
+        if (sel.size > 0) setClipboard(itemsRef.current.filter((it) => sel.has(it.id)));
+        return;
+      }
+      if (meta && e.key === "v" && !inputFocused) {
+        if (clipboardRef.current.length > 0) {
+          const pasted = clipboardRef.current.map((it) => ({
+            ...it,
+            id: crypto.randomUUID(),
+            x: it.x + 1,
+            y: it.y + 1,
+          }));
+          dispatch({ type: "ADD_FORMATIONS", formations: pasted });
+          setSelectedIds(new Set(pasted.map((it) => it.id)));
+        }
+        return;
+      }
       if (e.key === "Escape") { setMode("select"); return; }
       if (!inputFocused && (e.key === "Delete" || e.key === "Backspace")) {
         const ids = [...selectedIdsRef.current];
@@ -236,6 +264,7 @@ export default function EditorPage() {
       y: 1,
       rotationDeg: 0,
       direction: (f as { default_direction?: string }).default_direction as never ?? "none",
+      durationSeconds: f.duration_seconds ?? undefined,
       customFormationId: f.id,
       customSnapshot: {
         cones: f.cones_json as never,
@@ -495,8 +524,6 @@ export default function EditorPage() {
               errorCount={errorCount}
               warnCount={warnCount}
               hasItems={items.length > 0}
-              fieldWidth={fieldWidth}
-              fieldLength={fieldLength}
               saveStatus={saveStatus}
               onExportSVG={() => downloadSVG(generateTrackSVG(fieldWidth, fieldLength, items, arrows))}
               onExportPDF={() => printAsPDF(generateTrackSVG(fieldWidth, fieldLength, items, arrows), fieldWidth, fieldLength)}
@@ -545,6 +572,8 @@ export default function EditorPage() {
             onSelectFormation={handleSelectFormation}
             totalDurationSeconds={totalDurationSeconds}
             hasItems={items.length > 0}
+            fieldWidth={fieldWidth}
+            fieldLength={fieldLength}
             issues={issues}
           />
 
