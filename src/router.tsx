@@ -12,7 +12,6 @@ import EditorPage from "./pages/EditorPage";
 import FormationEditorPage from "./pages/FormationEditorPage";
 import FormationsPage from "./pages/FormationsPage";
 import FormationSharePage from "./pages/FormationSharePage";
-import UsernameOnboardingPage from "./pages/UsernameOnboardingPage";
 import ImpressumPage from "./pages/ImpressumPage";
 import SettingsPage from "./pages/SettingsPage";
 import AuthGuard from "./components/auth/AuthGuard";
@@ -26,9 +25,6 @@ export default function AppRouter() {
       <Route element={<GlobalLayout />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
-
-        {/* Username-Onboarding: nur für eingeloggte Nutzer ohne Username */}
-        <Route path="/onboarding/username" element={<UsernameOnboardingPage />} />
 
         {/* Editor: ohne Login (Gast-Modus, localStorage) oder eingeloggt (Cloud-Save) */}
         <Route path="/editor/new" element={<EditorPage />} />

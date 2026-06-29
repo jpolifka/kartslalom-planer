@@ -94,9 +94,10 @@ export default function FormationSharePage() {
         <form onSubmit={handleSearch} style={{ ...s.row, marginBottom: 8 }}>
           <input
             style={s.input}
+            type="email"
             value={query}
             onChange={(e) => { setQuery(e.target.value); setFoundUser(null); setShareError(null); }}
-            placeholder="Benutzername oder E-Mail"
+            placeholder="E-Mail-Adresse"
           />
           <button type="submit" style={s.btn} disabled={findUser.isPending}>
             {findUser.isPending ? "Suche…" : "Suchen"}
@@ -110,7 +111,7 @@ export default function FormationSharePage() {
         {foundUser && foundUser !== "not_found" && (
           <div style={{ ...s.row, marginTop: 8, padding: "10px 12px", background: "#f0fdf4", borderRadius: 8 }}>
             <span style={{ fontSize: 14, fontWeight: 600, flex: 1, color: "#166534" }}>
-              @{foundUser.username}
+              {foundUser.username ?? query}
             </span>
             <select
               style={s.permSelect}
@@ -139,7 +140,7 @@ export default function FormationSharePage() {
         {shares?.map((share) => (
           <div key={share.shared_with_id} style={s.shareRow}>
             <span style={{ flex: 1, fontSize: 14, color: "#111827" }}>
-              {share.username ? `@${share.username}` : share.email}
+              {share.email}
             </span>
             <select
               style={s.permSelect}

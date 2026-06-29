@@ -7,7 +7,7 @@ import type { Session } from "@supabase/supabase-js";
 
 type Tier = "free" | "pro" | "team";
 
-export type Profile = { id: string; email: string; tier: Tier; username: string | null };
+export type Profile = { id: string; email: string; tier: Tier };
 
 type AuthStore = {
   session: Session | null;

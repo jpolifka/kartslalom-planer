@@ -69,18 +69,7 @@ export default function AuthCallbackPage() {
         headers: { Authorization: `Bearer ${session.access_token}` },
       }).catch(() => {});
 
-      // Benutzername noch nicht gesetzt → Onboarding
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("username")
-        .eq("id", session.user.id)
-        .single();
-
-      if (!profileData?.username) {
-        navigate("/onboarding/username", { replace: true });
-      } else {
-        navigate("/dashboard", { replace: true });
-      }
+      navigate("/dashboard", { replace: true });
     }
 
     handleCallback();

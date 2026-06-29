@@ -11,7 +11,6 @@ import {
   createCustomFormation,
   updateCustomFormation,
   deleteCustomFormation,
-  setUsername,
   findShareableUser,
   shareFormation,
   unshareFormation,
@@ -75,14 +74,6 @@ export function useDeleteCustomFormation() {
 }
 
 // --- Sharing ---
-
-export function useSetUsername() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: setUsername,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["profile"] }),
-  });
-}
 
 export function useFormationShares(formationId: string | undefined) {
   return useQuery({

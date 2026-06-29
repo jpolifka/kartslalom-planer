@@ -132,15 +132,6 @@ export type FormationShareEntry = {
   created_at: string;
 };
 
-export async function setUsername(username: string): Promise<void> {
-  const { error } = await supabase.rpc("set_username", { p_username: username });
-  if (error) {
-    if (error.message.includes("username_taken")) throw new Error("USERNAME_TAKEN");
-    if (error.message.includes("invalid_username")) throw new Error("INVALID_USERNAME");
-    throw error;
-  }
-}
-
 export async function findShareableUser(query: string): Promise<{ id: string; username: string } | null> {
   const { data, error } = await supabase.rpc("find_shareable_user", { p_query: query });
   if (error) throw error;
