@@ -11,6 +11,12 @@ import {
   createCustomFormation,
   updateCustomFormation,
   deleteCustomFormation,
+  setUsername,
+  findShareableUser,
+  shareFormation,
+  unshareFormation,
+  fetchFormationShares,
+  fetchSharedWithMe,
   type CreateFormationParams,
 } from "../lib/api/customFormations";
 
@@ -65,5 +71,58 @@ export function useDeleteCustomFormation() {
   return useMutation({
     mutationFn: deleteCustomFormation,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["custom_formations"] }),
+  });
+}
+
+// --- Sharing ---
+
+export function useSetUsername() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: setUsername,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["profile"] }),
+  });
+}
+
+export function useFormationShares(formationId: string | undefined) {
+  return useQuery({
+    queryKey: ["formation_shares", formationId],
+    queryFn: () => fetchFormationShares(formationId!),
+    enabled: !!formationId,
+  });
+}
+
+export function useShareFormation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ formationId, targetId, permission }: { formationId: string; targetId: string; permission: "view" | "edit" }) =>
+      shareFormation(formationId, targetId, permission),
+    onSuccess: (_d, { formationId }) =>
+      qc.invalidateQueries({ queryKey: ["formation_shares", formationId] }),
+  });
+}
+
+export function useUnshareFormation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ formationId, targetId }: { formationId: string; targetId: string }) =>
+      unshareFormation(formationId, targetId),
+    onSuccess: (_d, { formationId }) =>
+      qc.invalidateQueries({ queryKey: ["formation_shares", formationId] }),
+  });
+}
+
+export function useFindShareableUser() {
+  return useMutation({
+    mutationFn: (query: string) => findShareableUser(query),
+  });
+}
+
+export function useSharedWithMe() {
+  const { session } = useAuthStore();
+  return useQuery({
+    queryKey: ["shared_with_me"],
+    queryFn: () => fetchSharedWithMe(session!.user.id),
+    enabled: !!session,
   });
 }

@@ -11,6 +11,8 @@ import DashboardPage from "./pages/DashboardPage";
 import EditorPage from "./pages/EditorPage";
 import FormationEditorPage from "./pages/FormationEditorPage";
 import FormationsPage from "./pages/FormationsPage";
+import FormationSharePage from "./pages/FormationSharePage";
+import UsernameOnboardingPage from "./pages/UsernameOnboardingPage";
 import ImpressumPage from "./pages/ImpressumPage";
 import SettingsPage from "./pages/SettingsPage";
 import AuthGuard from "./components/auth/AuthGuard";
@@ -25,6 +27,9 @@ export default function AppRouter() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
+        {/* Username-Onboarding: nur für eingeloggte Nutzer ohne Username */}
+        <Route path="/onboarding/username" element={<UsernameOnboardingPage />} />
+
         {/* Editor: ohne Login (Gast-Modus, localStorage) oder eingeloggt (Cloud-Save) */}
         <Route path="/editor/new" element={<EditorPage />} />
         <Route path="/editor/:trackId" element={<EditorPage />} />
@@ -37,6 +42,7 @@ export default function AppRouter() {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/formations" element={<FormationsPage />} />
+          <Route path="/formations/:id/share" element={<FormationSharePage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
 

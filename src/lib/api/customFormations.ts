@@ -121,3 +121,66 @@ export async function fetchLibraryFormations(): Promise<CustomFormationRow[]> {
   if (error) throw error;
   return data as CustomFormationRow[];
 }
+
+// --- Sharing ---
+
+export type FormationShareEntry = {
+  shared_with_id: string;
+  username: string | null;
+  email: string;
+  permission: "view" | "edit";
+  created_at: string;
+};
+
+export async function setUsername(username: string): Promise<void> {
+  const { error } = await supabase.rpc("set_username", { p_username: username });
+  if (error) {
+    if (error.message.includes("username_taken")) throw new Error("USERNAME_TAKEN");
+    if (error.message.includes("invalid_username")) throw new Error("INVALID_USERNAME");
+    throw error;
+  }
+}
+
+export async function findShareableUser(query: string): Promise<{ id: string; username: string } | null> {
+  const { data, error } = await supabase.rpc("find_shareable_user", { p_query: query });
+  if (error) throw error;
+  return (data as Array<{ id: string; username: string }>)[0] ?? null;
+}
+
+export async function shareFormation(formationId: string, targetId: string, permission: "view" | "edit"): Promise<void> {
+  const { error } = await supabase.rpc("share_custom_formation", {
+    p_formation_id: formationId,
+    p_target_id: targetId,
+    p_permission: permission,
+  });
+  if (error) {
+    if (error.message.includes("cannot_share_with_self")) throw new Error("SHARE_WITH_SELF");
+    if (error.message.includes("target_not_found")) throw new Error("TARGET_NOT_FOUND");
+    if (error.message.includes("not_owner")) throw new Error("NOT_OWNER");
+    throw error;
+  }
+}
+
+export async function unshareFormation(formationId: string, targetId: string): Promise<void> {
+  const { error } = await supabase.rpc("unshare_custom_formation", {
+    p_formation_id: formationId,
+    p_target_id: targetId,
+  });
+  if (error) throw error;
+}
+
+export async function fetchFormationShares(formationId: string): Promise<FormationShareEntry[]> {
+  const { data, error } = await supabase.rpc("get_formation_shares", { p_formation_id: formationId });
+  if (error) throw error;
+  return data as FormationShareEntry[];
+}
+
+export async function fetchSharedWithMe(userId: string): Promise<CustomFormationRow[]> {
+  const { data, error } = await supabase
+    .from("custom_formations")
+    .select("*")
+    .neq("owner_id", userId)
+    .order("updated_at", { ascending: false });
+  if (error) throw error;
+  return data as CustomFormationRow[];
+}
