@@ -4,7 +4,7 @@
 
 import { useNavigate } from "react-router-dom";
 import React, { useState } from "react";
-import { Plus, Trash2, MapPin, Pencil, Check, X, Share2 } from "lucide-react";
+import { Plus, Trash2, MapPin, Pencil, Check, X, Layers, Share2 } from "lucide-react";
 import { useTrackList, useCreateTrack, useDeleteTrack, useRenameTrack } from "../hooks/useTracks";
 import { useCustomFormationList, useDeleteCustomFormation } from "../hooks/useCustomFormations";
 import { useFeatureGate } from "../hooks/useFeatureGate";
@@ -210,7 +210,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {!!formations?.length && (
+      {formationsAllowed && !!formations?.length && (
         <div style={{ display: "grid", gap: 10 }}>
           {formations.map((f) => (
             <div
@@ -222,7 +222,7 @@ export default function DashboardPage() {
                 display: "flex", alignItems: "center", gap: 12,
               }}
             >
-              <Share2 size={18} color="var(--c-primary)" style={{ flexShrink: 0 }} />
+              <Layers size={18} color="var(--c-primary)" style={{ flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 700, fontSize: 14, color: "#111827" }}>{f.name}</div>
                 <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2, display: "flex", gap: 8 }}>
