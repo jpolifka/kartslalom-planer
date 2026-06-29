@@ -4,19 +4,30 @@
 
 import { useNavigate } from "react-router-dom";
 import React, { useState } from "react";
-import { Plus, Trash2, MapPin, Pencil, Check, X, Layers } from "lucide-react";
+import { Plus, Trash2, MapPin, Pencil, Check, X, Share2 } from "lucide-react";
 import { useTrackList, useCreateTrack, useDeleteTrack, useRenameTrack } from "../hooks/useTracks";
+import { useCustomFormationList, useDeleteCustomFormation } from "../hooks/useCustomFormations";
+import { useFeatureGate } from "../hooks/useFeatureGate";
 import { useTier } from "../hooks/useTier";
+
+const CATEGORY_LABELS: Record<string, string> = {
+  individuell: "Individuell", basis: "Basis", kurven: "Kurven",
+  komplex: "Komplex", start_ziel: "Start / Ziel",
+};
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { data: tracks, isLoading } = useTrackList();
+  const { data: tracks, isLoading: tracksLoading } = useTrackList();
   const createTrackMutation = useCreateTrack();
   const deleteTrackMutation = useDeleteTrack();
   const renameTrackMutation = useRenameTrack();
   const { trackLimit } = useTier();
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+
+  const { data: formations, isLoading: formationsLoading } = useCustomFormationList();
+  const deleteFormationMutation = useDeleteCustomFormation();
+  const { allowed: formationsAllowed, requiredTier } = useFeatureGate("custom_formations");
 
   const limitReached = !!tracks && tracks.length >= trackLimit;
 
@@ -33,9 +44,15 @@ export default function DashboardPage() {
     }
   }
 
-  async function handleDelete(id: string, name: string) {
-    if (!confirm(`Strecke „${name}” wirklich löschen?`)) return;
+  async function handleDeleteTrack(id: string, name: string) {
+    if (!confirm(`Strecke „${name}" wirklich löschen?`)) return;
     await deleteTrackMutation.mutateAsync(id);
+  }
+
+  async function handleDeleteFormation(e: React.MouseEvent, id: string, name: string) {
+    e.stopPropagation();
+    if (!confirm(`Hindernis „${name}" wirklich löschen?`)) return;
+    await deleteFormationMutation.mutateAsync(id);
   }
 
   function startRename(id: string, currentName: string) {
@@ -50,12 +67,12 @@ export default function DashboardPage() {
     setRenamingId(null);
   }
 
-  function cancelRename() {
-    setRenamingId(null);
-  }
+  function cancelRename() { setRenamingId(null); }
 
   return (
     <div style={{ maxWidth: 900, margin: "0 auto", padding: "24px 20px" }}>
+
+      {/* ── Meine Strecken ────────────────────────────────── */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
         <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Meine Strecken</h2>
         <button
@@ -76,16 +93,15 @@ export default function DashboardPage() {
       {limitReached && (
         <div style={{
           background: "#fffbeb", border: "1px solid #fde68a",
-          borderRadius: 10, padding: "10px 12px", fontSize: 13, color: "#92400e",
-          marginBottom: 14,
+          borderRadius: 10, padding: "10px 12px", fontSize: 13, color: "#92400e", marginBottom: 14,
         }}>
           Du hast die maximale Anzahl an Strecken für deinen Tarif erreicht.
         </div>
       )}
 
-      {isLoading && <div style={{ color: "#94a3b8", fontSize: 13 }}>Lädt…</div>}
+      {tracksLoading && <div style={{ color: "#94a3b8", fontSize: 13 }}>Lädt…</div>}
 
-      {!isLoading && tracks?.length === 0 && (
+      {!tracksLoading && tracks?.length === 0 && (
         <div style={{
           background: "white", borderRadius: 16, padding: 24,
           textAlign: "center", color: "#64748b", fontSize: 13,
@@ -95,48 +111,30 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Strecken-Liste */}
       {!!tracks?.length && (
         <div style={{ display: "grid", gap: 10 }}>
           {tracks.map((track) => (
-            <div
-              key={track.id}
-              style={{
-                background: "white", borderRadius: 14, padding: "14px 16px",
-                display: "flex", alignItems: "center", gap: 12,
-                boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
-              }}
-            >
+            <div key={track.id} style={{
+              background: "white", borderRadius: 14, padding: "14px 16px",
+              display: "flex", alignItems: "center", gap: 12,
+              boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+            }}>
               <MapPin size={18} color="var(--c-primary)" style={{ flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 {renamingId === track.id ? (
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <input
-                      autoFocus
-                      value={renameValue}
+                      autoFocus value={renameValue}
                       onChange={(e) => setRenameValue(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") commitRename();
-                        if (e.key === "Escape") cancelRename();
-                      }}
-                      style={{
-                        fontSize: 14, fontWeight: 700, border: "1px solid var(--c-primary)",
-                        borderRadius: 6, padding: "3px 7px", outline: "none", minWidth: 160,
-                      }}
+                      onKeyDown={(e) => { if (e.key === "Enter") commitRename(); if (e.key === "Escape") cancelRename(); }}
+                      style={{ fontSize: 14, fontWeight: 700, border: "1px solid var(--c-primary)", borderRadius: 6, padding: "3px 7px", outline: "none", minWidth: 160 }}
                     />
-                    <button onClick={commitRename} style={iconActionBtn} title="Speichern">
-                      <Check size={13} color="#16a34a" />
-                    </button>
-                    <button onClick={cancelRename} style={iconActionBtn} title="Abbrechen">
-                      <X size={13} color="#64748b" />
-                    </button>
+                    <button onClick={commitRename} style={iconActionBtn} title="Speichern"><Check size={13} color="#16a34a" /></button>
+                    <button onClick={cancelRename} style={iconActionBtn} title="Abbrechen"><X size={13} color="#64748b" /></button>
                   </div>
                 ) : (
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <div
-                      style={{ fontWeight: 700, fontSize: 14, cursor: "pointer" }}
-                      onClick={() => navigate(`/editor/${track.id}`)}
-                    >
+                    <div style={{ fontWeight: 700, fontSize: 14, cursor: "pointer" }} onClick={() => navigate(`/editor/${track.id}`)}>
                       {track.name}
                     </div>
                     <button
@@ -162,11 +160,8 @@ export default function DashboardPage() {
                 </div>
               </div>
               <button
-                onClick={() => handleDelete(track.id, track.name)}
-                style={{
-                  border: "1px solid #fecaca", background: "white", borderRadius: 8,
-                  padding: 7, cursor: "pointer", color: "#b91c1c", display: "flex", flexShrink: 0,
-                }}
+                onClick={() => handleDeleteTrack(track.id, track.name)}
+                style={{ border: "1px solid #fecaca", background: "white", borderRadius: 8, padding: 7, cursor: "pointer", color: "#b91c1c", display: "flex", flexShrink: 0 }}
                 title="Strecke löschen"
               >
                 <Trash2 size={14} />
@@ -176,35 +171,95 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Hindernisse-Sektion */}
+      {/* ── Meine Hindernisse ─────────────────────────────── */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "32px 0 14px" }}>
         <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Meine Hindernisse</h2>
-        <button
-          onClick={() => navigate("/formations")}
-          style={{
-            display: "inline-flex", alignItems: "center", gap: 6,
-            border: "1px solid var(--c-primary-border)", borderRadius: 10,
-            background: "var(--c-primary-bg)", color: "var(--c-primary)",
-            padding: "9px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer",
-          }}
-        >
-          <Layers size={15} /> Hindernisse verwalten
-        </button>
+        {formationsAllowed && (
+          <button
+            onClick={() => navigate("/formations/new")}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 6,
+              border: "none", borderRadius: 10, background: "var(--c-primary)",
+              color: "white", padding: "9px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer",
+            }}
+          >
+            <Plus size={15} /> Neues Hindernis
+          </button>
+        )}
       </div>
-      <div
-        onClick={() => navigate("/formations")}
-        style={{
-          background: "white", borderRadius: 14, padding: "16px 18px",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.06)", display: "flex", alignItems: "center", gap: 14,
-          fontSize: 13, color: "#64748b", cursor: "pointer",
-        }}
-      >
-        <Layers size={20} color="#94a3b8" style={{ flexShrink: 0 }} />
-        <div>
-          Erstelle eigene Hindernisse und nutze sie in deinen Strecken.
-          Gespeicherte Hindernisse erscheinen in der Palette unter <strong>Individuell</strong>.
+
+      {!formationsAllowed && (
+        <div style={{
+          background: "#fffbeb", border: "1px solid #fde68a",
+          borderRadius: 10, padding: "10px 12px", fontSize: 13, color: "#92400e", marginBottom: 14,
+        }}>
+          Eigene Hindernisse erfordern mindestens den <strong>{requiredTier ?? "Pro"}-Tarif</strong>.
+          Schreib uns: <a href="mailto:jens@polifka.info" style={{ color: "inherit" }}>jens@polifka.info</a>
         </div>
-      </div>
+      )}
+
+      {formationsLoading && <div style={{ color: "#94a3b8", fontSize: 13 }}>Lädt…</div>}
+
+      {!formationsLoading && formationsAllowed && formations?.length === 0 && (
+        <div style={{
+          background: "white", borderRadius: 16, padding: 24,
+          textAlign: "center", color: "#64748b", fontSize: 13,
+          boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+        }}>
+          Noch keine Hindernisse vorhanden. Erstelle dein erstes eigenes Hindernis.
+        </div>
+      )}
+
+      {!!formations?.length && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 10 }}>
+          {formations.map((f) => (
+            <div
+              key={f.id}
+              onClick={() => navigate(`/formations/${f.id}`)}
+              style={{
+                background: "white", borderRadius: 14, padding: "14px 16px",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.06)", cursor: "pointer",
+                display: "flex", flexDirection: "column", gap: 8,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                <div style={{ fontWeight: 700, fontSize: 14, color: "#111827", flex: 1, minWidth: 0 }}>{f.name}</div>
+                <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); navigate(`/formations/${f.id}/share`); }}
+                    style={iconActionBtn} title="Teilen"
+                  >
+                    <Share2 size={12} color="var(--c-primary)" />
+                  </button>
+                  <button
+                    onClick={(e) => handleDeleteFormation(e, f.id, f.name)}
+                    style={{ ...iconActionBtn, borderColor: "#fecaca", color: "#b91c1c" }} title="Löschen"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 11, background: "#f1f5f9", borderRadius: 4, padding: "2px 7px", color: "#475569", fontWeight: 500 }}>
+                  {CATEGORY_LABELS[f.category] ?? f.category}
+                </span>
+                <span style={{ fontSize: 11, background: "#f1f5f9", borderRadius: 4, padding: "2px 7px", color: "#475569" }}>
+                  {f.pylon_count} Pylone
+                </span>
+                {f.duration_seconds && (
+                  <span style={{ fontSize: 11, background: "#f1f5f9", borderRadius: 4, padding: "2px 7px", color: "#475569" }}>
+                    {f.duration_seconds} s
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: 11, color: "#94a3b8" }}>
+                {new Date(f.updated_at).toLocaleString("de-DE")}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
     </div>
   );
 }
