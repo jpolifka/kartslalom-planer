@@ -3,7 +3,7 @@
 // All rights reserved.
 
 import { useNavigate } from "react-router-dom";
-import { Library, ShieldCheck } from "lucide-react";
+import { Library, Map, ShieldCheck } from "lucide-react";
 
 type AdminCard = {
   icon: React.ReactNode;
@@ -18,6 +18,12 @@ const CARDS: AdminCard[] = [
     title: "Hindernisse",
     description: "Alle Formationen aller Nutzer einsehen, löschen oder in die öffentliche Bibliothek aufnehmen.",
     href: "/admin/formations",
+  },
+  {
+    icon: <Map size={22} color="#6366f1" />,
+    title: "Strecken",
+    description: "Alle Strecken aller Nutzer einsehen und löschen. Im Editor als Lesezugriff öffnen.",
+    href: "/admin/tracks",
   },
 ];
 

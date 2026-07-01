@@ -8,7 +8,7 @@ import { useFormationEditor, type EditorSnap, type EditableCone } from "../hooks
 import FormationEditorCanvas, { type EditorTool, type MeasurementLine, type GuideLine } from "../components/formation-editor/FormationEditorCanvas";
 import FormationMetaPanel from "../components/formation-editor/FormationMetaPanel";
 import BasisAuswahl from "../components/formation-editor/BasisAuswahl";
-import { useCustomFormation, useCreateCustomFormation, useUpdateCustomFormation, useFormationPermission, useDuplicateCustomFormation } from "../hooks/useCustomFormations";
+import { useCustomFormation, useCreateCustomFormation, useUpdateCustomFormation, useFormationPermission, useDuplicateCustomFormation, useAdminFormation } from "../hooks/useCustomFormations";
 import { useFeatureGate } from "../hooks/useFeatureGate";
 import { useAuthStore } from "../store/authStore";
 import { useProfile } from "../hooks/useProfile";
@@ -72,22 +72,29 @@ const s: Record<string, React.CSSProperties> = {
 export default function FormationEditorPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id?: string }>();
-  const { session } = useAuthStore();
+  const { session, profile } = useAuthStore();
   useProfile(); // Lädt profile.tier in den AuthStore — nötig da diese Route außerhalb AppShell liegt
   const { allowed } = useFeatureGate("custom_formations");
+  const isAdmin = profile?.role === "admin";
+
+  const isEdit = !!id;
 
   // Cloud load when editing existing formation
-  const { data: cloudFormation, isLoading: cloudLoading } = useCustomFormation(id);
+  const { data: cloudFormation, isLoading: cloudLoading, isError: cloudError } = useCustomFormation(id);
+  // Admin-Fallback: fremde Formation via SECURITY DEFINER RPC laden
+  const needAdminFetch = isAdmin && isEdit && !cloudLoading && (cloudError || !cloudFormation);
+  const { data: adminFormation, isLoading: adminLoading } = useAdminFormation(needAdminFetch ? id : undefined);
+  const effectiveFormation = cloudFormation ?? adminFormation;
 
   const createMutation = useCreateCustomFormation();
   const updateMutation = useUpdateCustomFormation();
   const duplicateMutation = useDuplicateCustomFormation();
 
-  const isEdit = !!id;
-
   const { data: permission, isLoading: permissionLoading } = useFormationPermission(isEdit ? id : undefined);
-  const isReadOnly = isEdit && permission === "view";
-  const isSharedEdit = isEdit && permission === "edit";
+  // Admin darf fremde Formationen lesen (read-only)
+  const effectivePermission = (isAdmin && permission === null) ? "view" : permission;
+  const isReadOnly = isEdit && effectivePermission === "view";
+  const isSharedEdit = isEdit && effectivePermission === "edit";
 
   // edit-share users können speichern, auch wenn ihr eigener Tier free ist
   const isCloudMode = !!session && (allowed || isSharedEdit);
@@ -124,13 +131,13 @@ export default function FormationEditorPage() {
     isEdit ? undefined : draft?.snap
   );
 
-  // Initialize editor from cloud formation when loaded
+  // Initialize editor from cloud formation when loaded (or admin fallback)
   const initializedRef = useRef(false);
   useEffect(() => {
-    if (!isEdit || !cloudFormation || initializedRef.current) return;
+    if (!isEdit || !effectiveFormation || initializedRef.current) return;
     initializedRef.current = true;
 
-    const raw = cloudFormation.cones_json as ConePoint[];
+    const raw = effectiveFormation.cones_json as ConePoint[];
     // Cones auf Ursprung normalisieren; Zentrieren auf Canvas-Mitte danach
     const norm = raw.length > 0 ? normalizeCones(raw) : raw;
     const normCentered = norm.length > 0
@@ -148,14 +155,14 @@ export default function FormationEditorPage() {
       setVisibleM(fit);
     }
 
-    dispatch({ type: "RESET", snap: { cones: cones as never, arrows: cloudFormation.arrows_json as never } });
-    setName(cloudFormation.name);
-    setDescription(cloudFormation.description ?? "");
-    setCategory(cloudFormation.category);
-    setDurationSeconds(cloudFormation.duration_seconds);
-    setLichteBreite(cloudFormation.lichte_breite);
+    dispatch({ type: "RESET", snap: { cones: cones as never, arrows: effectiveFormation.arrows_json as never } });
+    setName(effectiveFormation.name);
+    setDescription(effectiveFormation.description ?? "");
+    setCategory(effectiveFormation.category);
+    setDurationSeconds(effectiveFormation.duration_seconds);
+    setLichteBreite(effectiveFormation.lichte_breite);
     setInitialized(true);
-  }, [cloudFormation, isEdit, dispatch]);
+  }, [effectiveFormation, isEdit, dispatch]);
 
   const saveToCloud = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (!isCloudMode || !name.trim()) return;
@@ -344,10 +351,10 @@ export default function FormationEditorPage() {
   const lichteBreiteWarning = lichteBreite !== null && lichteBreite < TASK_LANE_WIDTH;
 
 
-  if (isEdit && (cloudLoading || permissionLoading)) {
+  if (isEdit && (cloudLoading || permissionLoading || (needAdminFetch && adminLoading))) {
     return <div style={{ padding: 40, color: "#6b7280" }}>Lädt Hindernis…</div>;
   }
-  if (isEdit && !permissionLoading && permission === null) {
+  if (isEdit && !permissionLoading && !isAdmin && permission === null) {
     return <div style={{ padding: 40, color: "#ef4444" }}>Kein Zugriff auf dieses Hindernis.</div>;
   }
 

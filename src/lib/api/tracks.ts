@@ -20,6 +20,17 @@ export type TrackDetail = TrackRow & {
   map_opacity: number;
 };
 
+export type AdminTrackRow = {
+  id: string;
+  owner_id: string;
+  name: string;
+  is_public: boolean;
+  manual_width: number;
+  manual_length: number;
+  created_at: string;
+  updated_at: string;
+};
+
 export async function fetchTracks(): Promise<TrackRow[]> {
   const { data, error } = await supabase
     .from("tracks")
@@ -85,5 +96,26 @@ export async function renameTrack(id: string, name: string): Promise<void> {
 // Löschen: RLS reicht (kein Feature-Bypass möglich)
 export async function deleteTrack(id: string): Promise<void> {
   const { error } = await supabase.from("tracks").delete().eq("id", id);
+  if (error) throw error;
+}
+
+// --- Admin ---
+
+export async function adminListTracks(ownerId?: string): Promise<AdminTrackRow[]> {
+  const { data, error } = await supabase.rpc("admin_list_tracks", {
+    p_owner_id: ownerId ?? null,
+  });
+  if (error) throw error;
+  return data as AdminTrackRow[];
+}
+
+export async function adminGetTrack(id: string): Promise<TrackDetail> {
+  const { data, error } = await supabase.rpc("admin_get_track", { p_id: id });
+  if (error) throw error;
+  return data as TrackDetail;
+}
+
+export async function adminDeleteTrack(id: string): Promise<void> {
+  const { error } = await supabase.rpc("admin_delete_track", { p_id: id });
   if (error) throw error;
 }

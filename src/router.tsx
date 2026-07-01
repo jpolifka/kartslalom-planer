@@ -18,6 +18,7 @@ import AuthGuard from "./components/auth/AuthGuard";
 import AdminGuard from "./components/auth/AdminGuard";
 import AdminDashPage from "./pages/AdminDashPage";
 import AdminFormationsPage from "./pages/AdminFormationsPage";
+import AdminTracksPage from "./pages/AdminTracksPage";
 
 export default function AppRouter() {
   const { isLoading } = useAuthStore();
@@ -48,6 +49,7 @@ export default function AppRouter() {
         <Route element={<AdminGuard />}>
           <Route path="/admin" element={<AdminDashPage />} />
           <Route path="/admin/formations" element={<AdminFormationsPage />} />
+          <Route path="/admin/tracks" element={<AdminTracksPage />} />
         </Route>
 
         <Route path="/impressum" element={<ImpressumPage />} />

@@ -15,7 +15,7 @@ import type { AreaSelection } from "../lib/areaSelection";
 import type { FormationKey, PlacedArrow, PlacedFormation } from "../types";
 import { saveState, loadState, clearSavedState, exportAsFile, parseImportFile, sanitizeItems } from "../lib/storage";
 import { useAuthStore } from "../store/authStore";
-import { useTrack, useCreateTrack, useSaveTrack, useRenameTrack } from "../hooks/useTracks";
+import { useTrack, useCreateTrack, useSaveTrack, useRenameTrack, useAdminTrack } from "../hooks/useTracks";
 import { useTier } from "../hooks/useTier";
 import { useCustomFormationList } from "../hooks/useCustomFormations";
 import { getFormation } from "../lib/formationRegistry";
@@ -33,7 +33,8 @@ let _initialSaved = loadState();
 export default function EditorPage() {
   const { trackId: trackIdParam } = useParams<{ trackId: string }>();
   const navigate = useNavigate();
-  const { session } = useAuthStore();
+  const { session, profile } = useAuthStore();
+  const isAdmin = profile?.role === "admin";
   const isCloudMode = !!session;
   const { canUseSatellite } = useTier();
   const satelliteLocked = isCloudMode && !canUseSatellite;
@@ -41,6 +42,11 @@ export default function EditorPage() {
   const trackId = isNewTrack ? null : trackIdParam!;
 
   const trackQuery = useTrack(isCloudMode && !isNewTrack ? trackId! : undefined);
+  // Admin-Fallback: fremde Strecke via SECURITY DEFINER RPC laden (read-only)
+  const needAdminTrack = isAdmin && !isNewTrack && !trackQuery.isLoading && trackQuery.isError;
+  const adminTrackQuery = useAdminTrack(needAdminTrack ? trackId! : undefined);
+  const effectiveTrackData = trackQuery.data ?? adminTrackQuery.data;
+  const isAdminViewingForeignTrack = needAdminTrack && !!adminTrackQuery.data;
   const createTrackMutation = useCreateTrack();
   const saveTrackMutation = useSaveTrack();
   const renameTrackMutation = useRenameTrack();
@@ -185,11 +191,11 @@ export default function EditorPage() {
     });
   }, [isCloudMode, isNewTrack]);
 
-  // Cloud: apply loaded track data once
+  // Cloud: apply loaded track data once (own track or admin fallback)
   useEffect(() => {
-    if (!isCloudMode || isNewTrack || !trackQuery.data || cloudAppliedRef.current) return;
+    if (!isCloudMode || isNewTrack || !effectiveTrackData || cloudAppliedRef.current) return;
     cloudAppliedRef.current = true;
-    const d = trackQuery.data;
+    const d = effectiveTrackData;
     dispatch({
       type: "RESET",
       state: {
@@ -206,11 +212,12 @@ export default function EditorPage() {
     setMapOpacity(d.map_opacity);
     setTrackName(d.name);
     setCloudLoaded(true);
-  }, [isCloudMode, isNewTrack, trackQuery.data]);
+  }, [isCloudMode, isNewTrack, effectiveTrackData]);
 
   // Autosave — debounced 1 s after last change
   useEffect(() => {
     if (!cloudLoaded) return;
+    if (isAdminViewingForeignTrack) return; // Admin kann fremde Strecken nicht speichern
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     if (savedFadeRef.current) clearTimeout(savedFadeRef.current);
     setSaveStatus("pending");
@@ -395,7 +402,10 @@ export default function EditorPage() {
     return <div style={{ padding: 40 }}>Neue Strecke wird angelegt…</div>;
   }
   if (isCloudMode && !isNewTrack && !cloudLoaded) {
-    if (trackQuery.isError) {
+    if (trackQuery.isError && adminTrackQuery.isError) {
+      return <div style={{ padding: 40 }}>Strecke konnte nicht geladen werden.</div>;
+    }
+    if (trackQuery.isError && !isAdmin) {
       return <div style={{ padding: 40 }}>Strecke konnte nicht geladen werden.</div>;
     }
     return <div style={{ padding: 40 }}>Lädt…</div>;

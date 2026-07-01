@@ -203,6 +203,12 @@ export async function duplicateCustomFormation(sourceId: string): Promise<string
 
 // --- Admin ---
 
+export async function adminGetFormation(id: string): Promise<CustomFormationRow> {
+  const { data, error } = await supabase.rpc("admin_get_custom_formation", { p_id: id });
+  if (error) throw mapError(error.message);
+  return data as CustomFormationRow;
+}
+
 export async function adminListFormations(status?: string, category?: string): Promise<CustomFormationRow[]> {
   const { data, error } = await supabase.rpc("admin_list_custom_formations", {
     p_status: status ?? null,

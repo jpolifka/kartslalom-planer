@@ -18,6 +18,7 @@ import {
   fetchSharedFormations,
   fetchFormationPermission,
   duplicateCustomFormation,
+  adminGetFormation,
   adminListFormations,
   adminDeleteFormation,
   adminPromoteToLibrary,
@@ -142,6 +143,14 @@ export function useDuplicateCustomFormation() {
 }
 
 // --- Admin ---
+
+export function useAdminFormation(id: string | undefined) {
+  return useQuery({
+    queryKey: ["admin_formation", id],
+    queryFn: () => adminGetFormation(id!),
+    enabled: !!id,
+  });
+}
 
 export function useAdminFormationList(status?: string, category?: string) {
   return useQuery({
