@@ -16,6 +16,7 @@ import ImpressumPage from "./pages/ImpressumPage";
 import SettingsPage from "./pages/SettingsPage";
 import AuthGuard from "./components/auth/AuthGuard";
 import AdminGuard from "./components/auth/AdminGuard";
+import AdminDashPage from "./pages/AdminDashPage";
 import AdminFormationsPage from "./pages/AdminFormationsPage";
 
 export default function AppRouter() {
@@ -45,6 +46,7 @@ export default function AppRouter() {
         </Route>
 
         <Route element={<AdminGuard />}>
+          <Route path="/admin" element={<AdminDashPage />} />
           <Route path="/admin/formations" element={<AdminFormationsPage />} />
         </Route>
 

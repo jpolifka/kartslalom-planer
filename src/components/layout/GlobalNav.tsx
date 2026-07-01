@@ -3,7 +3,7 @@
 // All rights reserved.
 
 import { Link, useNavigate } from "react-router-dom";
-import { LogOut } from "lucide-react";
+import { LogOut, ShieldCheck } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { useAuthStore } from "../../store/authStore";
 
@@ -35,6 +35,14 @@ export default function GlobalNav() {
             <Link to="/dashboard" style={navLink}>Meine Strecken</Link>
             <Link to="/formations" style={navLink}>Meine Hindernisse</Link>
             <Link to="/settings" style={navLink}>Einstellungen</Link>
+            {profile?.role === "admin" && (
+              <Link
+                to="/admin"
+                style={{ ...navLink, display: "inline-flex", alignItems: "center", gap: 4, color: "#6366f1", fontWeight: 600 }}
+              >
+                <ShieldCheck size={13} /> Admin
+              </Link>
+            )}
             <span style={{ width: 1, height: 16, background: "#e2e8f0" }} />
             {profile && <span style={dim}>{profile.email}</span>}
             <button
