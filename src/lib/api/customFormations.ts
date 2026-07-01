@@ -104,14 +104,14 @@ export async function fetchCustomFormations(): Promise<CustomFormationRow[]> {
   return data as CustomFormationRow[];
 }
 
-export async function fetchCustomFormation(id: string): Promise<CustomFormationRow> {
+export async function fetchCustomFormation(id: string): Promise<CustomFormationRow | null> {
   const { data, error } = await supabase
     .from("custom_formations")
     .select("*")
     .eq("id", id)
-    .single();
+    .maybeSingle(); // null statt 406 wenn RLS keine Zeile liefert
   if (error) throw error;
-  return data as CustomFormationRow;
+  return data as CustomFormationRow | null;
 }
 
 export type LibraryFormationRow = {

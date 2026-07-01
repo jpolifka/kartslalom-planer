@@ -41,6 +41,7 @@ export function useCustomFormation(id: string | undefined) {
     queryKey: ["custom_formation", id],
     queryFn: () => fetchCustomFormation(id!),
     enabled: !!id,
+    retry: false, // kein Retry — null (RLS) und Fehler werden sofort als Admin-Fallback behandelt
   });
 }
 
