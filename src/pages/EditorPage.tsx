@@ -482,6 +482,7 @@ export default function EditorPage() {
           trackId={trackId}
           trackName={trackName}
           nameFocused={nameFocused}
+          nameReadOnly={isAdminViewingForeignTrack}
           onSetTrackName={setTrackName}
           onNameFocus={() => setNameFocused(true)}
           onNameBlur={handleNameBlur}
