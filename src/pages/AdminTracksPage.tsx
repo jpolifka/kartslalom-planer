@@ -61,7 +61,8 @@ export default function AdminTracksPage() {
               {tracks.map((t: AdminTrackRow) => (
                 <tr
                   key={t.id}
-                  style={{ borderBottom: "1px solid #f1f5f9" }}
+                  style={{ borderBottom: "1px solid #f1f5f9", cursor: "pointer" }}
+                  onClick={() => navigate(`/editor/${t.id}`)}
                   onMouseEnter={(e) => (e.currentTarget.style.background = "#f8fafc")}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                 >
@@ -90,14 +91,14 @@ export default function AdminTracksPage() {
                     <div style={{ display: "flex", gap: 4 }}>
                       <button
                         title="Im Editor öffnen (Lesezugriff)"
-                        onClick={() => navigate(`/editor/${t.id}`)}
+                        onClick={(e) => { e.stopPropagation(); navigate(`/editor/${t.id}`); }}
                         style={iconBtnStyle}
                       >
                         <ExternalLink size={13} />
                       </button>
                       <button
                         title="Löschen"
-                        onClick={() => setDeleteTarget({ id: t.id, name: t.name })}
+                        onClick={(e) => { e.stopPropagation(); setDeleteTarget({ id: t.id, name: t.name }); }}
                         style={{ ...iconBtnStyle, color: "#b91c1c", borderColor: "#fecaca", background: "#fff1f2" }}
                       >
                         <Trash2 size={13} />

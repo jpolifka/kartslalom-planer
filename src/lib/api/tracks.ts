@@ -40,14 +40,14 @@ export async function fetchTracks(): Promise<TrackRow[]> {
   return data;
 }
 
-export async function fetchTrack(id: string): Promise<TrackDetail> {
+export async function fetchTrack(id: string): Promise<TrackDetail | null> {
   const { data, error } = await supabase
     .from("tracks")
     .select("*")
     .eq("id", id)
-    .single();
+    .maybeSingle(); // null statt 406 wenn RLS keine Zeile liefert (Admin fremde Strecke)
   if (error) throw error;
-  return data;
+  return data as TrackDetail | null;
 }
 
 // Erstellen via RPC — serverseitiges Limit-Check

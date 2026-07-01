@@ -43,7 +43,8 @@ export default function EditorPage() {
 
   const trackQuery = useTrack(isCloudMode && !isNewTrack ? trackId! : undefined);
   // Admin-Fallback: fremde Strecke via SECURITY DEFINER RPC laden (read-only)
-  const needAdminTrack = isAdmin && !isNewTrack && !trackQuery.isLoading && trackQuery.isError;
+  // data === null bedeutet: maybeSingle hat 0 Zeilen geliefert (RLS blockiert — fremde Strecke)
+  const needAdminTrack = isAdmin && !isNewTrack && !trackQuery.isLoading && trackQuery.data === null;
   const adminTrackQuery = useAdminTrack(needAdminTrack ? trackId! : undefined);
   const effectiveTrackData = trackQuery.data ?? adminTrackQuery.data;
   const isAdminViewingForeignTrack = needAdminTrack && !!adminTrackQuery.data;

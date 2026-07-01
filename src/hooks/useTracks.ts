@@ -12,7 +12,12 @@ export function useTrackList() {
 }
 
 export function useTrack(id: string | undefined) {
-  return useQuery({ queryKey: ["track", id], queryFn: () => fetchTrack(id!), enabled: !!id });
+  return useQuery({
+    queryKey: ["track", id],
+    queryFn: () => fetchTrack(id!),
+    enabled: !!id,
+    retry: false, // kein Retry — null (RLS) und Fehler sofort als Admin-Fallback behandeln
+  });
 }
 
 export function useCreateTrack() {
