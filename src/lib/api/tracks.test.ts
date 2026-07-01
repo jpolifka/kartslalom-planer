@@ -39,14 +39,16 @@ function err(message: string) {
  */
 function chain(terminal: Promise<unknown>) {
   const eqResult = Object.assign(Promise.resolve(terminal).then((v) => v), {
-    single: () => terminal,
+    single:      () => terminal,
+    maybeSingle: () => terminal,
   });
   const c = {
-    select: () => c,
-    delete: () => c,
-    order: () => terminal,
-    eq: () => eqResult,
-    single: () => terminal,
+    select:      () => c,
+    delete:      () => c,
+    order:       () => terminal,
+    eq:          () => eqResult,
+    single:      () => terminal,
+    maybeSingle: () => terminal,
   };
   return c;
 }
@@ -137,7 +139,13 @@ describe("fetchTrack", () => {
     const track = { id: "t1", name: "T", state_json: { items: [], arrows: [] } };
     mockFrom.mockReturnValue(chain(ok(track)));
     const result = await fetchTrack("t1");
-    expect(result.id).toBe("t1");
+    expect(result?.id).toBe("t1");
+  });
+
+  it("returns null when no row (RLS blocked)", async () => {
+    mockFrom.mockReturnValue(chain(ok(null)));
+    const result = await fetchTrack("foreign-id");
+    expect(result).toBeNull();
   });
 
   it("throws on error", async () => {
