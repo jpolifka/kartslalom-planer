@@ -22,6 +22,7 @@ import {
   adminListFormations,
   adminDeleteFormation,
   adminPromoteToLibrary,
+  adminUpdateFormation,
   type CreateFormationParams,
 } from "../lib/api/customFormations";
 
@@ -176,6 +177,18 @@ export function useAdminPromoteToLibrary() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin_formations"] });
       qc.invalidateQueries({ queryKey: ["library_formations"] });
+    },
+  });
+}
+
+export function useAdminUpdateFormation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...p }: { id: string } & Omit<CreateFormationParams, "source_formation_key" | "source_custom_formation_id">) =>
+      adminUpdateFormation(id, p),
+    onSuccess: (_d, { id }) => {
+      qc.invalidateQueries({ queryKey: ["admin_formation", id] });
+      qc.invalidateQueries({ queryKey: ["admin_formations"] });
     },
   });
 }

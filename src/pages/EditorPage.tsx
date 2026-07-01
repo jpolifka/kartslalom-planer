@@ -331,7 +331,7 @@ export default function EditorPage() {
   }
 
   function handleExport() {
-    exportAsFile({ items, arrows, manualWidth, manualLength, mapSatellite, mapOpacity, areaSel });
+    exportAsFile({ name: trackName, items, arrows, manualWidth, manualLength, mapSatellite, mapOpacity, areaSel });
   }
 
   function handleImport(e: React.ChangeEvent<HTMLInputElement>) {

@@ -21,6 +21,7 @@ export function sanitizeItems(items: unknown[]): PlacedFormation[] {
 
 export type SavedState = {
   version: number;
+  name?: string;
   items: PlacedFormation[];
   arrows: PlacedArrow[];
   manualWidth: number;
@@ -64,7 +65,10 @@ export function exportAsFile(state: Omit<SavedState, "version">): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `kartslalom_${new Date().toISOString().slice(0, 10)}.json`;
+  const safeName = state.name?.trim().replace(/[^a-zA-Z0-9_\-äöüÄÖÜß ]/g, "").slice(0, 50);
+  a.download = safeName
+    ? `kartslalom_${safeName}_${new Date().toISOString().slice(0, 10)}.json`
+    : `kartslalom_${new Date().toISOString().slice(0, 10)}.json`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

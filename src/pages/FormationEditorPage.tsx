@@ -8,7 +8,7 @@ import { useFormationEditor, type EditorSnap, type EditableCone } from "../hooks
 import FormationEditorCanvas, { type EditorTool, type MeasurementLine, type GuideLine } from "../components/formation-editor/FormationEditorCanvas";
 import FormationMetaPanel from "../components/formation-editor/FormationMetaPanel";
 import BasisAuswahl from "../components/formation-editor/BasisAuswahl";
-import { useCustomFormation, useCreateCustomFormation, useUpdateCustomFormation, useFormationPermission, useDuplicateCustomFormation, useAdminFormation } from "../hooks/useCustomFormations";
+import { useCustomFormation, useCreateCustomFormation, useUpdateCustomFormation, useFormationPermission, useDuplicateCustomFormation, useAdminFormation, useAdminUpdateFormation } from "../hooks/useCustomFormations";
 import { useFeatureGate } from "../hooks/useFeatureGate";
 import { useAuthStore } from "../store/authStore";
 import { useProfile } from "../hooks/useProfile";
@@ -88,13 +88,17 @@ export default function FormationEditorPage() {
 
   const createMutation = useCreateCustomFormation();
   const updateMutation = useUpdateCustomFormation();
+  const adminUpdateMutation = useAdminUpdateFormation();
   const duplicateMutation = useDuplicateCustomFormation();
 
+  // Ist die Formation fremd (Admin greift per SECURITY DEFINER RPC zu)?
+  const isAdminForeignFormation = needAdminFetch && !!adminFormation;
+
   const { data: permission, isLoading: permissionLoading } = useFormationPermission(isEdit ? id : undefined);
-  // Admin darf fremde Formationen lesen (read-only)
-  const effectivePermission = (isAdmin && permission === null) ? "view" : permission;
+  // Admin darf fremde Formationen vollständig bearbeiten (via admin_update_custom_formation)
+  const effectivePermission = (isAdmin && permission === null) ? "edit" : permission;
   const isReadOnly = isEdit && effectivePermission === "view";
-  const isSharedEdit = isEdit && effectivePermission === "edit";
+  const isSharedEdit = isEdit && effectivePermission === "edit" && !isAdminForeignFormation;
 
   // edit-share users können speichern, auch wenn ihr eigener Tier free ist
   const isCloudMode = !!session && (allowed || isSharedEdit);
@@ -180,7 +184,11 @@ export default function FormationEditorPage() {
         duration_seconds: durationSeconds && durationSeconds > 0 ? durationSeconds : null,
       };
       if (isEdit && id) {
-        await updateMutation.mutateAsync({ id, ...params });
+        if (isAdminForeignFormation) {
+          await adminUpdateMutation.mutateAsync({ id, ...params });
+        } else {
+          await updateMutation.mutateAsync({ id, ...params });
+        }
       } else {
         const newId = await createMutation.mutateAsync({
           ...params,
@@ -197,7 +205,7 @@ export default function FormationEditorPage() {
       if (!silent) setSaveStatus("error");
     }
     if (!silent) setTimeout(() => setSaveStatus("idle"), 2500);
-  }, [isCloudMode, isEdit, id, name, description, category, cones, arrows, lichteBreite, durationSeconds, sourceFormationKey, updateMutation, createMutation, navigate]);
+  }, [isCloudMode, isEdit, id, isAdminForeignFormation, name, description, category, cones, arrows, lichteBreite, durationSeconds, sourceFormationKey, adminUpdateMutation, updateMutation, createMutation, navigate]);
 
   const saveToLocalStorage = useCallback(({ silent = false }: { silent?: boolean } = {}) => {
     const data: DraftData = { snap, name, description, category, durationSeconds, lichteBreite, sourceFormationKey };
@@ -369,6 +377,11 @@ export default function FormationEditorPage() {
         {isReadOnly && (
           <span style={{ fontSize: 11, background: "#fffbeb", border: "1px solid #fde68a", color: "#92400e", padding: "3px 10px", borderRadius: 6, fontWeight: 600, flexShrink: 0 }}>
             Nur Ansicht
+          </span>
+        )}
+        {isAdminForeignFormation && (
+          <span style={{ fontSize: 11, background: "#fef3c7", border: "1px solid #fbbf24", color: "#92400e", padding: "3px 10px", borderRadius: 6, flexShrink: 0 }}>
+            Admin-Bearbeitung
           </span>
         )}
         {isSharedEdit && (

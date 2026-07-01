@@ -231,3 +231,21 @@ export async function adminPromoteToLibrary(id: string, category: string): Promi
   if (error) throw mapError(error.message);
   return data as string;
 }
+
+export async function adminUpdateFormation(
+  id: string,
+  p: Omit<CreateFormationParams, "source_formation_key" | "source_custom_formation_id">
+): Promise<void> {
+  const { error } = await supabase.rpc("admin_update_custom_formation", {
+    p_id:                id,
+    p_name:              p.name,
+    p_description:       p.description,
+    p_category:          p.category,
+    p_cones_json:        p.cones_json,
+    p_arrows_json:       p.arrows_json,
+    p_default_direction: p.default_direction,
+    p_lichte_breite:     p.lichte_breite,
+    p_duration_seconds:  p.duration_seconds,
+  });
+  if (error) throw mapError(error.message);
+}
