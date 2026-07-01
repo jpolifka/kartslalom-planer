@@ -503,6 +503,11 @@ services:
       - ../../supabase/migrations/20260622000001_h0_schema.sql:/docker-entrypoint-initdb.d/migrations/99-zz-app-6-h0-schema.sql:Z
       - ../../supabase/migrations/20260622000002_h0_rls.sql:/docker-entrypoint-initdb.d/migrations/99-zz-app-7-h0-rls.sql:Z
       - ../../supabase/migrations/20260622000003_h0_functions.sql:/docker-entrypoint-initdb.d/migrations/99-zz-app-8-h0-functions.sql:Z
+      - ../../supabase/migrations/20260629000001_h3_sharing.sql:/docker-entrypoint-initdb.d/migrations/99-zz-app-9-h3-sharing.sql:Z
+      - ../../supabase/migrations/20260629000002_fix_shared_rls.sql:/docker-entrypoint-initdb.d/migrations/99-zz-app-10-h3-fix-rls.sql:Z
+      - ../../supabase/migrations/20260629000003_get_shared_get_library_rpcs.sql:/docker-entrypoint-initdb.d/migrations/99-zz-app-11-h3-rpcs.sql:Z
+      - ../../supabase/migrations/20260701000001_h3_completion.sql:/docker-entrypoint-initdb.d/migrations/99-zz-app-12-h3-completion.sql:Z
+      - ../../supabase/migrations/20260701000002_h4_admin_tracks.sql:/docker-entrypoint-initdb.d/migrations/99-zz-app-13-h4-admin-tracks.sql:Z
       # Use named volume to persist pgsodium decryption key between restarts
       - db-config:/etc/postgresql-custom
     healthcheck:
