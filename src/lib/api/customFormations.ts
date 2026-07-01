@@ -184,3 +184,17 @@ export async function fetchSharedFormations(): Promise<SharedFormationRow[]> {
   if (error) throw error;
   return data as SharedFormationRow[];
 }
+
+export type FormationPermission = "owner" | "edit" | "view";
+
+export async function fetchFormationPermission(id: string): Promise<FormationPermission | null> {
+  const { data, error } = await supabase.rpc("get_my_formation_permission", { p_id: id });
+  if (error) throw error;
+  return data as FormationPermission | null;
+}
+
+export async function duplicateCustomFormation(sourceId: string): Promise<string> {
+  const { data, error } = await supabase.rpc("duplicate_custom_formation", { p_source_id: sourceId });
+  if (error) throw mapError(error.message);
+  return data as string;
+}

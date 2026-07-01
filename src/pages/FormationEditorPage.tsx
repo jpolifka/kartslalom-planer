@@ -8,7 +8,7 @@ import { useFormationEditor, type EditorSnap, type EditableCone } from "../hooks
 import FormationEditorCanvas, { type EditorTool, type MeasurementLine, type GuideLine } from "../components/formation-editor/FormationEditorCanvas";
 import FormationMetaPanel from "../components/formation-editor/FormationMetaPanel";
 import BasisAuswahl from "../components/formation-editor/BasisAuswahl";
-import { useCustomFormation, useCreateCustomFormation, useUpdateCustomFormation } from "../hooks/useCustomFormations";
+import { useCustomFormation, useCreateCustomFormation, useUpdateCustomFormation, useFormationPermission, useDuplicateCustomFormation } from "../hooks/useCustomFormations";
 import { useFeatureGate } from "../hooks/useFeatureGate";
 import { useAuthStore } from "../store/authStore";
 import { useProfile } from "../hooks/useProfile";
@@ -81,9 +81,16 @@ export default function FormationEditorPage() {
 
   const createMutation = useCreateCustomFormation();
   const updateMutation = useUpdateCustomFormation();
+  const duplicateMutation = useDuplicateCustomFormation();
 
-  const isCloudMode = !!session && allowed;
   const isEdit = !!id;
+
+  const { data: permission, isLoading: permissionLoading } = useFormationPermission(isEdit ? id : undefined);
+  const isReadOnly = isEdit && permission === "view";
+  const isSharedEdit = isEdit && permission === "edit";
+
+  // edit-share users können speichern, auch wenn ihr eigener Tier free ist
+  const isCloudMode = !!session && (allowed || isSharedEdit);
 
   // For new formations: start from localStorage draft (unless editing from cloud)
   const draft = !isEdit ? loadDraft() : null;
@@ -196,9 +203,41 @@ export default function FormationEditorPage() {
 
   const handleSave = isCloudMode ? () => saveToCloud() : () => saveToLocalStorage();
 
+  async function handleDuplicate() {
+    if (!id) return;
+    try {
+      const newId = await duplicateMutation.mutateAsync(id);
+      navigate(`/formations/${newId}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg === "PREMIUM_REQUIRED") alert("Eigene Hindernisse erfordern einen Pro-Tarif. Schreib uns: jens@polifka.info");
+      else if (msg === "FORMATION_LIMIT_REACHED") alert("Du hast die maximale Anzahl eigener Hindernisse erreicht (100).");
+      else alert("Hindernis konnte nicht dupliziert werden.");
+    }
+  }
+
+  function handleReset() {
+    clearDraft();
+    setShowBasis(true);
+    dispatch({ type: "RESET", snap: { cones: [], arrows: [] } });
+    setName("");
+    setDescription("");
+    setCategory("individuell");
+    setDurationSeconds(null);
+    setLichteBreite(null);
+    setSourceFormationKey(undefined);
+    setMeasurements([]);
+    setGuides([]);
+    setSelectedConeIds([]);
+    setSelectedArrowId(null);
+    setSelectedMeasurementId(null);
+    setGateFirstConeId(null);
+    setClipboard([]);
+  }
+
   // Autosave
   useEffect(() => {
-    if (showBasis || !initialized) return;
+    if (showBasis || !initialized || isReadOnly) return;
     const t = setTimeout(() => {
       if (isCloudMode) {
         if (isEdit) saveToCloud({ silent: true });
@@ -305,8 +344,11 @@ export default function FormationEditorPage() {
   const lichteBreiteWarning = lichteBreite !== null && lichteBreite < TASK_LANE_WIDTH;
 
 
-  if (isEdit && cloudLoading) {
+  if (isEdit && (cloudLoading || permissionLoading)) {
     return <div style={{ padding: 40, color: "#6b7280" }}>Lädt Hindernis…</div>;
+  }
+  if (isEdit && !permissionLoading && permission === null) {
+    return <div style={{ padding: 40, color: "#ef4444" }}>Kein Zugriff auf dieses Hindernis.</div>;
   }
 
   return (
@@ -316,50 +358,52 @@ export default function FormationEditorPage() {
       <header style={s.header}>
         <button style={s.headerBtn} onClick={() => navigate(isEdit ? "/formations" : -1 as never)}>← Zurück</button>
         <span style={s.title}>{name || (isEdit ? "Hindernis bearbeiten" : "Neues Hindernis")}</span>
-        {!isCloudMode && (
+
+        {isReadOnly && (
+          <span style={{ fontSize: 11, background: "#fffbeb", border: "1px solid #fde68a", color: "#92400e", padding: "3px 10px", borderRadius: 6, fontWeight: 600, flexShrink: 0 }}>
+            Nur Ansicht
+          </span>
+        )}
+        {isSharedEdit && (
+          <span style={{ fontSize: 11, background: "#f0f9ff", border: "1px solid #bae6fd", color: "#0369a1", padding: "3px 10px", borderRadius: 6, flexShrink: 0 }}>
+            Bearbeitungszugriff
+          </span>
+        )}
+
+        {!isReadOnly && !isCloudMode && !isSharedEdit && (
           <span style={{ fontSize: 11, color: "#94a3b8" }}>
             {session ? "Feature nicht freigeschaltet" : "Nicht eingeloggt"} — nur lokal
           </span>
         )}
         {!isEdit && (
-          <button
-            style={s.headerBtn}
-            onClick={() => {
-              clearDraft();
-              setShowBasis(true);
-              dispatch({ type: "RESET", snap: { cones: [], arrows: [] } });
-              setName("");
-              setDescription("");
-              setCategory("individuell");
-              setDurationSeconds(null);
-              setLichteBreite(null);
-              setSourceFormationKey(undefined);
-              setMeasurements([]);
-              setGuides([]);
-              setSelectedConeIds([]);
-              setSelectedArrowId(null);
-              setSelectedMeasurementId(null);
-              setGateFirstConeId(null);
-              setClipboard([]);
-            }}
-            title="Draft verwerfen und neu anfangen"
-          >
+          <button style={s.headerBtn} onClick={handleReset} title="Draft verwerfen und neu anfangen">
             Neu anfangen
           </button>
         )}
-        <button
-          style={{ ...s.saveBtn, opacity: saveStatus === "saving" ? 0.6 : 1 }}
-          onClick={handleSave}
-          disabled={saveStatus === "saving" || !name.trim()}
-          title={saveStatus === "saved" ? "Gespeichert ✓" : saveStatus === "error" ? "Fehler beim Speichern" : undefined}
-        >
-          {saveStatus === "saving" ? "Speichern…" : isCloudMode ? "In Cloud speichern" : "Lokal speichern"}
-        </button>
+
+        {isReadOnly ? (
+          <button
+            style={{ ...s.saveBtn, background: "#3b82f6", opacity: duplicateMutation.isPending ? 0.6 : 1 }}
+            onClick={handleDuplicate}
+            disabled={duplicateMutation.isPending}
+          >
+            {duplicateMutation.isPending ? "Kopiere…" : "Als Kopie speichern"}
+          </button>
+        ) : (
+          <button
+            style={{ ...s.saveBtn, opacity: saveStatus === "saving" ? 0.6 : 1 }}
+            onClick={handleSave}
+            disabled={saveStatus === "saving" || !name.trim()}
+            title={saveStatus === "saved" ? "Gespeichert ✓" : saveStatus === "error" ? "Fehler beim Speichern" : undefined}
+          >
+            {saveStatus === "saving" ? "Speichern…" : isCloudMode ? "In Cloud speichern" : "Lokal speichern"}
+          </button>
+        )}
       </header>
 
       <div style={s.body}>
         <div style={s.left}>
-          <div style={s.toolbar}>
+          <div style={{ ...s.toolbar, ...(isReadOnly ? { pointerEvents: "none", opacity: 0.4 } : {}) }}>
             {TOOLS.map((t) => (
               <button key={t} style={tool === t ? s.toolBtnActive : s.toolBtn} onClick={() => { const next = tool === t && t === "gatePair" ? "select" : t; setTool(next); if (next !== "gatePair") setGateFirstConeId(null); }} title={TOOL_LABELS[t]}>
                 {TOOL_LABELS[t]}
@@ -389,7 +433,9 @@ export default function FormationEditorPage() {
               cones={cones} arrows={arrows} measurements={measurements}
               selectedConeIds={selectedConeIds} selectedArrowId={selectedArrowId}
               selectedMeasurementId={selectedMeasurementId} tool={tool} visibleM={visibleM}
-              dispatch={dispatch} onSelectCones={setSelectedConeIds} onSelectArrow={setSelectedArrowId}
+              dispatch={isReadOnly ? (() => {}) as typeof dispatch : dispatch}
+              onSelectCones={isReadOnly ? () => {} : setSelectedConeIds}
+              onSelectArrow={isReadOnly ? () => {} : setSelectedArrowId}
               onSelectMeasurement={setSelectedMeasurementId}
               onAddMeasurement={(m) => setMeasurements((ms) => [...ms, m])}
               onGatePairClick={handleGatePairClick}

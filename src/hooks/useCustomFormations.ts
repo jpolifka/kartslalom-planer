@@ -16,6 +16,8 @@ import {
   unshareFormation,
   fetchFormationShares,
   fetchSharedFormations,
+  fetchFormationPermission,
+  duplicateCustomFormation,
   type CreateFormationParams,
 } from "../lib/api/customFormations";
 
@@ -115,5 +117,23 @@ export function useSharedFormations() {
     queryKey: ["shared_formations"],
     queryFn: fetchSharedFormations,
     enabled: !!session,
+  });
+}
+
+export function useFormationPermission(id: string | undefined) {
+  const { session } = useAuthStore();
+  return useQuery({
+    queryKey: ["formation_permission", id],
+    queryFn: () => fetchFormationPermission(id!),
+    enabled: !!id && !!session,
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useDuplicateCustomFormation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (sourceId: string) => duplicateCustomFormation(sourceId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["custom_formations"] }),
   });
 }

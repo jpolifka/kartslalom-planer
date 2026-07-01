@@ -173,9 +173,9 @@ export default function FormationsPage() {
                   <button
                     onClick={(e) => { e.stopPropagation(); navigate(`/formations/${f.id}`); }}
                     style={iconBtn()}
-                    title="Ansehen / Bearbeiten"
+                    title={f.permission === "edit" ? "Bearbeiten" : "Ansehen"}
                   >
-                    <Eye size={12} />
+                    {f.permission === "edit" ? <Pencil size={12} /> : <Eye size={12} />}
                   </button>
                 }
               />
