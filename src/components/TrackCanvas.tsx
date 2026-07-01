@@ -49,7 +49,8 @@ type PreparedItem = {
 
 type DrawState = { startX: number; startY: number; currentX: number; currentY: number };
 
-const CANVAS_WIDTH = 900;
+const DEFAULT_CANVAS_WIDTH = 900;
+const MIN_CANVAS_WIDTH = 500;
 const PYLON_SIZE_M = 0.30;
 const PYLON_MIN_PX = 6;
 const RULER_SIZE = 28;
@@ -103,6 +104,26 @@ function ArrowPath({ arrow, scale, selected, dashed }: { arrow: PlacedArrow; sca
   );
 }
 
+// Prüft, ob ein Element bereits vollständig innerhalb all seiner scrollbaren
+// Vorfahren sichtbar ist — verhindert unnötiges (und mitten im Drag störendes) Scrollen.
+function isFullyVisibleInScrollParents(el: HTMLElement): boolean {
+  const elRect = el.getBoundingClientRect();
+  let node = el.parentElement;
+  while (node) {
+    const style = window.getComputedStyle(node);
+    const scrollableY = (style.overflowY === "auto" || style.overflowY === "scroll") && node.scrollHeight > node.clientHeight;
+    const scrollableX = (style.overflowX === "auto" || style.overflowX === "scroll") && node.scrollWidth > node.clientWidth;
+    if (scrollableY || scrollableX) {
+      const pRect = node.getBoundingClientRect();
+      if (elRect.top < pRect.top || elRect.bottom > pRect.bottom || elRect.left < pRect.left || elRect.right > pRect.right) {
+        return false;
+      }
+    }
+    node = node.parentElement;
+  }
+  return true;
+}
+
 function DragHandle({ x, y, radius, fill, stroke, scale, onDrag }: {
   x: number; y: number; radius: number; fill: string; stroke: string; scale: number;
   onDrag: (dx: number, dy: number) => void;
@@ -149,6 +170,25 @@ export default function TrackCanvas(props: TrackCanvasProps) {
     return map;
   }, [issues]);
 
+  const outerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState<number | null>(null);
+
+  // Canvas füllt die verfügbare Breite der Spalte, statt fix 900px zu sein.
+  useEffect(() => {
+    const el = outerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width;
+      if (width) setContainerWidth(width);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const CANVAS_WIDTH = containerWidth != null
+    ? Math.max(MIN_CANVAS_WIDTH, Math.floor(containerWidth - RULER_SIZE))
+    : DEFAULT_CANVAS_WIDTH;
+
   const scale = CANVAS_WIDTH / fieldWidth;
   const canvasHeight = fieldLength * scale;
   const pylonPx = Math.max(PYLON_MIN_PX, PYLON_SIZE_M * scale);
@@ -156,9 +196,12 @@ export default function TrackCanvas(props: TrackCanvasProps) {
   const [drawState, setDrawState] = useState<DrawState | null>(null);
   const formationRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const lastScrolledIdRef = useRef<string | null>(null);
+  const drawRectRef = useRef<DOMRect | null>(null);
 
   // Beim Anklicken eines Prüfergebnisses wird genau eine Formation selektiert —
-  // dann zur Formation scrollen, damit sie auch außerhalb des sichtbaren Bereichs sichtbar wird.
+  // dann zur Formation scrollen, aber nur wenn sie tatsächlich außerhalb des sichtbaren
+  // Bereichs liegt. Sonst würde jeder normale Klick (z.B. zum Ziehen eines Pfeils) das
+  // Canvas mitten in der Geste verschieben und die Drag-Berechnung durcheinanderbringen.
   useEffect(() => {
     if (selectedIds.size !== 1) {
       lastScrolledIdRef.current = null;
@@ -167,7 +210,10 @@ export default function TrackCanvas(props: TrackCanvasProps) {
     const id = [...selectedIds][0];
     if (id === lastScrolledIdRef.current) return;
     lastScrolledIdRef.current = id;
-    formationRefs.current.get(id)?.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+    const el = formationRefs.current.get(id);
+    if (el && !isFullyVisibleInScrollParents(el)) {
+      el.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+    }
   }, [selectedIds]);
 
   const prepared = useMemo<PreparedItem[]>(() => items.map((item) => {
@@ -188,14 +234,33 @@ export default function TrackCanvas(props: TrackCanvasProps) {
   const yTicks = Array.from({ length: Math.floor(fieldLength) + 1 }, (_, i) => i);
 
   function canvasPos(e: React.MouseEvent) {
-    const r = canvasRef.current!.getBoundingClientRect();
+    // Rect während einer laufenden Zeichen-Geste einfrieren: sonst würde ein
+    // gleichzeitiges (programmatisches) Scrollen des Canvas die Koordinaten
+    // mitten in der Geste verfälschen.
+    const r = drawRectRef.current ?? canvasRef.current!.getBoundingClientRect();
     return { x: (e.clientX - r.left) / scale, y: (e.clientY - r.top) / scale };
+  }
+
+  // Pfeile liegen visuell vor den Hinderniss-Boxen, aber die Formationen fangen
+  // Pointer-Events über ihre gesamte (rechteckige) Bounding-Box ab. Damit ein Pfeil
+  // an der Klickposition auch dann ausgewählt/bearbeitet werden kann, wenn er eine
+  // Formation überlappt, hat ein Treffer auf dem Pfeil-Pfad immer Vorrang.
+  function hitArrowAt(clientX: number, clientY: number): PlacedArrow | undefined {
+    const r = canvasRef.current?.getBoundingClientRect();
+    if (!r) return undefined;
+    return arrows.find((a) => bezierNear(clientX - r.left, clientY - r.top, a, scale, 12));
   }
 
   // Drag für Formationen: reiner Pointer-Event-Ansatz, kein framer-motion
   function startFormationDrag(e: React.PointerEvent<HTMLDivElement>, itemId: string) {
     if (drawingArrowMode) return;
     e.stopPropagation();
+
+    const arrowHit = hitArrowAt(e.clientX, e.clientY);
+    if (arrowHit) {
+      onSelectArrow(arrowHit.id);
+      return;
+    }
 
     if (e.shiftKey) {
       // Shift+Klick: nur Auswahl umschalten, kein Drag
@@ -239,6 +304,7 @@ export default function TrackCanvas(props: TrackCanvasProps) {
   function onCanvasMouseDown(e: React.MouseEvent) {
     if (!drawingArrowMode) return;
     e.preventDefault();
+    drawRectRef.current = canvasRef.current!.getBoundingClientRect();
     const p = canvasPos(e);
     setDrawState({ startX: p.x, startY: p.y, currentX: p.x, currentY: p.y });
   }
@@ -259,6 +325,7 @@ export default function TrackCanvas(props: TrackCanvasProps) {
         cpX: (drawState.startX + p.x) / 2, cpY: (drawState.startY + p.y) / 2,
       });
     }
+    drawRectRef.current = null;
     setDrawState(null);
   }
 
@@ -284,7 +351,7 @@ export default function TrackCanvas(props: TrackCanvasProps) {
   const selectedArrow = arrows.find((a) => a.id === selectedArrowId) ?? null;
 
   return (
-    <div style={{ overflow: "auto", border: "1px solid #cbd5e1", borderRadius: 20, padding: 12, background: "#f8fafc" }}>
+    <div ref={outerRef} style={{ overflow: "auto", border: "1px solid #cbd5e1", borderRadius: 20, padding: 12, background: "#f8fafc" }}>
       <div style={{ position: "relative", width: CANVAS_WIDTH + RULER_SIZE, height: canvasHeight + RULER_SIZE }}>
 
         {/* X-Lineal */}
@@ -366,7 +433,11 @@ export default function TrackCanvas(props: TrackCanvasProps) {
                   else formationRefs.current.delete(item.id);
                 }}
                 onPointerDown={(e) => startFormationDrag(e, item.id)}
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const arrowHit = hitArrowAt(e.clientX, e.clientY);
+                  if (arrowHit) onSelectArrow(arrowHit.id);
+                }}
                 style={{
                   position: "absolute",
                   left: item.x * scale,
