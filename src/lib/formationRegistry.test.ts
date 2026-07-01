@@ -57,7 +57,10 @@ describe("resolveFormation", () => {
     expect(result.cones).toEqual([]);
   });
 
-  it("throws when custom formation has no snapshot", () => {
-    expect(() => resolveFormation(pf("custom"))).toThrow("customSnapshot");
+  it("returns placeholder when custom formation has no snapshot", () => {
+    const result = resolveFormation(pf("custom"));
+    expect(result.key).toBe("custom");
+    expect(result.label).toContain("Unbekanntes Hindernis");
+    expect(result.cones).toEqual([]);
   });
 });

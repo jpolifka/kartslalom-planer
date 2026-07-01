@@ -3,7 +3,8 @@
 // All rights reserved.
 
 import { describe, it, expect, beforeEach } from "vitest";
-import { saveState, loadState, clearSavedState, parseImportFile } from "./storage";
+import { saveState, loadState, clearSavedState, parseImportFile, sanitizeItems } from "./storage";
+import type { PlacedFormation } from "../types";
 
 const STORAGE_KEY = "kartslalom_autosave";
 const CURRENT_VERSION = 1;
@@ -88,5 +89,75 @@ describe("parseImportFile", () => {
 
   it("throws when input is not an object", () => {
     expect(() => parseImportFile(JSON.stringify(null))).toThrow("Ungültiges Dateiformat");
+  });
+
+  it("custom formation with valid snapshot passes through unchanged", () => {
+    const snap = { cones: [], arrows: [], label: "Mein Hindernis" };
+    const json = JSON.stringify({
+      ...baseState, version: CURRENT_VERSION,
+      items: [{ id: "x", key: "custom", x: 0, y: 0, rotationDeg: 0, direction: "none", customSnapshot: snap }],
+    });
+    const result = parseImportFile(json);
+    expect(result.items[0].customSnapshot).toEqual(snap);
+  });
+
+  it("custom formation without snapshot is sanitized with placeholder", () => {
+    const json = JSON.stringify({
+      ...baseState, version: CURRENT_VERSION,
+      items: [{ id: "x", key: "custom", x: 0, y: 0, rotationDeg: 0, direction: "none" }],
+    });
+    const result = parseImportFile(json);
+    expect(result.items[0].customSnapshot).toBeDefined();
+    expect(result.items[0].customSnapshot!.label).toContain("Fehlendes Hindernis");
+    expect(result.items[0].customSnapshot!.cones).toEqual([]);
+    expect(result.items[0].customSnapshot!.arrows).toEqual([]);
+  });
+
+  it("non-custom formations are not affected by sanitizeItems", () => {
+    const json = JSON.stringify({
+      ...baseState, version: CURRENT_VERSION,
+      items: [{ id: "y", key: "singlePylon", x: 1, y: 2, rotationDeg: 0, direction: "none" }],
+    });
+    const result = parseImportFile(json);
+    expect(result.items[0].key).toBe("singlePylon");
+    expect(result.items[0].customSnapshot).toBeUndefined();
+  });
+});
+
+describe("sanitizeItems", () => {
+  it("passthrough for standard formations", () => {
+    const items: PlacedFormation[] = [
+      { id: "a", key: "singlePylon", x: 0, y: 0, rotationDeg: 0, direction: "none" },
+    ];
+    expect(sanitizeItems(items)).toEqual(items);
+  });
+
+  it("passthrough for custom formation with snapshot", () => {
+    const snap = { cones: [], arrows: [], label: "Test" };
+    const items: PlacedFormation[] = [
+      { id: "b", key: "custom", x: 0, y: 0, rotationDeg: 0, direction: "none", customSnapshot: snap },
+    ];
+    expect(sanitizeItems(items)[0].customSnapshot).toEqual(snap);
+  });
+
+  it("injects placeholder for custom formation without snapshot", () => {
+    const items: PlacedFormation[] = [
+      { id: "c", key: "custom", x: 0, y: 0, rotationDeg: 0, direction: "none" },
+    ];
+    const result = sanitizeItems(items);
+    expect(result[0].customSnapshot).toBeDefined();
+    expect(result[0].customSnapshot!.cones).toEqual([]);
+    expect(result[0].customSnapshot!.arrows).toEqual([]);
+  });
+
+  it("preserves other fields unchanged", () => {
+    const items: PlacedFormation[] = [
+      { id: "d", key: "custom", x: 3, y: 7, rotationDeg: 45, direction: "cw", customFormationId: "abc" },
+    ];
+    const result = sanitizeItems(items);
+    expect(result[0].id).toBe("d");
+    expect(result[0].x).toBe(3);
+    expect(result[0].rotationDeg).toBe(45);
+    expect(result[0].customFormationId).toBe("abc");
   });
 });

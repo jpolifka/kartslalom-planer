@@ -13,7 +13,7 @@ import { runValidation } from "../lib/validation";
 import { generateTrackSVG, downloadSVG, exportPDF } from "../lib/exportSVG";
 import type { AreaSelection } from "../lib/areaSelection";
 import type { FormationKey, PlacedArrow, PlacedFormation } from "../types";
-import { saveState, loadState, clearSavedState, exportAsFile, parseImportFile } from "../lib/storage";
+import { saveState, loadState, clearSavedState, exportAsFile, parseImportFile, sanitizeItems } from "../lib/storage";
 import { useAuthStore } from "../store/authStore";
 import { useTrack, useCreateTrack, useSaveTrack, useRenameTrack } from "../hooks/useTracks";
 import { useTier } from "../hooks/useTier";
@@ -193,7 +193,7 @@ export default function EditorPage() {
     dispatch({
       type: "RESET",
       state: {
-        items: (d.state_json.items ?? []) as PlacedFormation[],
+        items: sanitizeItems(d.state_json.items ?? []),
         arrows: (d.state_json.arrows ?? []) as PlacedArrow[],
       },
     });

@@ -95,7 +95,10 @@ export function getEffectiveDuration(durationSecondsOverride: number | undefined
 export function resolveFormation(pf: PlacedFormation): FormationDefinition {
   if (pf.key === "custom") {
     const snap = pf.customSnapshot;
-    if (!snap) throw new Error("PlacedFormation mit key='custom' hat kein customSnapshot");
+    if (!snap) {
+      // Snapshot fehlt (alter Save oder Datenfehler) — Platzhalter statt App-Crash
+      return { key: "custom", label: "⚠ Unbekanntes Hindernis", description: "", cones: [] };
+    }
     return { key: "custom", label: snap.label, description: "", cones: snap.cones };
   }
   return getFormation(pf.key);
