@@ -69,8 +69,8 @@ export default function AdminTracksPage() {
                   <td style={{ ...tdStyle, fontWeight: 600, color: "#111827" }}>
                     {t.name}
                   </td>
-                  <td style={{ ...tdStyle, color: "#64748b", fontFamily: "monospace", fontSize: 11 }}>
-                    {t.owner_id ? t.owner_id.slice(0, 8) + "…" : "–"}
+                  <td style={{ ...tdStyle, color: "#64748b", fontSize: 12 }}>
+                    {t.owner_email ?? "–"}
                   </td>
                   <td style={{ ...tdStyle, color: "#475569", whiteSpace: "nowrap" }}>
                     {t.manual_width} × {t.manual_length} m

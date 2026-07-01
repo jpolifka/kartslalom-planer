@@ -23,6 +23,7 @@ export type TrackDetail = TrackRow & {
 export type AdminTrackRow = {
   id: string;
   owner_id: string;
+  owner_email: string | null;
   name: string;
   is_public: boolean;
   manual_width: number;
