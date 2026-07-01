@@ -15,6 +15,8 @@ import FormationSharePage from "./pages/FormationSharePage";
 import ImpressumPage from "./pages/ImpressumPage";
 import SettingsPage from "./pages/SettingsPage";
 import AuthGuard from "./components/auth/AuthGuard";
+import AdminGuard from "./components/auth/AdminGuard";
+import AdminFormationsPage from "./pages/AdminFormationsPage";
 
 export default function AppRouter() {
   const { isLoading } = useAuthStore();
@@ -40,6 +42,10 @@ export default function AppRouter() {
           <Route path="/formations" element={<FormationsPage />} />
           <Route path="/formations/:id/share" element={<FormationSharePage />} />
           <Route path="/settings" element={<SettingsPage />} />
+        </Route>
+
+        <Route element={<AdminGuard />}>
+          <Route path="/admin/formations" element={<AdminFormationsPage />} />
         </Route>
 
         <Route path="/impressum" element={<ImpressumPage />} />

@@ -23,6 +23,8 @@ export type CustomFormationRow = {
   default_direction: string | null;
   source_formation_key: string | null;
   source_custom_formation_id: string | null;
+  edited_by_admin_id: string | null;
+  edited_by_admin_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -195,6 +197,31 @@ export async function fetchFormationPermission(id: string): Promise<FormationPer
 
 export async function duplicateCustomFormation(sourceId: string): Promise<string> {
   const { data, error } = await supabase.rpc("duplicate_custom_formation", { p_source_id: sourceId });
+  if (error) throw mapError(error.message);
+  return data as string;
+}
+
+// --- Admin ---
+
+export async function adminListFormations(status?: string, category?: string): Promise<CustomFormationRow[]> {
+  const { data, error } = await supabase.rpc("admin_list_custom_formations", {
+    p_status: status ?? null,
+    p_category: category ?? null,
+  });
+  if (error) throw mapError(error.message);
+  return data as CustomFormationRow[];
+}
+
+export async function adminDeleteFormation(id: string): Promise<void> {
+  const { error } = await supabase.rpc("admin_delete_custom_formation", { p_id: id });
+  if (error) throw mapError(error.message);
+}
+
+export async function adminPromoteToLibrary(id: string, category: string): Promise<string> {
+  const { data, error } = await supabase.rpc("admin_promote_to_library", {
+    p_formation_id: id,
+    p_category: category,
+  });
   if (error) throw mapError(error.message);
   return data as string;
 }

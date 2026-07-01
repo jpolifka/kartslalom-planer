@@ -18,6 +18,9 @@ import {
   fetchSharedFormations,
   fetchFormationPermission,
   duplicateCustomFormation,
+  adminListFormations,
+  adminDeleteFormation,
+  adminPromoteToLibrary,
   type CreateFormationParams,
 } from "../lib/api/customFormations";
 
@@ -135,5 +138,35 @@ export function useDuplicateCustomFormation() {
   return useMutation({
     mutationFn: (sourceId: string) => duplicateCustomFormation(sourceId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["custom_formations"] }),
+  });
+}
+
+// --- Admin ---
+
+export function useAdminFormationList(status?: string, category?: string) {
+  return useQuery({
+    queryKey: ["admin_formations", status ?? null, category ?? null],
+    queryFn: () => adminListFormations(status, category),
+    staleTime: 0,
+  });
+}
+
+export function useAdminDeleteFormation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: adminDeleteFormation,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin_formations"] }),
+  });
+}
+
+export function useAdminPromoteToLibrary() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, category }: { id: string; category: string }) =>
+      adminPromoteToLibrary(id, category),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin_formations"] });
+      qc.invalidateQueries({ queryKey: ["library_formations"] });
+    },
   });
 }

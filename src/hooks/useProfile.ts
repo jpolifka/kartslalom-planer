@@ -15,11 +15,11 @@ export function useProfile() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, email, tier")
+        .select("id, email, tier, role")
         .eq("id", session!.user.id)
         .single();
       if (error) throw error;
-      return data as { id: string; email: string; tier: "free" | "pro" | "team" };
+      return data as { id: string; email: string; tier: "free" | "pro" | "team"; role: string | null };
     },
     enabled: !!session,
   });
