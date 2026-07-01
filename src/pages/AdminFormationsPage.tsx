@@ -161,8 +161,8 @@ export default function AdminFormationsPage() {
                       <span title="Durch Admin bearbeitet" style={{ marginLeft: 4, fontSize: 10, color: "#6366f1" }}>✎</span>
                     )}
                   </td>
-                  <td style={{ ...tdStyle, color: "#64748b", fontFamily: "monospace", fontSize: 11 }}>
-                    {f.owner_id ? f.owner_id.slice(0, 8) + "…" : "–"}
+                  <td style={{ ...tdStyle, color: "#64748b", fontSize: 12 }}>
+                    {f.owner_email ?? "–"}
                   </td>
                   <td style={tdStyle}><StatusBadge status={f.status} /></td>
                   <td style={{ ...tdStyle, color: "#475569" }}>{CATEGORY_LABELS[f.category] ?? f.category}</td>

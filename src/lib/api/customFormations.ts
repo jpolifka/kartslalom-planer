@@ -10,6 +10,7 @@ import type { FormationCategory, ConePoint, PlacedArrow } from "../../types";
 export type CustomFormationRow = {
   id: string;
   owner_id: string;
+  owner_email?: string | null; // nur in Admin-RPCs vorhanden
   name: string;
   description: string | null;
   category: FormationCategory;
