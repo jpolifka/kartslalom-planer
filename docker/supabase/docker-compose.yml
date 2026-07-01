@@ -493,11 +493,10 @@ services:
       - ./volumes/db/logs.sql:/docker-entrypoint-initdb.d/migrations/99-logs.sql:Z
       # Changes required for Pooler support
       - ./volumes/db/pooler.sql:/docker-entrypoint-initdb.d/migrations/99-pooler.sql:Z
-      # App-Migrationen — wird automatisch von run-app-migrations.sh in sort-Reihenfolge
-      # angewendet; neue Dateien in supabase/migrations/ werden ohne docker-compose-Änderung
-      # beim nächsten reset.sh übernommen.
+      # App-Migrationen — migrate.sh übernimmt alle *.sql aus /app-migrations in sort-Reihenfolge.
+      # Neue Dateien in supabase/migrations/ werden ohne docker-compose-Änderung übernommen.
       - ../../supabase/migrations:/app-migrations:ro,Z
-      - ./run-app-migrations.sh:/docker-entrypoint-initdb.d/migrations/99-zz-run-app-migrations.sh:Z
+      - ./migrate.sh:/docker-entrypoint-initdb.d/migrate.sh:Z
       # Use named volume to persist pgsodium decryption key between restarts
       - db-config:/etc/postgresql-custom
     healthcheck:
