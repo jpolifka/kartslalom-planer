@@ -10,7 +10,7 @@ import type { MapConfig } from "../components/TrackCanvas";
 import MapSelector from "../components/MapSelector";
 import { getEffectiveDuration } from "../lib/formationRegistry";
 import { runValidation } from "../lib/validation";
-import { generateTrackSVG, downloadSVG, printAsPDF } from "../lib/exportSVG";
+import { generateTrackSVG, downloadSVG, exportPDF } from "../lib/exportSVG";
 import type { AreaSelection } from "../lib/areaSelection";
 import type { FormationKey, PlacedArrow, PlacedFormation } from "../types";
 import { saveState, loadState, clearSavedState, exportAsFile, parseImportFile } from "../lib/storage";
@@ -525,8 +525,12 @@ export default function EditorPage() {
               warnCount={warnCount}
               hasItems={items.length > 0}
               saveStatus={saveStatus}
-              onExportSVG={() => downloadSVG(generateTrackSVG(fieldWidth, fieldLength, items, arrows))}
-              onExportPDF={() => printAsPDF(generateTrackSVG(fieldWidth, fieldLength, items, arrows), fieldWidth, fieldLength)}
+              onExportSVG={() => downloadSVG(generateTrackSVG(fieldWidth, fieldLength, items, arrows, mapConfig))}
+              onExportPDF={() => {
+                exportPDF(fieldWidth, fieldLength, items, arrows, mapConfig).catch((err) => {
+                  alert(`PDF-Export fehlgeschlagen: ${err instanceof Error ? err.message : "Unbekannter Fehler"}`);
+                });
+              }}
               onExportJSON={handleExport}
               onImportClick={() => fileInputRef.current?.click()}
               onImportChange={handleImport}
