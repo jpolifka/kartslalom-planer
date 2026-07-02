@@ -2,8 +2,25 @@
 // Copyright (c) Jens Polifka
 // All rights reserved.
 
-import { describe, it, expect } from "vitest";
-import { generateTrackSVG } from "./exportSVG";
+import { describe, it, expect, vi } from "vitest";
+import { generateTrackSVG, exportPDF } from "./exportSVG";
+
+// PDF-Mocks: jsPDF und svg2pdf.js brauchen keine echten Browser-APIs
+vi.mock("jspdf", () => {
+  class MockJsPDF {
+    internal = { pageSize: { getWidth: () => 297, getHeight: () => 210 } };
+    setFont()  { return this; }
+    setFontSize() { return this; }
+    setTextColor() { return this; }
+    setDrawColor() { return this; }
+    text() { return this; }
+    line() { return this; }
+    save() { return this; }
+    svg() { return Promise.resolve(); }
+  }
+  return { jsPDF: MockJsPDF };
+});
+vi.mock("svg2pdf.js", () => ({ default: () => undefined }));
 import type { PlacedFormation } from "../types";
 
 const snap = {
@@ -83,5 +100,47 @@ describe("generateTrackSVG mit customSnapshot", () => {
     const svg = generateTrackSVG(18, 36, [customItem()], []);
     expect(svg).toMatch(/^<svg /);
     expect(svg).toContain("</svg>");
+  });
+});
+
+// H5: PDF-Smoke-Test — Custom-Snapshot überlebt PDF-Erzeugung
+describe("exportPDF mit customSnapshot (Smoke-Test)", () => {
+  it("wirft keinen Fehler bei gelöschter Quellformation (nur Snapshot)", async () => {
+    await expect(
+      exportPDF(18, 36, [customItem()], [], null, "test.pdf")
+    ).resolves.not.toThrow();
+  });
+
+  it("wirft keinen Fehler bei leerem Track", async () => {
+    await expect(
+      exportPDF(18, 36, [], [], null, "test.pdf")
+    ).resolves.not.toThrow();
+  });
+
+  it("SVG-Container-Inhalt ist nicht leer (Snapshot-Geometrie vorhanden)", async () => {
+    let capturedInnerHTML = "";
+    const realAppendChild = document.body.appendChild.bind(document.body);
+    const spy = vi.spyOn(document.body, "appendChild").mockImplementation((node) => {
+      if (node instanceof HTMLElement) {
+        capturedInnerHTML = node.innerHTML;
+      }
+      return realAppendChild(node);
+    });
+
+    await exportPDF(18, 36, [customItem()], [], null, "test.pdf");
+    spy.mockRestore();
+
+    expect(capturedInnerHTML).toContain("<svg");
+    expect(capturedInnerHTML).toContain("Mein Slalom-Bogen");
+  });
+
+  it("PDF-Erzeugung mit Fallback-Platzhalter (kein Snapshot) wirft nicht", async () => {
+    const itemWithoutSnapshot: import("../types").PlacedFormation = {
+      id: "pf-nosnapshot", key: "custom",
+      x: 5, y: 5, rotationDeg: 0, direction: "none",
+    };
+    await expect(
+      exportPDF(18, 36, [itemWithoutSnapshot], [], null, "test.pdf")
+    ).resolves.not.toThrow();
   });
 });

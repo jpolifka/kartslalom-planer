@@ -111,15 +111,15 @@ describe("H5: Library-Formationen (anon)", () => {
     expect(found!.owner_id).toBeUndefined();
   });
 
-  it("Library-Ergebnis enthält owner_username", async () => {
+  it("Library-Ergebnis enthält display_name", async () => {
     const anon = anonClient();
     const { data, error } = await anon.rpc("get_library_formations");
     assertNoError(error, "anon get_library_formations");
-    const rows = data as Array<{ id: string; owner_username: string | null }>;
+    const rows = data as Array<{ id: string; display_name: string | null }>;
     const found = rows.find((r) => r.id === libraryFormationId);
     expect(found).toBeDefined();
     // username kann null sein, aber das Feld muss vorhanden sein
-    expect("owner_username" in found!).toBe(true);
+    expect("display_name" in found!).toBe(true);
   });
 
   it("Private Formation ist für Anon NICHT sichtbar (RLS)", async () => {
@@ -224,10 +224,10 @@ describe("H5: Account-Löschung", () => {
   it("Library Formation zeigt [gelöschter Nutzer] via get_library_formations", async () => {
     const { data, error } = await otherClient.rpc("get_library_formations");
     assertNoError(error, "get_library_formations after deletion");
-    const rows = data as Array<{ id: string; owner_username: string | null }>;
+    const rows = data as Array<{ id: string; display_name: string | null }>;
     const found = rows.find((r) => r.id === libraryFormationId);
     expect(found).toBeDefined();
-    expect(found!.owner_username).toBeNull();
+    expect(found!.display_name).toBeNull();
   });
 
   it("Private Formation ist nach Account-Löschung weg", async () => {

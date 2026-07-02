@@ -1117,16 +1117,16 @@ export function resolveFormation(
 ```
 
 **Definition of Done H1**
-- [ ] `FormationCategory` um `"individuell"` erweitert, kein Typ-Fehler in bestehendem Code
-- [ ] `PlacedFormation` um `customFormationId?` und `customSnapshot?` erweitert
-- [ ] `FormationEditorCanvas`: stehende/liegende/Sensor-Pylone platzieren, verschieben, löschen, rotieren
-- [ ] Pfeil-Tool im Editor (formation-lokale PlacedArrow)
-- [ ] `GatePairTool`: zwei Pylone markieren, lichte Breite live berechnen und anzeigen
-- [ ] `FormationMetaPanel`: Name (Pflicht), Pylonenzahl (auto), Dauer, lichte Breite
-- [ ] Rule-Overlays: Warnung wenn Pylon-Abstand < 0,5 m / Tor-Breite < 1,65 m
-- [ ] `BasisAuswahl`: leer starten, Standard-Formation duplizieren
-- [ ] Editor lokal speicherbar (localStorage) ohne Backend
-- [ ] Gast-Zugriff auf Palette-Gruppe "Individuell" (Library-Formationen) vorbereitet
+- [x] `FormationCategory` um `"individuell"` erweitert, kein Typ-Fehler in bestehendem Code
+- [x] `PlacedFormation` um `customFormationId?` und `customSnapshot?` erweitert
+- [x] `FormationEditorCanvas`: stehende/liegende/Sensor-Pylone platzieren, verschieben, löschen, rotieren
+- [x] Pfeil-Tool im Editor (formation-lokale PlacedArrow)
+- [x] `GatePairTool`: zwei Pylone markieren, lichte Breite live berechnen und anzeigen
+- [x] `FormationMetaPanel`: Name (Pflicht), Pylonenzahl (auto), Dauer, lichte Breite
+- [x] Rule-Overlays: Warnung wenn Tor-Breite < 1,65 m; Mindestabstand < 0,5 m vorhanden
+- [x] `BasisAuswahl`: leer starten, Standard-Formation duplizieren, Cloud-Formation als Basis
+- [x] Editor lokal speicherbar (localStorage) ohne Backend
+- [x] Gast-Zugriff auf Palette-Gruppe "Individuell" zeigt Library-Formationen (H5 erledigt)
 
 ---
 
@@ -1149,14 +1149,17 @@ alle Schreiboperationen via `.rpc(...)`, Error-Mapping für
 `premium_required`, `track_limit_reached`, `too_many_cones`, `invalid_name`, etc.
 
 **Definition of Done H2**
-- [ ] `useFeatureGate('custom_formations')`: allowed=true bei null-Gate
-- [ ] Erstellen/Speichern/Löschen via RPCs, keine direkten `.insert()`/`.update()`
-- [ ] `create_custom_formation`: Premium-Gate schlägt fehl wenn Gate aktiv + Tier zu niedrig
-- [ ] **`/formations`-Übersichtsseite**: eigene Formationen als Karten-Grid (Name, Pylonenzahl, Kategorie, Datum); von Dashboard verlinkbar
-- [ ] Formation öffnen / weiterbearbeiten (Draft aus Cloud laden)
-- [ ] Formation löschen (mit Bestätigungs-Dialog)
-- [ ] `BasisAuswahl` ergänzt: eigene Cloud-Formation als Startbasis duplizieren
-- [ ] Autosave im FormationEditorPage speichert in Supabase (analog Editor-Autosave aus 1.12)
+- [x] `useFeatureGate('custom_formations')`: allowed=true bei null-Gate
+- [x] Erstellen/Speichern/Löschen via RPCs, keine direkten `.insert()`/`.update()`
+- [x] `create_custom_formation`: Premium-Gate schlägt fehl wenn Gate aktiv + Tier zu niedrig
+- [x] **`/formations`-Übersichtsseite**: eigene Formationen als Karten-Grid (Name, Pylonenzahl, Kategorie, Datum); von Dashboard verlinkbar
+- [x] Formation öffnen / weiterbearbeiten (Draft aus Cloud laden)
+- [x] Formation löschen (mit Bestätigungs-Dialog)
+- [x] `BasisAuswahl` ergänzt: eigene Cloud-Formation als Startbasis duplizieren
+- [x] Autosave im FormationEditorPage speichert in Supabase (analog Editor-Autosave aus 1.12)
+- [ ] Integrationstest: aktiviertes Premium-Gate blockiert create
+- [ ] Integrationstest: gelöschter Account kann keine Formation erstellen/ändern
+- [ ] Tests für Error-Mapping in `customFormations.ts`
 
 ---
 
@@ -1164,26 +1167,27 @@ alle Schreiboperationen via `.rpc(...)`, Error-Mapping für
 
 **Voraussetzung:** H2
 
-**Username-Onboarding** (in `AuthCallbackPage.tsx` oder separatem Guard):
-```typescript
-// Nach Login: falls profiles.username IS NULL → Redirect auf /onboarding/username
-// Pflicht-Dialog mit Validierung: 3-24 Zeichen, [a-z0-9_-], lowercase normalisiert
-```
-
 **Router-Erweiterungen**
 ```
-/onboarding/username          ← Username-Pflichtdialog
 /formations/:id/share         ← Sharing-Verwaltung einer Formation
 ```
 
-**Definition of Done H3**
-- [ ] Username-Onboarding: Dialog erscheint nach Login falls username fehlt, kann nicht übersprungen werden
-- [ ] `lower(username)`-Unique-Constraint verhindert Duplikate (inkl. case-Varianten)
-- [ ] Share-Dialog: Eingabe von Username oder E-Mail, `find_shareable_user` liefert Treffer
-- [ ] `share_custom_formation` / `unshare_custom_formation` funktionieren, status wechselt korrekt
-- [ ] Empfänger sieht Formation unter "Geteilt mit mir"
-- [ ] Permission `view`: Empfänger kann duplizieren, aber Original-RPC schlägt fehl
-- [ ] Permission `edit`: Empfänger kann `update_custom_formation` erfolgreich aufrufen
+**Produktentscheidung (2026-07-02):** Sharing ausschließlich per exakter E-Mail-Adresse.
+Username-Onboarding entfällt vollständig. `profiles.username` bleibt als technisches Altlast-Feld in der DB
+(existierender Index, keine Umstellungs-Migration nötig), wird aber im Sharing-Flow nicht mehr verwendet.
+
+**Definition of Done H3** ✅ abgeschlossen
+- [x] Share-Dialog: Eingabe der exakten E-Mail (`type="email"`), `find_shareable_user(p_email)` liefert Exact-Match (kein LIKE, case-insensitive getrimmt)
+- [x] `share_custom_formation` / `unshare_custom_formation` funktionieren, status wechselt korrekt
+- [x] Empfänger sieht Formation unter "Geteilt mit mir"
+- [x] Permission `view`: Empfänger kann duplizieren, aber `update_custom_formation` schlägt fehl
+- [x] Permission `edit`: Empfänger kann `update_custom_formation` erfolgreich aufrufen
+- [x] Self-Share wird verhindert (`cannot_share_with_self`)
+- [x] Gelöschter Ziel-Account wird abgelehnt (`target_not_found`)
+- [x] Serverseitige Berechtigungsprüfung über RPC/RLS
+- [x] Integrationstests (17 Tests): view/edit/unshare-Szenario mit 3 Usern vollständig abgedeckt
+- [x] E-Mail-Enumeration: UI zeigt neutrale Meldung "Kein Nutzer gefunden." (keine Unterscheidung "nicht registriert" vs. "falsch getippt")
+- [x] `find_shareable_user` gibt `{ id, email }` zurück (kein `username` im Response)
 
 ---
 
@@ -1196,15 +1200,18 @@ alle Schreiboperationen via `.rpc(...)`, Error-Mapping für
 /admin/formations/:id         ← admin_get_custom_formation + FormationEditorCanvas
 ```
 
-**Definition of Done H4**
-- [ ] `AdminGuard`: nicht-Admin-User werden zu `/dashboard` weitergeleitet
-- [ ] Admin-Rolle wird via separatem RPC serverseitig bestätigt (nicht aus Store übernommen)
-- [ ] `/admin/formations`: Tabelle mit Filter status/category, Paginierung
-- [ ] "In Bibliothek übernehmen": `admin_promote_to_library` erstellt Kopie, Original unberührt
-- [ ] "Löschen": `admin_delete_custom_formation`, Bestätigungs-Dialog
-- [ ] "Bearbeiten": öffnet FormationEditorCanvas im Admin-Kontext, speichert via `admin_update_custom_formation`
-- [ ] `admin_update_custom_formation`: pylon_count, lichte_breite, duration_seconds aktualisiert
-- [ ] Audit-Felder `edited_by_admin_id/_at` in DB gesetzt und in Admin-UI sichtbar
+**Definition of Done H4** ✅ abgeschlossen
+- [x] `AdminGuard`: nicht-Admin-User werden zu `/dashboard` weitergeleitet
+- [x] `/admin/formations`: Tabelle mit Filter status/category
+- [x] "In Bibliothek übernehmen": `admin_promote_to_library` erstellt Kopie, Original unberührt
+- [x] "Löschen": `admin_delete_custom_formation`, Bestätigungs-Dialog
+- [x] "Bearbeiten": öffnet FormationEditorCanvas im Admin-Kontext, speichert via `admin_update_custom_formation`
+- [x] `admin_update_custom_formation`: alle 10 H0-Validierungen (Name, Kategorie, Cones, Arrows, Limits, lichte Breite, Dauer, Richtung, Koordinaten)
+- [x] Audit-Felder `edited_by_admin_id/_at` in DB gesetzt
+- [x] Admin-Rolle serverseitig bestätigt via `is_current_user_admin()` RPC — `AdminGuard` prüft nicht mehr nur den Client-Store
+- [x] Audit-Felder in Admin-UI sichtbar (Audit-Spalte: Datum + Admin-E-Mail per Tooltip)
+- [x] Serverseitige Paginierung (`p_limit`/`p_offset`, max. 500 per Seite, Seiten-Navigation in UI)
+- [x] Admin-UI-Tests: 4 AdminGuard-Tests (kein Login, RPC lädt, kein Admin, Admin), 13 Integrationstests (Rollenprüfung, Filter, Paginierung, Promote, Delete, Audit-Felder)
 
 ---
 
@@ -1212,14 +1219,21 @@ alle Schreiboperationen via `.rpc(...)`, Error-Mapping für
 
 **Voraussetzung:** H2 + H4
 
-**Definition of Done H5**
-- [ ] Palette "Individuell" zeigt Library-Formationen (is_library=true) auch für Gäste
-- [ ] `resolveFormation()` liest für `key="custom"` aus `customSnapshot` (kein Registry-Lookup)
-- [ ] Track mit Custom-Formation exportierbar als SVG/PDF ohne Fehler, auch wenn Quelle gelöscht
-- [ ] JSON-Import eines Tracks mit `customSnapshot` lädt korrekt
-- [ ] Account-Löschung: Library-Formationen behalten `owner_id=null`, Attribution "[gelöschter Nutzer]"
-- [ ] Nicht-Library Custom-Formationen des gelöschten Accounts werden bereinigt
-- [ ] Attribution-Anzeige in Palette: "Erstellt von <username>" / "[gelöschter Nutzer]"
+**Attribution (Produktentscheidung 2026-07-02):** Variante B — optionaler `display_name` in `profiles`.
+Ist keiner gesetzt → UI zeigt "Community-Formation". E-Mail wird niemals öffentlich ausgegeben (Datenschutz).
+
+**Definition of Done H5** ✅ abgeschlossen
+- [x] Palette "Individuell" zeigt Library-Formationen (is_library=true) auch für Gäste
+- [x] `resolveFormation()` liest für `key="custom"` aus `customSnapshot` (kein Registry-Lookup)
+- [x] JSON-Import eines Tracks mit `customSnapshot` lädt korrekt (Unit + Integrationstest)
+- [x] localStorage-Roundtrip erhält `customSnapshot` (Unit-Test)
+- [x] Account-Löschung: Library-Formationen behalten `owner_id=null` via ON DELETE SET NULL
+- [x] Nicht-Library Custom-Formationen beim Account-Löschen bereinigt (`delete_account_data()` RPC atomar)
+- [x] Attribution: `display_name` (opt.) — "von \<name\>" wenn gesetzt, sonst "Community-Formation"
+- [x] SVG-Export: 8 Tests — Custom-Formation mit Snapshot, Quelle gelöscht, kein Absturz, Label vorhanden
+- [x] PDF-Smoke-Test: 4 Tests — `exportPDF` mit Snapshot, ohne Snapshot, leerem Track, SVG-Inhalt nicht leer
+- [x] Integrationstest: anonymer Zugriff auf Library (11 Tests) — lesbar, private nicht sichtbar, kein `owner_id` im Response
+- [x] Integrationstest: Account-Löschung (11 Tests) — Library bleibt, non-library weg, `display_name` wird null
 
 ---
 

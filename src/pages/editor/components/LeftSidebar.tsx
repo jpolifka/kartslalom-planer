@@ -41,7 +41,7 @@ type Props = {
   onToggleSubMenu: (key: string) => void;
   onAddFormation: (key: FormationKey, rotDeg?: number) => void;
   // custom formations (Individuell-Palette)
-  customFormations?: Array<{ id: string; name: string; pylon_count: number; isLibrary?: boolean; ownerUsername?: string | null }>;
+  customFormations?: Array<{ id: string; name: string; pylon_count: number; isLibrary?: boolean; displayName?: string | null }>;
   onAddCustomFormation?: (id: string) => void;
 };
 
@@ -211,7 +211,7 @@ export default function LeftSidebar({
                                   <span style={{ fontSize: 11, color: "#94a3b8", flexShrink: 0, marginLeft: 6 }}>{f.pylon_count} P</span>
                                 </div>
                                 <div style={{ fontSize: 10, color: "#64748b" }}>
-                                  {f.ownerUsername ? `von ${f.ownerUsername}` : "[gelöschter Nutzer]"}
+                                  {f.displayName ? `von ${f.displayName}` : "Community-Formation"}
                                 </div>
                               </button>
                             ))}

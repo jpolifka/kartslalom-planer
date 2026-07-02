@@ -518,7 +518,7 @@ export default function EditorPage() {
             onAddFormation={addFormation}
             customFormations={[
               ...(customFormations ?? []).map((f) => ({ id: f.id, name: f.name, pylon_count: f.pylon_count })),
-              ...(libraryFormations ?? []).map((f) => ({ id: f.id, name: f.name, pylon_count: f.pylon_count, isLibrary: true, ownerUsername: f.owner_username })),
+              ...(libraryFormations ?? []).map((f) => ({ id: f.id, name: f.name, pylon_count: f.pylon_count, isLibrary: true, displayName: f.display_name })),
             ]}
             onAddCustomFormation={addCustomFormation}
           />
