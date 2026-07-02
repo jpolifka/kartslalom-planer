@@ -161,3 +161,67 @@ describe("sanitizeItems", () => {
     expect(result[0].customFormationId).toBe("abc");
   });
 });
+
+// Szenario: Nutzer hat Custom-Formation in Track platziert, Quelle wird später gelöscht.
+// Der exportierte JSON-Export muss den Snapshot vollständig erhalten, damit SVG/PDF/Re-Import
+// weiterhin korrekt funktioniert.
+describe("customSnapshot Export-Import-Roundtrip", () => {
+  const snap = {
+    cones: [{ id: "c1", x: 1, y: 2, kind: "standing" as const, angleDeg: 0 }],
+    arrows: [],
+    label: "Mein Slalom-Bogen",
+  };
+
+  const stateWithSnap = {
+    items: [{
+      id: "pf1", key: "custom" as const,
+      x: 5, y: 10, rotationDeg: 90, direction: "cw" as const,
+      customFormationId: "cf-will-be-deleted",
+      customSnapshot: snap,
+    }] satisfies PlacedFormation[],
+    arrows: [],
+    manualWidth: 18,
+    manualLength: 36,
+    mapSatellite: false,
+    mapOpacity: 0.5,
+    areaSel: null,
+  };
+
+  it("Snapshot überlebt JSON-Export (exportAsFile-Serialisierung)", () => {
+    // exportAsFile tut intern: JSON.stringify({ ...state, version: CURRENT_VERSION })
+    const exported = JSON.stringify({ ...stateWithSnap, version: CURRENT_VERSION });
+    const imported = parseImportFile(exported);
+    expect(imported.items[0].customSnapshot).toEqual(snap);
+  });
+
+  it("Snapshot überlebt localStorage-Roundtrip", () => {
+    saveState(stateWithSnap);
+    const loaded = loadState();
+    expect(loaded).not.toBeNull();
+    expect(loaded!.items[0].customSnapshot).toEqual(snap);
+  });
+
+  it("Quelle gelöscht: Snapshot fehlt im Export → Platzhalter nach Import", () => {
+    // Simuliert alten Export oder manuell entfernten Snapshot
+    const exported = JSON.stringify({
+      ...stateWithSnap,
+      version: CURRENT_VERSION,
+      items: [{ ...stateWithSnap.items[0], customSnapshot: undefined }],
+    });
+    const imported = parseImportFile(exported);
+    expect(imported.items[0].customSnapshot).toBeDefined();
+    expect(imported.items[0].customSnapshot!.label).toContain("Fehlendes Hindernis");
+    expect(imported.items[0].customSnapshot!.cones).toEqual([]);
+  });
+
+  it("Positions- und Rotationsdaten bleiben nach Import erhalten", () => {
+    const exported = JSON.stringify({ ...stateWithSnap, version: CURRENT_VERSION });
+    const imported = parseImportFile(exported);
+    const pf = imported.items[0];
+    expect(pf.x).toBe(5);
+    expect(pf.y).toBe(10);
+    expect(pf.rotationDeg).toBe(90);
+    expect(pf.direction).toBe("cw");
+    expect(pf.customFormationId).toBe("cf-will-be-deleted");
+  });
+});

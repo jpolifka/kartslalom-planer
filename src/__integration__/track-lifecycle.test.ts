@@ -111,3 +111,100 @@ describe("Track lifecycle", () => {
     assertRpcError(error, "track_limit_reached", "create_track limit");
   });
 });
+
+// Szenario: Custom Formation mit Snapshot wird in Track gespeichert.
+// Nach Löschen der Quell-Formation muss der Snapshot in der DB erhalten bleiben.
+describe("customSnapshot DB-Persistenz", () => {
+  let client: Awaited<ReturnType<typeof loginAsUser>>;
+  const userIds: string[] = [];
+  let trackId: string;
+
+  const snap = {
+    cones: [{ id: "c1", x: 0, y: 1, kind: "standing", angleDeg: 0 }],
+    arrows: [{ id: "a1", x1: 0, y1: 0, x2: 1, y2: 1 }],
+    label: "Test-Slalom-Bogen",
+  };
+
+  beforeAll(async () => {
+    const email = `int-snap-${ts()}@test.invalid`;
+    const user = await createTestUser(email);
+    userIds.push(user.id);
+    client = await loginAsUser(email);
+    const { data } = await client.rpc("create_track", { track_name: "Snapshot-Test" });
+    trackId = data as string;
+  });
+
+  afterAll(async () => {
+    await cleanupUsers(userIds);
+  });
+
+  it("save_track speichert customSnapshot in state_json", async () => {
+    const state = {
+      items: [{
+        id: "pf1", key: "custom",
+        x: 5, y: 10, rotationDeg: 45, direction: "none",
+        customFormationId: "cf-source-deleted-later",
+        customSnapshot: snap,
+      }],
+      arrows: [],
+    };
+    const { error } = await client.rpc("save_track", {
+      p_track_id:   trackId,
+      p_state_json: state,
+      p_area_sel:   null,
+      p_width:      18,
+      p_length:     36,
+      p_satellite:  false,
+      p_opacity:    0.5,
+    });
+    assertNoError(error, "save_track mit customSnapshot");
+  });
+
+  it("fetchTrack gibt customSnapshot vollständig zurück", async () => {
+    const { data, error } = await client
+      .from("tracks")
+      .select("state_json")
+      .eq("id", trackId)
+      .single();
+    assertNoError(error, "fetch state_json");
+
+    const stateJson = data!.state_json as { items: Array<Record<string, unknown>> };
+    expect(stateJson.items).toHaveLength(1);
+    const item = stateJson.items[0];
+    expect(item.key).toBe("custom");
+    expect(item.customSnapshot).toEqual(snap);
+    expect(item.customFormationId).toBe("cf-source-deleted-later");
+  });
+
+  it("Snapshot bleibt auch nach erneutem save_track (anderer State obendrüber) erhalten", async () => {
+    // Zweiter Speichervorgang mit anderem Track — stellt sicher, dass kein update den Snapshot löscht
+    await client.rpc("save_track", {
+      p_track_id:   trackId,
+      p_state_json: {
+        items: [{
+          id: "pf1", key: "custom",
+          x: 99, y: 88, rotationDeg: 0, direction: "cw",
+          customFormationId: "cf-source-deleted-later",
+          customSnapshot: snap,
+        }],
+        arrows: [],
+      },
+      p_area_sel:   null,
+      p_width:      20,
+      p_length:     40,
+      p_satellite:  false,
+      p_opacity:    0.8,
+    });
+
+    const { data, error } = await client
+      .from("tracks")
+      .select("state_json")
+      .eq("id", trackId)
+      .single();
+    assertNoError(error, "fetch nach zweitem save");
+
+    const item = (data!.state_json as { items: Array<Record<string, unknown>> }).items[0];
+    expect(item.customSnapshot).toEqual(snap);
+    expect(item.x).toBe(99);
+  });
+});

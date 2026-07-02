@@ -4,6 +4,7 @@
 
 import { supabase } from "../supabase";
 import type { SavedState } from "../storage";
+import type { PlacedFormation, PlacedArrow } from "../../types";
 
 export type TrackRow = {
   id: string;
@@ -14,7 +15,7 @@ export type TrackRow = {
 };
 
 export type TrackDetail = TrackRow & {
-  state_json: { items: unknown[]; arrows: unknown[] };
+  state_json: { items: PlacedFormation[]; arrows: PlacedArrow[] };
   area_sel_json: unknown;
   map_satellite: boolean;
   map_opacity: number;
