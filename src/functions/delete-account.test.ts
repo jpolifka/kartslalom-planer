@@ -52,32 +52,61 @@ describe("delete-account", () => {
     expect(await res.json()).toMatchObject({ error: "Invalid token" });
   });
 
+  // Erfolgsfall: validate → RPC cleanup → auth delete
   it("returns 200 and { deleted: true } on success", async () => {
     mockFetch
       .mockResolvedValueOnce(fetchOk({ id: "uid-1" }))   // /auth/v1/user
-      .mockResolvedValueOnce(fetchOk({}))                  // PATCH soft-delete
-      .mockResolvedValueOnce(fetchOk({}, 200));             // DELETE hard-delete
+      .mockResolvedValueOnce(fetchOk({}))                  // RPC delete_account_data
+      .mockResolvedValueOnce(fetchOk({}, 200));             // auth.admin.deleteUser
 
     const res = await handler(req("POST", { authorization: "Bearer valid" }));
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ deleted: true });
   });
 
-  it("rolls back soft-delete and returns 500 when hard-delete fails", async () => {
+  // RPC-Fehlschlag: DB-Bereinigung schlägt fehl — kein Auth-Delete
+  it("returns 500 when RPC cleanup fails, does not attempt auth delete", async () => {
     mockFetch
-      .mockResolvedValueOnce(fetchOk({ id: "uid-1" }))        // /auth/v1/user
-      .mockResolvedValueOnce(fetchOk({}))                      // PATCH soft-delete
-      .mockResolvedValueOnce(new Response("fail", { status: 500 })) // DELETE fails
-      .mockResolvedValueOnce(fetchOk({}));                     // PATCH rollback
+      .mockResolvedValueOnce(fetchOk({ id: "uid-1" }))                    // validate
+      .mockResolvedValueOnce(new Response("rpc error", { status: 500 })); // RPC fehlschlägt
+
+    const res = await handler(req("POST", { authorization: "Bearer valid" }));
+    expect(res.status).toBe(500);
+    expect(await res.json()).toMatchObject({ error: "cleanup_failed" });
+    expect(mockFetch).toHaveBeenCalledTimes(2); // kein dritter Call (auth delete)
+  });
+
+  // Auth-Delete-Fehlschlag: Soft-Delete wird rückgängig gemacht
+  it("rolls back soft-delete and returns 500 when auth delete fails", async () => {
+    mockFetch
+      .mockResolvedValueOnce(fetchOk({ id: "uid-1" }))                    // validate
+      .mockResolvedValueOnce(fetchOk({}))                                   // RPC cleanup OK
+      .mockResolvedValueOnce(new Response("fail", { status: 500 }))        // auth delete fehlschlägt
+      .mockResolvedValueOnce(fetchOk({}));                                  // rollback PATCH
 
     const res = await handler(req("POST", { authorization: "Bearer valid" }));
     expect(res.status).toBe(500);
     expect(await res.json()).toMatchObject({ error: "delete_failed" });
 
-    // Verify rollback call: 4th fetch should patch is_deleted=false
+    // Rollback-Call prüfen: 4. Fetch muss is_deleted=false setzen
+    expect(mockFetch).toHaveBeenCalledTimes(4);
     const rollbackCall = mockFetch.mock.calls[3];
     const rollbackBody = JSON.parse(rollbackCall[1].body);
     expect(rollbackBody.is_deleted).toBe(false);
     expect(rollbackBody.deleted_at).toBeNull();
+  });
+
+  // RPC wird mit User-Bearer aufgerufen (für auth.uid() im SECURITY DEFINER RPC)
+  it("calls RPC with user bearer token, not service role", async () => {
+    mockFetch
+      .mockResolvedValueOnce(fetchOk({ id: "uid-1" }))
+      .mockResolvedValueOnce(fetchOk({}))
+      .mockResolvedValueOnce(fetchOk({}));
+
+    await handler(req("POST", { authorization: "Bearer user-jwt" }));
+
+    const rpcCall = mockFetch.mock.calls[1];
+    expect(rpcCall[0]).toContain("/rpc/delete_account_data");
+    expect(rpcCall[1].headers["Authorization"]).toBe("Bearer user-jwt");
   });
 });

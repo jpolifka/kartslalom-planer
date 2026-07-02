@@ -16,6 +16,7 @@ export async function handler(req: Request): Promise<Response> {
   const bearer = req.headers.get("authorization");
   if (!bearer) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: cors });
 
+  // 1. User-Token validieren → uid ermitteln
   const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
     headers: { "apikey": SERVICE_ROLE_KEY, "Authorization": bearer },
   });
@@ -23,21 +24,27 @@ export async function handler(req: Request): Promise<Response> {
   const user = await userRes.json();
   const uid: string = user.id;
 
-  // Soft-Delete-Markierung (Audit-Trail)
-  await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${uid}`, {
-    method: "PATCH",
-    headers: { "apikey": SERVICE_ROLE_KEY, "Authorization": `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ is_deleted: true, deleted_at: new Date().toISOString() }),
+  // 2. Atomische DB-Bereinigung via SECURITY DEFINER RPC:
+  //    - Soft-Delete des Profils (Audit-Trail)
+  //    - Löschen aller nicht-Library-Formationen
+  //    Wird mit dem User-Bearer aufgerufen, damit auth.uid() im RPC korrekt gesetzt ist.
+  //    Library-Formationen erhalten owner_id=null später über ON DELETE SET NULL.
+  const cleanupRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/delete_account_data`, {
+    method: "POST",
+    headers: {
+      "apikey": SERVICE_ROLE_KEY,
+      "Authorization": bearer,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({}),
   });
+  if (!cleanupRes.ok) {
+    console.error("delete_account_data error", cleanupRes.status, await cleanupRes.text());
+    return new Response(JSON.stringify({ error: "cleanup_failed" }), { status: 500, headers: cors });
+  }
 
-  // Nicht-Library-Formationen löschen bevor der Account verschwindet.
-  // Library-Formationen bekommen owner_id=null via ON DELETE SET NULL — Attribution "[gelöschter Nutzer]".
-  await fetch(`${SUPABASE_URL}/rest/v1/custom_formations?owner_id=eq.${uid}&is_library=eq.false`, {
-    method: "DELETE",
-    headers: { "apikey": SERVICE_ROLE_KEY, "Authorization": `Bearer ${SERVICE_ROLE_KEY}`, "Prefer": "return=minimal" },
-  });
-
-  // Hard-Delete via Admin-API — ON DELETE CASCADE entfernt alle Daten, ON DELETE SET NULL für Library-Formationen
+  // 3. Hard-Delete via Admin-API — ON DELETE SET NULL für Library-Formationen
+  //    (ON DELETE CASCADE entfernt formation_shares, tracks-Referenzen bleiben als Snapshot)
   const deleteRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${uid}`, {
     method: "DELETE",
     headers: { "apikey": SERVICE_ROLE_KEY, "Authorization": `Bearer ${SERVICE_ROLE_KEY}` },
@@ -45,6 +52,8 @@ export async function handler(req: Request): Promise<Response> {
 
   if (!deleteRes.ok) {
     console.error("deleteUser error", deleteRes.status, await deleteRes.text());
+    // Soft-Delete rückgängig machen. Hinweis: gelöschte Formationen können nicht
+    // wiederhergestellt werden — dies ist eine explizit akzeptierte Einschränkung.
     await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${uid}`, {
       method: "PATCH",
       headers: { "apikey": SERVICE_ROLE_KEY, "Authorization": `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json" },

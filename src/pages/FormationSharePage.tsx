@@ -39,7 +39,7 @@ export default function FormationSharePage() {
   const findUser = useFindShareableUser();
 
   const [query, setQuery] = useState("");
-  const [foundUser, setFoundUser] = useState<{ id: string; username: string } | null | "not_found">(null);
+  const [foundUser, setFoundUser] = useState<{ id: string; email: string } | null | "not_found">(null);
   const [permission, setPermission] = useState<"view" | "edit">("view");
   const [shareError, setShareError] = useState<string | null>(null);
 
@@ -111,7 +111,7 @@ export default function FormationSharePage() {
         {foundUser && foundUser !== "not_found" && (
           <div style={{ ...s.row, marginTop: 8, padding: "10px 12px", background: "#f0fdf4", borderRadius: 8 }}>
             <span style={{ fontSize: 14, fontWeight: 600, flex: 1, color: "#166534" }}>
-              {foundUser.username ?? query}
+              {foundUser.email}
             </span>
             <select
               style={s.permSelect}

@@ -147,10 +147,10 @@ export type FormationShareEntry = {
   created_at: string;
 };
 
-export async function findShareableUser(query: string): Promise<{ id: string; username: string } | null> {
-  const { data, error } = await supabase.rpc("find_shareable_user", { p_query: query });
+export async function findShareableUser(email: string): Promise<{ id: string; email: string } | null> {
+  const { data, error } = await supabase.rpc("find_shareable_user", { p_email: email });
   if (error) throw error;
-  return (data as Array<{ id: string; username: string }>)[0] ?? null;
+  return (data as Array<{ id: string; email: string }>)[0] ?? null;
 }
 
 export async function shareFormation(formationId: string, targetId: string, permission: "view" | "edit"): Promise<void> {
