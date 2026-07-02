@@ -24,12 +24,20 @@ export type CustomFormationRow = {
   default_direction: string | null;
   source_formation_key: string | null;
   source_custom_formation_id: string | null;
-  edited_by_admin_id: string | null;
-  edited_by_admin_at: string | null;
+  // Audit-Felder: optional — nicht in öffentlichen Tabellen-Abfragen enthalten
+  edited_by_admin_id?: string | null;
+  edited_by_admin_at?: string | null;
   edited_by_admin_email?: string | null; // nur in admin_list_custom_formations
   created_at: string;
   updated_at: string;
 };
+
+// Explizite Spalten für Tabellen-Abfragen — schließt Admin-Audit-Felder aus,
+// damit Share-Empfänger (view/edit) keine internen Historienfelder sehen.
+const FORMATION_PUBLIC_COLUMNS =
+  "id, owner_id, name, description, category, status, is_library, pylon_count, " +
+  "lichte_breite, duration_seconds, cones_json, arrows_json, default_direction, " +
+  "source_formation_key, source_custom_formation_id, created_at, updated_at";
 
 export type CreateFormationParams = {
   name: string;
@@ -100,7 +108,7 @@ export async function deleteCustomFormation(id: string): Promise<void> {
 export async function fetchCustomFormations(): Promise<CustomFormationRow[]> {
   const { data, error } = await supabase
     .from("custom_formations")
-    .select("*")
+    .select(FORMATION_PUBLIC_COLUMNS)
     .order("updated_at", { ascending: false });
   if (error) throw error;
   return data as CustomFormationRow[];
@@ -109,7 +117,7 @@ export async function fetchCustomFormations(): Promise<CustomFormationRow[]> {
 export async function fetchCustomFormation(id: string): Promise<CustomFormationRow | null> {
   const { data, error } = await supabase
     .from("custom_formations")
-    .select("*")
+    .select(FORMATION_PUBLIC_COLUMNS)
     .eq("id", id)
     .maybeSingle(); // null statt 406 wenn RLS keine Zeile liefert
   if (error) throw error;
@@ -142,7 +150,6 @@ export async function fetchLibraryFormations(): Promise<LibraryFormationRow[]> {
 
 export type FormationShareEntry = {
   shared_with_id: string;
-  username: string | null;
   email: string;
   permission: "view" | "edit";
   created_at: string;
@@ -202,6 +209,17 @@ export async function duplicateCustomFormation(sourceId: string): Promise<string
   const { data, error } = await supabase.rpc("duplicate_custom_formation", { p_source_id: sourceId });
   if (error) throw mapError(error.message);
   return data as string;
+}
+
+// --- Profil ---
+
+export async function setDisplayName(displayName: string | null): Promise<void> {
+  const { error } = await supabase.rpc("set_display_name", { p_display_name: displayName });
+  if (error) {
+    if (error.message.includes("invalid_display_name")) throw new Error("INVALID_DISPLAY_NAME");
+    if (error.message.includes("account_deleted"))      throw new Error("ACCOUNT_DELETED");
+    throw error;
+  }
 }
 
 // --- Admin ---

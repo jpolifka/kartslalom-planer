@@ -18,6 +18,7 @@ import {
   fetchSharedFormations,
   fetchFormationPermission,
   duplicateCustomFormation,
+  setDisplayName,
   isCurrentUserAdmin,
   adminGetFormation,
   adminListFormations,
@@ -142,6 +143,18 @@ export function useDuplicateCustomFormation() {
   return useMutation({
     mutationFn: (sourceId: string) => duplicateCustomFormation(sourceId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["custom_formations"] }),
+  });
+}
+
+// --- Profil ---
+
+export function useSetDisplayName() {
+  const { profile, setProfile } = useAuthStore();
+  return useMutation({
+    mutationFn: (displayName: string | null) => setDisplayName(displayName),
+    onSuccess: (_d, displayName) => {
+      if (profile) setProfile({ ...profile, display_name: displayName ?? null });
+    },
   });
 }
 

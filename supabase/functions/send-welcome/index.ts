@@ -6,13 +6,20 @@ const SUPABASE_URL     = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const RESEND_API_KEY   = Deno.env.get("RESEND_API_KEY") ?? "";
 const FROM_EMAIL       = Deno.env.get("FROM_EMAIL") ?? "noreply@kart.cheezuscraizt.de";
+const SITE_URL         = Deno.env.get("SITE_URL") ?? "https://kart.cheezuscraizt.de";
 
-const cors = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type",
-};
+function corsHeaders(req: Request) {
+  const origin = req.headers.get("Origin") ?? "";
+  const isLocal = origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:");
+  return {
+    "Access-Control-Allow-Origin": isLocal ? origin : SITE_URL,
+    "Access-Control-Allow-Headers": "authorization, content-type",
+    "Vary": "Origin",
+  };
+}
 
 export async function handler(req: Request): Promise<Response> {
+  const cors = corsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
 
   const bearer = req.headers.get("authorization");
