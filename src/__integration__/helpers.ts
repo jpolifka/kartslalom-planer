@@ -29,12 +29,14 @@ export const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
-export async function createTestUser(email: string) {
+export async function createTestUser(email: string, tier: "free" | "pro" | "team" = "free") {
   const { data, error } = await admin.auth.admin.createUser({
     email,
     email_confirm: true,
   });
   if (error || !data.user) throw new Error(`createUser fehlgeschlagen: ${error?.message}`);
+  // Explizit setzen, damit Tests unabhängig vom Spalten-Default deterministisch sind
+  await admin.from("profiles").update({ tier }).eq("id", data.user.id);
   return data.user;
 }
 

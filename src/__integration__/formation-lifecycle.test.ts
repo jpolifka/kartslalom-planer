@@ -131,6 +131,198 @@ describe("Formation lifecycle", () => {
   });
 });
 
+// Szenario: A erstellt Formation → teilt "view" mit B → B kann duplizieren aber nicht editieren
+// → A upgraded auf "edit" → B kann editieren → A widerruft → B verliert Zugriff.
+describe("H3 Formation Sharing", () => {
+  let clientA: Awaited<ReturnType<typeof loginAsUser>>;
+  let clientB: Awaited<ReturnType<typeof loginAsUser>>;
+  let clientC: Awaited<ReturnType<typeof loginAsUser>>;
+  const userIds: string[] = [];
+  let userAId: string;
+  let userBId: string;
+  let formationId: string;
+  let duplicatedId: string;
+
+  beforeAll(async () => {
+    const t = ts();
+    const [userA, userB, userC] = await Promise.all([
+      createTestUser(`int-share-a-${t}@test.invalid`),
+      createTestUser(`int-share-b-${t}@test.invalid`),
+      createTestUser(`int-share-c-${t}@test.invalid`),
+    ]);
+    userIds.push(userA.id, userB.id, userC.id);
+    userAId = userA.id;
+    userBId = userB.id;
+    [clientA, clientB, clientC] = await Promise.all([
+      loginAsUser(`int-share-a-${t}@test.invalid`),
+      loginAsUser(`int-share-b-${t}@test.invalid`),
+      loginAsUser(`int-share-c-${t}@test.invalid`),
+    ]);
+    const { data } = await clientA.rpc("create_custom_formation", BASE_FORMATION);
+    formationId = data as string;
+  });
+
+  afterAll(async () => {
+    await cleanupUsers(userIds);
+  });
+
+  // --- Vorzustand ---
+
+  it("get_my_formation_permission: A = 'owner', B = null vor Share", async () => {
+    const [{ data: permA }, { data: permB }] = await Promise.all([
+      clientA.rpc("get_my_formation_permission", { p_id: formationId }),
+      clientB.rpc("get_my_formation_permission", { p_id: formationId }),
+    ]);
+    expect(permA).toBe("owner");
+    expect(permB).toBeNull();
+  });
+
+  it("A kann nicht mit sich selbst teilen (cannot_share_with_self)", async () => {
+    const { error } = await clientA.rpc("share_custom_formation", {
+      p_formation_id: formationId,
+      p_target_id:    userAId,
+      p_permission:   "view",
+    });
+    assertRpcError(error, "cannot_share_with_self", "share mit sich selbst");
+  });
+
+  // --- View-Share ---
+
+  it("A teilt Formation mit B als 'view'", async () => {
+    const { error } = await clientA.rpc("share_custom_formation", {
+      p_formation_id: formationId,
+      p_target_id:    userBId,
+      p_permission:   "view",
+    });
+    assertNoError(error, "share view mit B");
+  });
+
+  it("get_formation_shares zeigt B mit permission='view'", async () => {
+    const { data, error } = await clientA.rpc("get_formation_shares", { p_formation_id: formationId });
+    assertNoError(error, "get_formation_shares");
+    const shares = data as Array<{ shared_with_id: string; permission: string }>;
+    const entry = shares.find((s) => s.shared_with_id === userBId);
+    expect(entry).toBeDefined();
+    expect(entry!.permission).toBe("view");
+  });
+
+  it("B sieht Formation in get_shared_formations() mit permission='view'", async () => {
+    const { data, error } = await clientB.rpc("get_shared_formations");
+    assertNoError(error, "get_shared_formations");
+    const found = (data as Array<{ id: string; permission: string }>).find((f) => f.id === formationId);
+    expect(found).toBeDefined();
+    expect(found!.permission).toBe("view");
+  });
+
+  it("get_my_formation_permission: B = 'view'", async () => {
+    const { data } = await clientB.rpc("get_my_formation_permission", { p_id: formationId });
+    expect(data).toBe("view");
+  });
+
+  it("C (kein Share) sieht Formation nicht in get_shared_formations()", async () => {
+    const { data } = await clientC.rpc("get_shared_formations");
+    const found = (data as Array<{ id: string }>).find((f) => f.id === formationId);
+    expect(found).toBeUndefined();
+  });
+
+  it("B (view) kann duplizieren — eigene Kopie entsteht", async () => {
+    const { data, error } = await clientB.rpc("duplicate_custom_formation", { p_source_id: formationId });
+    assertNoError(error, "duplicate_custom_formation");
+    expect(data).toMatch(/^[0-9a-f-]{36}$/);
+    duplicatedId = data as string;
+  });
+
+  it("B (view) kann update_custom_formation NICHT aufrufen (not_authorized)", async () => {
+    const { error } = await clientB.rpc("update_custom_formation", {
+      p_id:               formationId,
+      p_name:             "Hack",
+      p_description:      null,
+      p_category:         "individuell",
+      p_cones_json:       BASE_FORMATION.p_cones_json,
+      p_arrows_json:      [],
+      p_default_direction: null,
+      p_lichte_breite:    null,
+      p_duration_seconds: null,
+    });
+    assertRpcError(error, "not_authorized", "B update mit view-Share");
+  });
+
+  // --- Upgrade auf Edit ---
+
+  it("A wechselt B-Permission auf 'edit'", async () => {
+    const { error } = await clientA.rpc("share_custom_formation", {
+      p_formation_id: formationId,
+      p_target_id:    userBId,
+      p_permission:   "edit",
+    });
+    assertNoError(error, "Permission-Upgrade auf edit");
+  });
+
+  it("get_my_formation_permission: B = 'edit' nach Upgrade", async () => {
+    const { data } = await clientB.rpc("get_my_formation_permission", { p_id: formationId });
+    expect(data).toBe("edit");
+  });
+
+  it("B (edit) kann update_custom_formation erfolgreich aufrufen", async () => {
+    const { error } = await clientB.rpc("update_custom_formation", {
+      p_id:               formationId,
+      p_name:             "Von B bearbeitet",
+      p_description:      null,
+      p_category:         "individuell",
+      p_cones_json:       BASE_FORMATION.p_cones_json,
+      p_arrows_json:      [],
+      p_default_direction: null,
+      p_lichte_breite:    null,
+      p_duration_seconds: null,
+    });
+    assertNoError(error, "B update mit edit-Share");
+  });
+
+  // --- Unshare ---
+
+  it("A widerruft Share für B (unshare_custom_formation)", async () => {
+    const { error } = await clientA.rpc("unshare_custom_formation", {
+      p_formation_id: formationId,
+      p_target_id:    userBId,
+    });
+    assertNoError(error, "unshare_custom_formation");
+  });
+
+  it("get_my_formation_permission: B = null nach Unshare", async () => {
+    const { data } = await clientB.rpc("get_my_formation_permission", { p_id: formationId });
+    expect(data).toBeNull();
+  });
+
+  it("B sieht Formation nicht mehr in get_shared_formations() nach Unshare", async () => {
+    const { data } = await clientB.rpc("get_shared_formations");
+    const found = (data as Array<{ id: string }>).find((f) => f.id === formationId);
+    expect(found).toBeUndefined();
+  });
+
+  it("B kann update_custom_formation nach Unshare nicht mehr aufrufen (not_authorized)", async () => {
+    const { error } = await clientB.rpc("update_custom_formation", {
+      p_id:               formationId,
+      p_name:             "Versuch nach Unshare",
+      p_description:      null,
+      p_category:         "individuell",
+      p_cones_json:       BASE_FORMATION.p_cones_json,
+      p_arrows_json:      [],
+      p_default_direction: null,
+      p_lichte_breite:    null,
+      p_duration_seconds: null,
+    });
+    assertRpcError(error, "not_authorized", "B update nach Unshare");
+  });
+
+  it("Bs Duplikat bleibt nach Unshare erhalten (eigene Formation)", async () => {
+    const { data } = await clientB
+      .from("custom_formations")
+      .select("id, name")
+      .eq("id", duplicatedId);
+    expect(data).toHaveLength(1);
+  });
+});
+
 describe("Formation payload validation", () => {
   let client: Awaited<ReturnType<typeof loginAsUser>>;
   const userIds: string[] = [];
