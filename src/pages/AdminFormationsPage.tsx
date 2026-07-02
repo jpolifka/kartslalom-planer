@@ -54,19 +54,29 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+const PAGE_SIZE = 100;
+
 export default function AdminFormationsPage() {
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter]     = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
+  const [page, setPage]                     = useState(0);
   const [promoteTarget, setPromoteTarget]   = useState<PromoteTarget | null>(null);
   const [deleteTarget, setDeleteTarget]     = useState<DeleteTarget | null>(null);
 
   const { data: formations, isLoading, error } = useAdminFormationList(
     statusFilter || undefined,
     categoryFilter || undefined,
+    PAGE_SIZE,
+    page * PAGE_SIZE,
   );
   const deleteMutation  = useAdminDeleteFormation();
   const promoteMutation = useAdminPromoteToLibrary();
+
+  function handleFilterChange(setter: (v: string) => void, value: string) {
+    setter(value);
+    setPage(0); // Filter wechsel → zurück zu Seite 1
+  }
 
   async function handleDelete() {
     if (!deleteTarget) return;
@@ -94,7 +104,7 @@ export default function AdminFormationsPage() {
       <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={(e) => handleFilterChange(setStatusFilter, e.target.value)}
           style={selectStyle}
         >
           <option value="">Alle Status</option>
@@ -105,7 +115,7 @@ export default function AdminFormationsPage() {
 
         <select
           value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
+          onChange={(e) => handleFilterChange(setCategoryFilter, e.target.value)}
           style={selectStyle}
         >
           <option value="">Alle Kategorien</option>
@@ -115,7 +125,7 @@ export default function AdminFormationsPage() {
         </select>
 
         <span style={{ fontSize: 13, color: "#94a3b8", alignSelf: "center" }}>
-          {formations ? `${formations.length} Einträge` : ""}
+          {formations ? `${formations.length} Einträge (Seite ${page + 1})` : ""}
         </span>
       </div>
 
@@ -136,7 +146,7 @@ export default function AdminFormationsPage() {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
               <tr style={{ background: "#f8fafc", borderBottom: "2px solid #e2e8f0" }}>
-                {["Name", "Eigentümer", "Status", "Kategorie", "Pylone", "Geändert", ""].map((h) => (
+                {["Name", "Eigentümer", "Status", "Kategorie", "Pylone", "Geändert", "Audit", ""].map((h) => (
                   <th key={h} style={thStyle}>{h}</th>
                 ))}
               </tr>
@@ -157,9 +167,6 @@ export default function AdminFormationsPage() {
                     >
                       {f.name}
                     </span>
-                    {f.edited_by_admin_id && (
-                      <span title="Durch Admin bearbeitet" style={{ marginLeft: 4, fontSize: 10, color: "#6366f1" }}>✎</span>
-                    )}
                   </td>
                   <td style={{ ...tdStyle, color: "#64748b", fontSize: 12 }}>
                     {f.owner_email ?? "–"}
@@ -169,6 +176,13 @@ export default function AdminFormationsPage() {
                   <td style={{ ...tdStyle, color: "#475569", textAlign: "center" }}>{f.pylon_count}</td>
                   <td style={{ ...tdStyle, color: "#94a3b8", whiteSpace: "nowrap" }}>
                     {new Date(f.updated_at).toLocaleDateString("de-DE")}
+                  </td>
+                  <td style={{ ...tdStyle, color: "#94a3b8", fontSize: 11, whiteSpace: "nowrap" }}>
+                    {f.edited_by_admin_at ? (
+                      <span title={`Admin: ${f.edited_by_admin_email ?? f.edited_by_admin_id ?? "–"}`}>
+                        ✎ {new Date(f.edited_by_admin_at).toLocaleDateString("de-DE")}
+                      </span>
+                    ) : "–"}
                   </td>
                   <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
                     <div style={{ display: "flex", gap: 4 }}>
@@ -206,6 +220,27 @@ export default function AdminFormationsPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Paginierung */}
+      {formations && (
+        <div style={{ display: "flex", gap: 8, marginTop: 16, alignItems: "center" }}>
+          <button
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={page === 0 || isLoading}
+            style={cancelBtnStyle}
+          >
+            ← Zurück
+          </button>
+          <span style={{ fontSize: 13, color: "#64748b" }}>Seite {page + 1}</span>
+          <button
+            onClick={() => setPage((p) => p + 1)}
+            disabled={formations.length < PAGE_SIZE || isLoading}
+            style={cancelBtnStyle}
+          >
+            Weiter →
+          </button>
         </div>
       )}
 

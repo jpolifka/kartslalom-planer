@@ -26,6 +26,7 @@ export type CustomFormationRow = {
   source_custom_formation_id: string | null;
   edited_by_admin_id: string | null;
   edited_by_admin_at: string | null;
+  edited_by_admin_email?: string | null; // nur in admin_list_custom_formations
   created_at: string;
   updated_at: string;
 };
@@ -205,16 +206,29 @@ export async function duplicateCustomFormation(sourceId: string): Promise<string
 
 // --- Admin ---
 
+export async function isCurrentUserAdmin(): Promise<boolean> {
+  const { data, error } = await supabase.rpc("is_current_user_admin");
+  if (error) throw error;
+  return data as boolean;
+}
+
 export async function adminGetFormation(id: string): Promise<CustomFormationRow> {
   const { data, error } = await supabase.rpc("admin_get_custom_formation", { p_id: id });
   if (error) throw mapError(error.message);
   return data as CustomFormationRow;
 }
 
-export async function adminListFormations(status?: string, category?: string): Promise<CustomFormationRow[]> {
+export async function adminListFormations(
+  status?: string,
+  category?: string,
+  limit = 100,
+  offset = 0,
+): Promise<CustomFormationRow[]> {
   const { data, error } = await supabase.rpc("admin_list_custom_formations", {
-    p_status: status ?? null,
+    p_status:   status   ?? null,
     p_category: category ?? null,
+    p_limit:    limit,
+    p_offset:   offset,
   });
   if (error) throw mapError(error.message);
   return data as CustomFormationRow[];

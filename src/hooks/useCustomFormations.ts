@@ -18,6 +18,7 @@ import {
   fetchSharedFormations,
   fetchFormationPermission,
   duplicateCustomFormation,
+  isCurrentUserAdmin,
   adminGetFormation,
   adminListFormations,
   adminDeleteFormation,
@@ -146,6 +147,16 @@ export function useDuplicateCustomFormation() {
 
 // --- Admin ---
 
+export function useIsAdmin() {
+  const { session } = useAuthStore();
+  return useQuery({
+    queryKey: ["is_admin"],
+    queryFn: isCurrentUserAdmin,
+    enabled: !!session,
+    staleTime: 60_000,
+  });
+}
+
 export function useAdminFormation(id: string | undefined) {
   return useQuery({
     queryKey: ["admin_formation", id],
@@ -154,10 +165,10 @@ export function useAdminFormation(id: string | undefined) {
   });
 }
 
-export function useAdminFormationList(status?: string, category?: string) {
+export function useAdminFormationList(status?: string, category?: string, limit = 100, offset = 0) {
   return useQuery({
-    queryKey: ["admin_formations", status ?? null, category ?? null],
-    queryFn: () => adminListFormations(status, category),
+    queryKey: ["admin_formations", status ?? null, category ?? null, limit, offset],
+    queryFn: () => adminListFormations(status, category, limit, offset),
     staleTime: 0,
   });
 }

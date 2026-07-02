@@ -4,14 +4,16 @@
 
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuthStore } from "../../store/authStore";
+import { useIsAdmin } from "../../hooks/useCustomFormations";
 
 export default function AdminGuard() {
-  const { session, profile } = useAuthStore();
+  const { session } = useAuthStore();
+  const { data: isAdmin, isLoading } = useIsAdmin();
 
   if (!session) return <Navigate to="/login" replace />;
-  // Profile noch nicht geladen — warten (GlobalLayout ruft useProfile() auf)
-  if (!profile) return <div style={{ padding: 40 }}>Laden…</div>;
-  if (profile.role !== "admin") return <Navigate to="/dashboard" replace />;
+  // RPC-Ergebnis noch ausstehend — warten bevor Redirect entschieden wird
+  if (isLoading) return <div style={{ padding: 40, color: "#6b7280" }}>Laden…</div>;
+  if (!isAdmin) return <Navigate to="/dashboard" replace />;
 
   return <Outlet />;
 }
