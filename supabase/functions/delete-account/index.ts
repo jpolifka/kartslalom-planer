@@ -30,7 +30,14 @@ export async function handler(req: Request): Promise<Response> {
     body: JSON.stringify({ is_deleted: true, deleted_at: new Date().toISOString() }),
   });
 
-  // Hard-Delete via Admin-API — ON DELETE CASCADE entfernt alle Daten
+  // Nicht-Library-Formationen löschen bevor der Account verschwindet.
+  // Library-Formationen bekommen owner_id=null via ON DELETE SET NULL — Attribution "[gelöschter Nutzer]".
+  await fetch(`${SUPABASE_URL}/rest/v1/custom_formations?owner_id=eq.${uid}&is_library=eq.false`, {
+    method: "DELETE",
+    headers: { "apikey": SERVICE_ROLE_KEY, "Authorization": `Bearer ${SERVICE_ROLE_KEY}`, "Prefer": "return=minimal" },
+  });
+
+  // Hard-Delete via Admin-API — ON DELETE CASCADE entfernt alle Daten, ON DELETE SET NULL für Library-Formationen
   const deleteRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${uid}`, {
     method: "DELETE",
     headers: { "apikey": SERVICE_ROLE_KEY, "Authorization": `Bearer ${SERVICE_ROLE_KEY}` },

@@ -17,7 +17,7 @@ import { saveState, loadState, clearSavedState, exportAsFile, parseImportFile, s
 import { useAuthStore } from "../store/authStore";
 import { useTrack, useCreateTrack, useSaveTrack, useRenameTrack, useAdminTrack } from "../hooks/useTracks";
 import { useTier } from "../hooks/useTier";
-import { useCustomFormationList } from "../hooks/useCustomFormations";
+import { useCustomFormationList, useLibraryFormations } from "../hooks/useCustomFormations";
 import { getFormation } from "../lib/formationRegistry";
 import { trackReducer, INITIAL_TRACK } from "./editor/trackReducer";
 import { useIsMobile } from "./editor/hooks/useIsMobile";
@@ -102,6 +102,7 @@ export default function EditorPage() {
   const isMobile = useIsMobile();
   const [mobilePanel, setMobilePanel] = useState<"formations" | "properties" | null>(null);
   const { data: customFormations } = useCustomFormationList();
+  const { data: libraryFormations } = useLibraryFormations();
   useEffect(() => { if (!isMobile) setMobilePanel(null); }, [isMobile]);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedFadeRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -263,7 +264,7 @@ export default function EditorPage() {
   }
 
   function addCustomFormation(id: string) {
-    const f = customFormations?.find((c) => c.id === id);
+    const f = customFormations?.find((c) => c.id === id) ?? libraryFormations?.find((c) => c.id === id);
     if (!f) return;
     const newItem: PlacedFormation = {
       id: crypto.randomUUID(),
@@ -515,7 +516,10 @@ export default function EditorPage() {
             subMenuKey={subMenuKey}
             onToggleSubMenu={(key) => setSubMenuKey(subMenuKey === key ? null : key)}
             onAddFormation={addFormation}
-            customFormations={customFormations}
+            customFormations={[
+              ...(customFormations ?? []).map((f) => ({ id: f.id, name: f.name, pylon_count: f.pylon_count })),
+              ...(libraryFormations ?? []).map((f) => ({ id: f.id, name: f.name, pylon_count: f.pylon_count, isLibrary: true, ownerUsername: f.owner_username })),
+            ]}
             onAddCustomFormation={addCustomFormation}
           />
 

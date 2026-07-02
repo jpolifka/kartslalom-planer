@@ -127,6 +127,7 @@ export type LibraryFormationRow = {
   arrows_json: PlacedArrow[];
   default_direction: string | null;
   source_formation_key: string | null;
+  owner_username: string | null; // null = "[gelöschter Nutzer]"
   created_at: string;
 };
 

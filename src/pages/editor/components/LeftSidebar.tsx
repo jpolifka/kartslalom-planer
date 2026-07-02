@@ -41,7 +41,7 @@ type Props = {
   onToggleSubMenu: (key: string) => void;
   onAddFormation: (key: FormationKey, rotDeg?: number) => void;
   // custom formations (Individuell-Palette)
-  customFormations?: Array<{ id: string; name: string; pylon_count: number }>;
+  customFormations?: Array<{ id: string; name: string; pylon_count: number; isLibrary?: boolean; ownerUsername?: string | null }>;
   onAddCustomFormation?: (id: string) => void;
 };
 
@@ -61,6 +61,9 @@ export default function LeftSidebar({
   const style = isMobile
     ? mobileDrawerStyle("left", mobileOpen)
     : { display: "grid", gap: 12, alignContent: "start", overflowY: "auto" as const, minHeight: 0 };
+
+  const ownFormations = customFormations?.filter((f) => !f.isLibrary) ?? [];
+  const libFormations = customFormations?.filter((f) => f.isLibrary) ?? [];
 
   return (
     <aside style={style}>
@@ -158,9 +161,8 @@ export default function LeftSidebar({
                 </button>
                 {open && (
                   group.isCustom ? (
-                    customFormations && customFormations.length > 0 ? (
                       <div style={{ display: "grid", gap: 4, paddingLeft: 2 }}>
-                        {customFormations.map((f) => (
+                        {ownFormations.map((f) => (
                           <button
                             key={f.id}
                             onClick={() => onAddCustomFormation?.(f.id)}
@@ -175,18 +177,47 @@ export default function LeftSidebar({
                             <span style={{ fontSize: 11, color: "#94a3b8", flexShrink: 0, marginLeft: 6 }}>{f.pylon_count} P</span>
                           </button>
                         ))}
-                        <a href="/formations" style={{ fontSize: 11, color: "#94a3b8", textDecoration: "none", padding: "4px 2px", display: "block" }}>
-                          Verwalten →
-                        </a>
+                        {ownFormations.length === 0 && (
+                          <div style={{ padding: "6px 2px 2px", fontSize: 12, color: "#94a3b8", lineHeight: 1.5 }}>
+                            Noch keine eigenen Hindernisse.{" "}
+                            <a href="/formations/new" style={{ color: "var(--c-primary)", fontWeight: 600, textDecoration: "none" }}>
+                              Jetzt erstellen →
+                            </a>
+                          </div>
+                        )}
+                        {ownFormations.length > 0 && (
+                          <a href="/formations" style={{ fontSize: 11, color: "#94a3b8", textDecoration: "none", padding: "2px 2px", display: "block" }}>
+                            Verwalten →
+                          </a>
+                        )}
+                        {libFormations.length > 0 && (
+                          <>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.05em", paddingTop: ownFormations.length > 0 ? 8 : 2, paddingLeft: 2 }}>
+                              BIBLIOTHEK
+                            </div>
+                            {libFormations.map((f) => (
+                              <button
+                                key={f.id}
+                                onClick={() => onAddCustomFormation?.(f.id)}
+                                style={{
+                                  width: "100%", textAlign: "left", padding: "7px 10px",
+                                  border: "1px solid #e0f2fe", borderRadius: 8, cursor: "pointer",
+                                  background: "#f0f9ff", fontSize: 12,
+                                  display: "grid", gap: 1,
+                                }}
+                              >
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                  <span style={{ fontWeight: 600, color: "#0369a1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+                                  <span style={{ fontSize: 11, color: "#94a3b8", flexShrink: 0, marginLeft: 6 }}>{f.pylon_count} P</span>
+                                </div>
+                                <div style={{ fontSize: 10, color: "#64748b" }}>
+                                  {f.ownerUsername ? `von ${f.ownerUsername}` : "[gelöschter Nutzer]"}
+                                </div>
+                              </button>
+                            ))}
+                          </>
+                        )}
                       </div>
-                    ) : (
-                      <div style={{ padding: "10px 4px 4px", fontSize: 12, color: "#94a3b8", lineHeight: 1.5 }}>
-                        Noch keine eigenen Hindernisse.{" "}
-                        <a href="/formations/new" style={{ color: "var(--c-primary)", fontWeight: 600, textDecoration: "none" }}>
-                          Jetzt erstellen →
-                        </a>
-                      </div>
-                    )
                   ) : (
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 5, paddingLeft: 2 }}>
                       {defs.map((formation) => (
