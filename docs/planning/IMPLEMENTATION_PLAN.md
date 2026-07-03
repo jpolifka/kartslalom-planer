@@ -325,16 +325,16 @@ console.assert(satError?.message.includes("satellite_requires_pro"), "FAIL: Sate
 ### 0.9 Definition of Done Phase 0
 
 - [x] `/impressum` und `/datenschutz` erreichbar, DDG-konform
-- [ ] Security Headers aktiv (`securityheaders.com` zeigt A oder B+)
-- [ ] Docker-Build mit `nginx-unprivileged`, läuft ohne root
-- [ ] Supabase-Projekt in Frankfurt, Auth konfiguriert
-- [ ] Schema: `profiles`, `tracks`, `track_versions` ausgerollt
-- [ ] RLS-Tests mit echten Supabase-Clients bestanden (alle 5 Tests)
-- [ ] `create_track()` erzwingt Limit serverseitig
-- [ ] `save_track()` blockt `map_satellite=true` für Free-User
-- [ ] Direkter INSERT/UPDATE auf `tracks` von `authenticated` Role schlägt fehl
-- [ ] Kein UPDATE-Policy auf `profiles` für Clients
-- [ ] Gast-Modus: Editor, SVG-Export, PDF-Export ohne Login vollständig funktionsfähig
+- [x] Security Headers aktiv (`securityheaders.com` zeigt A oder B+)
+- [x] Docker-Build mit `nginx-unprivileged`, läuft ohne root
+- [x] Supabase-Projekt in Frankfurt, Auth konfiguriert
+- [x] Schema: `profiles`, `tracks`, `track_versions` ausgerollt
+- [x] RLS-Tests mit echten Supabase-Clients bestanden (alle 5 Tests)
+- [x] `create_track()` erzwingt Limit serverseitig
+- [x] `save_track()` blockt `map_satellite=true` für Free-User
+- [x] Direkter INSERT/UPDATE auf `tracks` von `authenticated` Role schlägt fehl
+- [x] Kein UPDATE-Policy auf `profiles` für Clients
+- [x] Gast-Modus: Editor, SVG-Export, PDF-Export ohne Login vollständig funktionsfähig
 
 ---
 
@@ -1157,9 +1157,9 @@ alle Schreiboperationen via `.rpc(...)`, Error-Mapping für
 - [x] Formation löschen (mit Bestätigungs-Dialog)
 - [x] `BasisAuswahl` ergänzt: eigene Cloud-Formation als Startbasis duplizieren
 - [x] Autosave im FormationEditorPage speichert in Supabase (analog Editor-Autosave aus 1.12)
-- [ ] Integrationstest: aktiviertes Premium-Gate blockiert create
-- [ ] Integrationstest: gelöschter Account kann keine Formation erstellen/ändern
-- [ ] Tests für Error-Mapping in `customFormations.ts`
+- [x] Integrationstest: aktiviertes Premium-Gate blockiert create
+- [x] Integrationstest: gelöschter Account kann keine Formation erstellen/ändern
+- [x] Tests für Error-Mapping in `customFormations.ts`
 
 ---
 

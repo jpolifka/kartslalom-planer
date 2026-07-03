@@ -34,10 +34,10 @@ export type CustomFormationRow = {
 
 // Explizite Spalten für Tabellen-Abfragen — schließt Admin-Audit-Felder aus,
 // damit Share-Empfänger (view/edit) keine internen Historienfelder sehen.
+// as const nötig: String-Verkettung erzeugt keinen Literal-Typ, den der Supabase-Query-Parser
+// für die Rückgabe-Inferenz benötigt.
 const FORMATION_PUBLIC_COLUMNS =
-  "id, owner_id, name, description, category, status, is_library, pylon_count, " +
-  "lichte_breite, duration_seconds, cones_json, arrows_json, default_direction, " +
-  "source_formation_key, source_custom_formation_id, created_at, updated_at";
+  "id, owner_id, name, description, category, status, is_library, pylon_count, lichte_breite, duration_seconds, cones_json, arrows_json, default_direction, source_formation_key, source_custom_formation_id, created_at, updated_at" as const;
 
 export type CreateFormationParams = {
   name: string;

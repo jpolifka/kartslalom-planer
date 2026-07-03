@@ -7,7 +7,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
   createTestUser, loginAsUser, cleanupUsers,
-  assertNoError, assertRpcError, ts,
+  assertNoError, assertRpcError, ts, admin,
 } from "./helpers";
 
 const BASE_FORMATION = {
@@ -422,5 +422,94 @@ describe("Formation payload validation", () => {
       p_name: "x".repeat(81),
     });
     assertRpcError(error, "invalid_name", "name 81 chars");
+  });
+});
+
+// ─── H2: Premium-Gate + Gelöschte Accounts ───────────────────────────────────
+
+describe("H2: Premium-Gate blockiert create bei aktiviertem Tier", () => {
+  let freeClient: Awaited<ReturnType<typeof loginAsUser>>;
+  let proClient: Awaited<ReturnType<typeof loginAsUser>>;
+  const userIds: string[] = [];
+
+  beforeAll(async () => {
+    const t = ts();
+    const [freeUser, proUser] = await Promise.all([
+      createTestUser(`int-gate-free-${t}@test.invalid`, "free"),
+      createTestUser(`int-gate-pro-${t}@test.invalid`, "pro"),
+    ]);
+    userIds.push(freeUser.id, proUser.id);
+    [freeClient, proClient] = await Promise.all([
+      loginAsUser(`int-gate-free-${t}@test.invalid`),
+      loginAsUser(`int-gate-pro-${t}@test.invalid`),
+    ]);
+    // Premium-Gate auf 'pro' setzen — JS-String 'pro' → JSONB-String "pro" → #>> '{}' = 'pro'
+    await admin.from("app_config").update({ value: 'pro' }).eq("key", "custom_formations_required_tier");
+  });
+
+  afterAll(async () => {
+    // Gate zurücksetzen: JS null → PostgREST → SQL NULL → v_required_tier is not null = false → deaktiviert
+    await admin.from("app_config").update({ value: null }).eq("key", "custom_formations_required_tier");
+    await cleanupUsers(userIds);
+  });
+
+  it("Free-User: create_custom_formation schlägt fehl mit premium_required", async () => {
+    const { error } = await freeClient.rpc("create_custom_formation", BASE_FORMATION);
+    assertRpcError(error, "premium_required", "free user premium gate");
+  });
+
+  it("Pro-User: create_custom_formation erfolgreich bei aktiviertem Gate", async () => {
+    const { data, error } = await proClient.rpc("create_custom_formation", BASE_FORMATION);
+    assertNoError(error, "pro user premium gate");
+    expect(typeof data).toBe("string");
+  });
+});
+
+describe("H2: Gelöschter Account kann keine Formation erstellen/ändern", () => {
+  let deletedClient: Awaited<ReturnType<typeof loginAsUser>>;
+  let formationId: string;
+  const userIds: string[] = [];
+
+  beforeAll(async () => {
+    const t = ts();
+    const user = await createTestUser(`int-del-form-${t}@test.invalid`, "free");
+    userIds.push(user.id);
+    deletedClient = await loginAsUser(`int-del-form-${t}@test.invalid`);
+
+    // Erst eine Formation anlegen, bevor der Account als gelöscht markiert wird
+    const { data: fId, error: fErr } = await deletedClient.rpc("create_custom_formation", BASE_FORMATION);
+    assertNoError(fErr, "create before deletion");
+    formationId = fId as string;
+
+    // Account soft-delete (simuliert ersten Schritt von delete_account_data)
+    await admin.from("profiles").update({ is_deleted: true, deleted_at: new Date().toISOString() }).eq("id", user.id);
+  });
+
+  afterAll(async () => {
+    // is_deleted zurücksetzen damit cleanupUsers funktioniert
+    for (const id of userIds) {
+      await admin.from("profiles").update({ is_deleted: false, deleted_at: null }).eq("id", id);
+    }
+    await cleanupUsers(userIds);
+  });
+
+  it("gelöschter Account: create_custom_formation schlägt fehl mit account_deleted", async () => {
+    const { error } = await deletedClient.rpc("create_custom_formation", BASE_FORMATION);
+    assertRpcError(error, "account_deleted", "deleted account create");
+  });
+
+  it("gelöschter Account: update_custom_formation schlägt fehl mit account_deleted", async () => {
+    const { error } = await deletedClient.rpc("update_custom_formation", {
+      p_id: formationId,
+      p_name: "Versuch nach Löschung",
+      p_description: null,
+      p_category: "individuell",
+      p_cones_json: [{ id: "c1", x: 0, y: 0, kind: "standing", angleDeg: 0 }],
+      p_arrows_json: [],
+      p_default_direction: null,
+      p_lichte_breite: null,
+      p_duration_seconds: null,
+    });
+    assertRpcError(error, "account_deleted", "deleted account update");
   });
 });
