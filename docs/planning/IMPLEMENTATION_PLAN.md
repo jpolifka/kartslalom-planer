@@ -57,6 +57,17 @@ create table public.profiles (
 );
 ```
 
+> **Übergangsregel Tier-Default** (Stand: Einführungsphase, vor öffentlichem Free-/Pro-Rollout)  
+> Die tatsächliche Migration verwendet `DEFAULT 'pro'` statt `DEFAULT 'free'`.  
+> Damit verlieren bestehende Nutzer keinen bisher verfügbaren Funktionsumfang.  
+> Sicherheits- und Integrationstests setzen den zu prüfenden Tier **immer explizit** —
+> sie verlassen sich nicht auf den Schema-Default.  
+>
+> **TODO vor öffentlichem Rollout:**
+> - `profiles.tier DEFAULT 'pro'` → `DEFAULT 'free'` (eigene Migration)
+> - `handle_new_user()` ggf. explizit mit `tier = 'free'` anlegen
+> - Bestehende Profile bewusst klassifizieren (Pro-User kenntlich machen)
+
 **Trigger: Signup → profiles-Zeile**
 
 ```sql

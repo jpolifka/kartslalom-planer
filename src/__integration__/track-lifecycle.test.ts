@@ -14,11 +14,13 @@ import {
 describe("Track lifecycle", () => {
   let client: Awaited<ReturnType<typeof loginAsUser>>;
   const userIds: string[] = [];
+  let userId: string;
   let trackId: string;
 
   beforeAll(async () => {
     const email = `int-track-${ts()}@test.invalid`;
     const user = await createTestUser(email);
+    userId = user.id;
     userIds.push(user.id);
     client = await loginAsUser(email);
   });
@@ -74,6 +76,10 @@ describe("Track lifecycle", () => {
   });
 
   it("save_track schlägt fehl mit satellite_requires_pro für Free-User", async () => {
+    // Explizit free setzen — Schema-Default ist vorübergehend 'pro' (Übergangspolitik vor Rollout)
+    const { error: tierErr } = await admin.from("profiles").update({ tier: "free" }).eq("id", userId);
+    assertNoError(tierErr, "tier auf free setzen");
+
     const { error } = await client.rpc("save_track", {
       p_track_id:   trackId,
       p_state_json: { items: [], arrows: [] },
@@ -83,7 +89,26 @@ describe("Track lifecycle", () => {
       p_satellite:  true,
       p_opacity:    0.5,
     });
-    assertRpcError(error, "satellite_requires_pro", "save_track satellite");
+    assertRpcError(error, "satellite_requires_pro", "save_track satellite free");
+  });
+
+  it("save_track erlaubt satellite für Pro-User", async () => {
+    const { error: tierErr } = await admin.from("profiles").update({ tier: "pro" }).eq("id", userId);
+    assertNoError(tierErr, "tier auf pro setzen");
+
+    const { error } = await client.rpc("save_track", {
+      p_track_id:   trackId,
+      p_state_json: { items: [], arrows: [] },
+      p_area_sel:   null,
+      p_width:      18,
+      p_length:     36,
+      p_satellite:  true,
+      p_opacity:    0.5,
+    });
+    assertNoError(error, "save_track satellite pro");
+
+    // Zurück auf free — create_track-Limit-Test braucht free-Tier
+    await admin.from("profiles").update({ tier: "free" }).eq("id", userId);
   });
 
   it("delete_track entfernt den Track", async () => {

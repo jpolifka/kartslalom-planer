@@ -4,6 +4,9 @@
 create table public.profiles (
   id                      uuid primary key references auth.users(id) on delete cascade,
   email                   text not null,
+  -- ÜBERGANGSPOLITIK: Default 'pro' statt 'free', solange kein öffentliches Tier-Rollout.
+  -- Bestehende Nutzer verlieren so keine bereits genutzten Features.
+  -- TODO vor öffentlichem Rollout: DEFAULT auf 'free' ändern, bestehende Profile klassifizieren.
   tier                    text not null default 'pro'
                             check (tier in ('free', 'pro', 'team')),
   last_active_at          timestamptz not null default now(),
