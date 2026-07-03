@@ -990,7 +990,87 @@ lifecycle_emails:
 - [ ] PNG-Export für Pro, Upgrade-Hinweis mit Kontakt-Link für Free
 - [ ] Satellite-Kacheln: Nutzungsbedingungen von Esri World Imagery und OSM für die geplante Nutzung geprüft
 - [ ] Lifecycle-E-Mails mit Abmeldemöglichkeit, Datenschutz-Review dokumentiert
-- [ ] Versionshistorie: Wiederherstellen lädt korrekte Version
+- [x] Versionshistorie: Wiederherstellen lädt korrekte Version (102 Integrationstests grün, 2026-07-03)
+
+---
+
+### 2.3 Share-Links — Rate Limiting + Token-Widerruf (Planungsstand 2026-07-03)
+
+> **Vor der Implementierung öffentlicher Share-Links** müssen Rate Limiting und
+> Token-Widerruf vollständig entschieden und implementiert sein. Dieses Kapitel
+> dokumentiert den Entscheidungsrahmen — noch nicht implementiert.
+
+#### Token-Design
+
+```sql
+create table public.share_tokens (
+  id             uuid primary key default gen_random_uuid(),
+  track_id       uuid not null references public.tracks(id) on delete cascade,
+  token_hash     text not null unique,      -- bcrypt-Hash des Plaintexts
+  created_by     uuid not null references public.profiles(id) on delete cascade,
+  created_at     timestamptz not null default now(),
+  expires_at     timestamptz,               -- null = läuft nie ab
+  revoked_at     timestamptz,               -- null = aktiv
+  access_count   integer not null default 0
+);
+```
+
+- Plaintext-Token wird **einmalig** beim Anlegen zurückgegeben (niemals wieder lesbar).
+- DB speichert nur `token_hash` (bcrypt, cost=10).
+- Token-Validierung via `get_track_by_share_token(p_token text)` RPC:
+  ```sql
+  -- Prüft hash, revoked_at IS NULL, expires_at IS NULL OR > now()
+  -- Inkrementiert access_count
+  -- Gibt state_json, area_sel_json, name zurück (read-only)
+  ```
+- Kein direktes SELECT auf `share_tokens` für `authenticated` oder `anon` (revoke).
+
+#### Rate Limiting
+
+Rate Limiting auf zwei Ebenen:
+
+**1. Supabase Kong Gateway (Infrastruktur-Ebene)**
+- Konfiguration in `supabase/config.toml` oder Kong Declarative Config
+- Empfehlung: 60 Anfragen/Minute pro IP auf `/rest/v1/rpc/get_track_by_share_token`
+- Kein App-Code nötig — Kong lehnt mit `429 Too Many Requests` ab
+
+**2. Serverseitig in RPC (Anwendungs-Ebene)**
+- Schutz vor verteilten Angriffen die Kong umgehen
+- Pro Token: max. 1000 Aufrufe/24h (via `access_count + created_at` Sliding Window)
+- Zu implementieren in `get_track_by_share_token`:
+  ```sql
+  -- Zähle Zugriffe der letzten 24h via Hilfstabelle oder access_count + last_accessed_at
+  if v_count_24h >= 1000 then
+    raise exception 'rate_limit_exceeded';
+  end if;
+  ```
+
+#### Token-Widerruf
+
+- `revoke_share_token(p_token_id uuid)` RPC:
+  - Prüft `created_by = auth.uid()` (Owner kann nur eigene Token widerrufen)
+  - Setzt `revoked_at = now()`
+- `list_share_tokens(p_track_id uuid)` RPC:
+  - Listet alle Token des Owners (ohne token_hash, nur id, created_at, revoked_at, access_count)
+- ON DELETE CASCADE: beim Löschen eines Tracks werden alle seine Token automatisch gelöscht.
+
+#### Offene Entscheidungen (vor Implementierung zu klären)
+
+- [ ] Token-Ablauf: Sollen Token nach X Tagen automatisch ablaufen? (Empfehlung: 30 Tage Default, konfigurierbar)
+- [ ] Token-Limit pro Track: Max. N aktive Token pro Strecke? (Empfehlung: 5 für Pro, 1 für Free)
+- [ ] Share-Links im Free-Tarif: Erlaubt oder nur Pro? (Empfehlung: nur Pro)
+- [ ] Esri World Imagery ToS: Nutzungsbedingungen für öffentlich-lesbare Kachelabfragen prüfen (Share-Link-Empfänger sind nicht eingeloggt)
+- [ ] DSGVO: Werden IP-Adressen von Share-Link-Besuchern geloggt? Wenn ja: Datenschutzerklärung aktualisieren.
+
+#### Sicherheitsrisiken (Vorbeugung)
+
+| Risiko | Gegenmaßnahme |
+|---|---|
+| Token-Enumeration | bcrypt-Hash + UUID-basierter Token (nicht ratebar) |
+| DoS via Massenabfrage | Kong Rate Limit + RPC-seitiges Sliding Window |
+| Permanenter Link nach Account-Löschung | ON DELETE CASCADE auf `created_by` |
+| Token-Leak im Client-Bundle | Token-Hash niemals an Client zurückgeben |
+| Cross-User-Zugriff | Plaintext-Token nur für Empfänger, Owner kann widerrufen |
 
 ---
 
