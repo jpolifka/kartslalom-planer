@@ -524,8 +524,12 @@ export default function EditorPage() {
                   // Voller Seitenreload — setzt cloudAppliedRef zurück, sodass der
                   // frisch restaurierte Track-Stand sauber in den Editor geladen wird.
                   window.location.assign(`/editor/${trackId}`);
-                } catch {
-                  alert("Wiederherstellen fehlgeschlagen.");
+                } catch (err) {
+                  if (err instanceof Error && err.message === "SATELLITE_REQUIRES_PRO") {
+                    alert("Dieser Snapshot enthält Satellitenbilder, die den Pro-Tarif erfordern.");
+                  } else {
+                    alert("Wiederherstellen fehlgeschlagen.");
+                  }
                 }
               }}
               disabled={restoreVersionMutation.isPending}

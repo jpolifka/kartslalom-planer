@@ -76,8 +76,8 @@ describe("Versionshistorie — Pro-User", () => {
     expect(rows[0].state_json).toMatchObject({ items: [expect.objectContaining({ x: 1, y: 1 })] });
   });
 
-  it("restore_track_version stellt gespeicherten Zustand wieder her", async () => {
-    // Zustand überschreiben
+  it("restore_track_version stellt gespeicherten Zustand wieder her — alle Felder", async () => {
+    // Zustand mit anderen Werten überschreiben
     const { error: saveErr } = await client.rpc("save_track", {
       p_track_id: trackId,
       p_state_json: modifiedState,
@@ -85,7 +85,7 @@ describe("Versionshistorie — Pro-User", () => {
       p_width: 20,
       p_length: 40,
       p_satellite: false,
-      p_opacity: 0.5,
+      p_opacity: 0.8,
     });
     assertNoError(saveErr, "save_track modifiziert");
 
@@ -93,16 +93,20 @@ describe("Versionshistorie — Pro-User", () => {
     const { error: restoreErr } = await client.rpc("restore_track_version", { p_version_id: versionId });
     assertNoError(restoreErr, "restore_track_version");
 
-    // Track muss wieder initialen Zustand haben
+    // Track muss wieder den initialen Zustand haben — alle Felder prüfen
     const { data: track, error: fetchErr } = await client
       .from("tracks")
-      .select("state_json")
+      .select("state_json, manual_width, manual_length, map_satellite, map_opacity")
       .eq("id", trackId)
       .single();
     assertNoError(fetchErr, "fetch nach restore");
     const stateJson = track!.state_json as { items: Array<{ x: number; y: number }> };
     expect(stateJson.items[0].x).toBe(1);
     expect(stateJson.items[0].y).toBe(1);
+    expect(track!.manual_width).toBe(18);
+    expect(track!.manual_length).toBe(36);
+    expect(track!.map_satellite).toBe(false);
+    expect(Number(track!.map_opacity)).toBeCloseTo(0.5);
   });
 
   it("zweite Version erhält version_number 2", async () => {
@@ -211,6 +215,108 @@ describe("Versionshistorie — RLS Fremdzugriff", () => {
   it("User B kann Version von User A nicht löschen", async () => {
     const { error } = await clientB.rpc("delete_track_version", { p_version_id: versionIdA });
     assertRpcError(error, "not_owner", "delete_track_version fremde Version");
+  });
+});
+
+describe("Versionshistorie — Satellite-Gate beim Restore (Pro→Free)", () => {
+  let client: Awaited<ReturnType<typeof loginAsUser>>;
+  const userIds: string[] = [];
+  let userId: string;
+  let trackId: string;
+  let versionWithSatelliteId: string;
+  let versionWithoutSatelliteId: string;
+
+  beforeAll(async () => {
+    const email = `int-version-sat-${ts()}@test.invalid`;
+    const user = await createTestUser(email, "pro");
+    userId = user.id;
+    userIds.push(user.id);
+    client = await loginAsUser(email);
+
+    const { data: tid } = await client.rpc("create_track", { track_name: "Satellite-Gate-Test" });
+    trackId = tid as string;
+
+    // Snapshot 1: ohne Satellite (bleibt auch nach Downgrade wiederherstellbar)
+    await client.rpc("save_track", {
+      p_track_id: trackId,
+      p_state_json: { items: [], arrows: [] },
+      p_area_sel: null, p_width: 18, p_length: 36, p_satellite: false, p_opacity: 0.5,
+    });
+    const { data: v1 } = await client.rpc("create_track_version", { p_track_id: trackId });
+    versionWithoutSatelliteId = v1 as string;
+
+    // Snapshot 2: mit Satellite (Pro-Feature, darf nach Downgrade nicht restauriert werden)
+    await client.rpc("save_track", {
+      p_track_id: trackId,
+      p_state_json: { items: [], arrows: [] },
+      p_area_sel: null, p_width: 20, p_length: 40, p_satellite: true, p_opacity: 0.7,
+    });
+    const { data: v2 } = await client.rpc("create_track_version", { p_track_id: trackId });
+    versionWithSatelliteId = v2 as string;
+
+    // User auf Free downgraden — ab hier kein Snapshot-Erstellen mehr möglich
+    await admin.from("profiles").update({ tier: "free" }).eq("id", userId);
+  });
+
+  afterAll(async () => {
+    await cleanupUsers(userIds);
+  });
+
+  it("Restore eines Satellite-Snapshots schlägt für Free-User fehl", async () => {
+    const { error } = await client.rpc("restore_track_version", { p_version_id: versionWithSatelliteId });
+    assertRpcError(error, "satellite_requires_pro", "restore satellite als Free-User");
+  });
+
+  it("Restore eines Nicht-Satellite-Snapshots gelingt für Free-User", async () => {
+    const { error } = await client.rpc("restore_track_version", { p_version_id: versionWithoutSatelliteId });
+    assertNoError(error, "restore non-satellite als Free-User");
+
+    const { data: track } = await client
+      .from("tracks")
+      .select("manual_width, manual_length, map_satellite")
+      .eq("id", trackId)
+      .single();
+    expect(track?.manual_width).toBe(18);
+    expect(track?.manual_length).toBe(36);
+    expect(track?.map_satellite).toBe(false);
+  });
+});
+
+describe("Versionshistorie — Race-Lock (parallele Snapshots)", () => {
+  let client: Awaited<ReturnType<typeof loginAsUser>>;
+  const userIds: string[] = [];
+  let trackId: string;
+
+  beforeAll(async () => {
+    const email = `int-version-race-${ts()}@test.invalid`;
+    const user = await createTestUser(email, "pro");
+    userIds.push(user.id);
+    client = await loginAsUser(email);
+    const { data } = await client.rpc("create_track", { track_name: "Race-Test" });
+    trackId = data as string;
+    await client.rpc("save_track", {
+      p_track_id: trackId, p_state_json: { items: [], arrows: [] },
+      p_area_sel: null, p_width: 18, p_length: 36, p_satellite: false, p_opacity: 0.5,
+    });
+  });
+
+  afterAll(async () => {
+    await cleanupUsers(userIds);
+  });
+
+  it("parallele create_track_version-Aufrufe erzeugen eindeutige Versionsnummern", async () => {
+    const [r1, r2] = await Promise.all([
+      client.rpc("create_track_version", { p_track_id: trackId }),
+      client.rpc("create_track_version", { p_track_id: trackId }),
+    ]);
+    assertNoError(r1.error, "parallel create 1");
+    assertNoError(r2.error, "parallel create 2");
+
+    const { data: versions } = await client.rpc("get_track_versions", { p_track_id: trackId });
+    expect(versions).toHaveLength(2);
+    const nums = (versions as Array<{ version_number: number }>).map((v) => v.version_number);
+    // Keine Duplikate — FOR UPDATE verhindert Race Condition
+    expect(new Set(nums).size).toBe(2);
   });
 });
 

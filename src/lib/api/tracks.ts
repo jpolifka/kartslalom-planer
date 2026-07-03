@@ -134,7 +134,8 @@ export async function getTrackVersions(trackId: string): Promise<TrackVersion[]>
 export async function restoreTrackVersion(versionId: string): Promise<void> {
   const { error } = await supabase.rpc("restore_track_version", { p_version_id: versionId });
   if (error) {
-    if (error.message.includes("not_owner")) throw new Error("NOT_OWNER");
+    if (error.message.includes("satellite_requires_pro")) throw new Error("SATELLITE_REQUIRES_PRO");
+    if (error.message.includes("not_owner"))              throw new Error("NOT_OWNER");
     throw error;
   }
 }

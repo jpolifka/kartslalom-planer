@@ -36,7 +36,11 @@ function TrackVersionPanel({ trackId }: { trackId: string }) {
     try {
       await restoreVersionMutation.mutateAsync(versionId);
       navigate(`/editor/${trackId}`);
-    } catch {
+    } catch (err) {
+      if (err instanceof Error && err.message === "SATELLITE_REQUIRES_PRO") {
+        alert("Dieser Snapshot enthält Satellitenbilder, die den Pro-Tarif erfordern.");
+        return;
+      }
       alert("Wiederherstellen fehlgeschlagen.");
     }
   }
