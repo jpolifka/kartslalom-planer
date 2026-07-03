@@ -43,11 +43,9 @@ SQL im Supabase SQL-Editor in dieser Reihenfolge ausführen.
 create table public.profiles (
   id                      uuid primary key references auth.users(id) on delete cascade,
   email                   text not null,
-  tier                    text not null default 'free'
+  -- Aktuell DEFAULT 'pro' (Übergangspolitik, s. Hinweis unten). Ziel: 'free'.
+  tier                    text not null default 'pro'
                             check (tier in ('free', 'pro', 'team')),
-  stripe_customer_id      text,
-  stripe_subscription_id  text,
-  stripe_status           text,
   last_active_at          timestamptz not null default now(),
   reminder_150_sent_at    timestamptz,
   reminder_170_sent_at    timestamptz,
