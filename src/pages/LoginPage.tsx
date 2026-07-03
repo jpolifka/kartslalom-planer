@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "verifying" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [otp, setOtp] = useState("");
+  const authError = new URLSearchParams(window.location.search).get("auth_error");
 
   if (session) return <Navigate to="/dashboard" replace />;
 
@@ -59,6 +60,17 @@ export default function LoginPage() {
         <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>
           Melde dich mit deiner E-Mail-Adresse an. Du erhältst einen Anmeldelink per E-Mail.
         </p>
+        {authError === "pkce" && (
+          <div style={{
+            background: "#fffbeb", border: "1px solid #fde68a",
+            borderRadius: 10, padding: "10px 12px", fontSize: 13, color: "#92400e",
+            marginBottom: 16,
+          }}>
+            <strong>Anmeldelink in anderem Browser geöffnet.</strong><br />
+            Bitte fordere unten einen neuen Link an und gib den <strong>8-stelligen Code</strong> aus
+            der E-Mail direkt hier ein — das funktioniert browserübergreifend.
+          </div>
+        )}
 
         {status === "sent" || status === "verifying" ? (
           <div style={{ display: "grid", gap: 12 }}>

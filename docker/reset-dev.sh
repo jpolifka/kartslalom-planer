@@ -1,13 +1,15 @@
 #!/bin/sh
 # Vollständiger Reset der lokalen DEV-Umgebung.
-# Ausführen vom Projekt-Root: sh docker/reset-dev.sh [-y]
+# Ausführen vom Projekt-Root: sh docker/reset-dev.sh [-y] [--prune]
 #
 # Was passiert:
 #   1. Alle Container stoppen + Images entfernen (--rmi all)
-#   2. Alle unbenutzten Images system-weit löschen (image prune -af)
-#   3. Lokale DB-Daten + Storage löschen
-#   4. App-Image neu bauen (--no-cache)
-#   5. Stack frisch starten
+#   2. Lokale DB-Daten + Storage löschen
+#   3. App-Image neu bauen (--no-cache)
+#   4. Stack frisch starten
+#
+# Mit --prune: Alle unbenutzten Images system-weit löschen (Achtung: betrifft alle Docker-Images,
+#              nicht nur dieses Projekt — auf geteilten Hosts mit Bedacht verwenden).
 
 set -e
 
@@ -16,9 +18,13 @@ COMPOSE_FILE="$SCRIPT_DIR/docker-compose.dev.yml"
 VOLUMES_DIR="$SCRIPT_DIR/supabase/volumes"
 
 auto_confirm=0
-if [ "$1" = "-y" ]; then
-    auto_confirm=1
-fi
+do_prune=0
+for arg in "$@"; do
+    case "$arg" in
+        -y) auto_confirm=1 ;;
+        --prune) do_prune=1 ;;
+    esac
+done
 
 confirm() {
     [ "$auto_confirm" = "1" ] && return 0
@@ -38,8 +44,10 @@ confirm
 echo "===> Container stoppen und Images entfernen..."
 docker compose -f "$COMPOSE_FILE" down --rmi all --remove-orphans
 
-echo "===> Alle unbenutzten Images bereinigen..."
-docker image prune -af
+if [ "$do_prune" = "1" ]; then
+    echo "===> Alle unbenutzten Images system-weit bereinigen (--prune)..."
+    docker image prune -af
+fi
 
 echo "===> Lokale Volume-Daten löschen..."
 rm -rf "${VOLUMES_DIR}/db/data"

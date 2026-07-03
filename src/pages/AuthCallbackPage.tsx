@@ -42,13 +42,23 @@ export default function AuthCallbackPage() {
     ranRef.current = true;
 
     async function handleCallback() {
-      // supabase.ts setzt flowType: "pkce" — der Link enthält daher
-      // ?code=... (Query-Parameter), kein #fragment.
+      // flowType "pkce": Link enthält ?code=... (Query-Parameter)
       const code = new URLSearchParams(window.location.search).get("code");
 
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (error) console.error("Code exchange failed:", error.message);
+        if (error) {
+          console.error("Code exchange failed:", error.message);
+          // PKCE code_verifier fehlt — Link wurde in anderem Browser/Gerät geöffnet.
+          // Der 8-stellige OTP-Code aus der selben E-Mail funktioniert als Fallback.
+          if (
+            error.message.toLowerCase().includes("pkce") ||
+            error.message.toLowerCase().includes("code verifier")
+          ) {
+            navigate("/login?auth_error=pkce", { replace: true });
+            return;
+          }
+        }
       }
 
       const { data: { session } } = await supabase.auth.getSession();

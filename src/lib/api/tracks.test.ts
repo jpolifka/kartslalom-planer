@@ -4,14 +4,16 @@
 
 import { vi, describe, it, expect, beforeEach } from "vitest";
 
-vi.mock("../supabase", () => ({
-  supabase: { rpc: vi.fn() },
+const { mockRpc, mockFrom } = vi.hoisted(() => ({
+  mockRpc: vi.fn(),
+  mockFrom: vi.fn(),
 }));
 
-import { supabase } from "../supabase";
-import { saveTrack } from "./tracks";
+vi.mock("../supabase", () => ({
+  supabase: { rpc: mockRpc, from: mockFrom },
+}));
 
-const mockRpc = vi.mocked(supabase.rpc);
+import { saveTrack, fetchTracks, fetchTrack, createTrack, renameTrack, deleteTrack } from "./tracks";
 
 const minimalState = {
   items: [],
@@ -23,26 +25,144 @@ const minimalState = {
   areaSel: null,
 };
 
-beforeEach(() => vi.clearAllMocks());
+function ok(data: unknown = null) {
+  return Promise.resolve({ data, error: null });
+}
 
-describe("tracks API", () => {
-  it("save uses RPC", async () => {
-    mockRpc.mockResolvedValue({ data: null, error: null } as never);
+function err(message: string) {
+  return Promise.resolve({ data: null, error: { message } });
+}
+
+/** Builder für Supabase-Chaining.
+ *  eq() gibt ein Thenable zurück das auch .single() hat — damit funktioniert
+ *  sowohl `await from().delete().eq()` als auch `await from().select().eq().single()`.
+ */
+function chain(terminal: Promise<unknown>) {
+  const eqResult = Object.assign(Promise.resolve(terminal).then((v) => v), {
+    single:      () => terminal,
+    maybeSingle: () => terminal,
+  });
+  const c = {
+    select:      () => c,
+    delete:      () => c,
+    order:       () => terminal,
+    eq:          () => eqResult,
+    single:      () => terminal,
+    maybeSingle: () => terminal,
+  };
+  return c;
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockRpc.mockResolvedValue({ data: null, error: null });
+});
+
+describe("saveTrack", () => {
+  it("calls save_track RPC with correct params", async () => {
     await saveTrack("track-1", minimalState);
-    expect(mockRpc).toHaveBeenCalledOnce();
-    expect(mockRpc).toHaveBeenCalledWith(
-      "save_track",
-      expect.objectContaining({ p_track_id: "track-1" })
-    );
+    expect(mockRpc).toHaveBeenCalledWith("save_track", expect.objectContaining({ p_track_id: "track-1" }));
   });
 
-  it("error mapping", async () => {
-    mockRpc.mockResolvedValue({
-      data: null,
-      error: { message: "satellite_requires_pro" },
-    } as never);
-    await expect(
-      saveTrack("track-1", { ...minimalState, mapSatellite: true })
-    ).rejects.toThrow("SATELLITE_REQUIRES_PRO");
+  it("maps satellite_requires_pro error", async () => {
+    mockRpc.mockResolvedValue(err("satellite_requires_pro"));
+    await expect(saveTrack("t", { ...minimalState, mapSatellite: true })).rejects.toThrow("SATELLITE_REQUIRES_PRO");
+  });
+
+  it("maps not_owner error", async () => {
+    mockRpc.mockResolvedValue(err("not_owner"));
+    await expect(saveTrack("t", minimalState)).rejects.toThrow("NOT_OWNER");
+  });
+
+  it("rethrows unknown errors", async () => {
+    mockRpc.mockResolvedValue(err("something_else"));
+    await expect(saveTrack("t", minimalState)).rejects.toMatchObject({ message: "something_else" });
+  });
+});
+
+describe("createTrack", () => {
+  it("returns new track id", async () => {
+    mockRpc.mockResolvedValue(ok("new-id"));
+    expect(await createTrack()).toBe("new-id");
+  });
+
+  it("maps track_limit_reached error", async () => {
+    mockRpc.mockResolvedValue(err("track_limit_reached"));
+    await expect(createTrack()).rejects.toThrow("TRACK_LIMIT_REACHED");
+  });
+
+  it("rethrows unknown errors", async () => {
+    mockRpc.mockResolvedValue(err("db_error"));
+    await expect(createTrack()).rejects.toMatchObject({ message: "db_error" });
+  });
+});
+
+describe("renameTrack", () => {
+  it("calls rename_track RPC", async () => {
+    await renameTrack("t", "Neuer Name");
+    expect(mockRpc).toHaveBeenCalledWith("rename_track", { p_track_id: "t", p_name: "Neuer Name" });
+  });
+
+  it("trims whitespace before calling RPC", async () => {
+    await renameTrack("t", "  Trimmed  ");
+    expect(mockRpc).toHaveBeenCalledWith("rename_track", expect.objectContaining({ p_name: "Trimmed" }));
+  });
+
+  it("does nothing for empty name", async () => {
+    await renameTrack("t", "   ");
+    expect(mockRpc).not.toHaveBeenCalled();
+  });
+
+  it("maps not_owner error", async () => {
+    mockRpc.mockResolvedValue(err("not_owner"));
+    await expect(renameTrack("t", "X")).rejects.toThrow("NOT_OWNER");
+  });
+});
+
+describe("fetchTracks", () => {
+  it("returns track list", async () => {
+    const tracks = [{ id: "t1", name: "Track 1", updated_at: "", manual_width: 18, manual_length: 36 }];
+    mockFrom.mockReturnValue(chain(ok(tracks)));
+    const result = await fetchTracks();
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe("t1");
+  });
+
+  it("throws on error", async () => {
+    mockFrom.mockReturnValue(chain(Promise.resolve({ data: null, error: { message: "db" } })));
+    await expect(fetchTracks()).rejects.toMatchObject({ message: "db" });
+  });
+});
+
+describe("fetchTrack", () => {
+  it("returns track detail", async () => {
+    const track = { id: "t1", name: "T", state_json: { items: [], arrows: [] } };
+    mockFrom.mockReturnValue(chain(ok(track)));
+    const result = await fetchTrack("t1");
+    expect(result?.id).toBe("t1");
+  });
+
+  it("returns null when no row (RLS blocked)", async () => {
+    mockFrom.mockReturnValue(chain(ok(null)));
+    const result = await fetchTrack("foreign-id");
+    expect(result).toBeNull();
+  });
+
+  it("throws on error", async () => {
+    mockFrom.mockReturnValue(chain(Promise.resolve({ data: null, error: { message: "not found" } })));
+    await expect(fetchTrack("x")).rejects.toMatchObject({ message: "not found" });
+  });
+});
+
+describe("deleteTrack", () => {
+  it("calls from().delete().eq()", async () => {
+    mockFrom.mockReturnValue(chain(ok()));
+    await deleteTrack("t1");
+    expect(mockFrom).toHaveBeenCalledWith("tracks");
+  });
+
+  it("throws on error", async () => {
+    mockFrom.mockReturnValue(chain(Promise.resolve({ data: null, error: { message: "err" } })));
+    await expect(deleteTrack("t1")).rejects.toMatchObject({ message: "err" });
   });
 });

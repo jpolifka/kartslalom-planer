@@ -5,6 +5,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
+import { useSetDisplayName } from "../hooks/useCustomFormations";
 import { supabase, functionsUrl } from "../lib/supabase";
 
 export default function SettingsPage() {
@@ -13,6 +14,28 @@ export default function SettingsPage() {
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Anzeigename
+  const [displayNameInput, setDisplayNameInput] = useState(profile?.display_name ?? "");
+  const [displayNameSuccess, setDisplayNameSuccess] = useState(false);
+  const [displayNameError, setDisplayNameError] = useState<string | null>(null);
+  const setDisplayNameMutation = useSetDisplayName();
+
+  async function handleSaveDisplayName() {
+    setDisplayNameError(null);
+    setDisplayNameSuccess(false);
+    const value = displayNameInput.trim() || null;
+    try {
+      await setDisplayNameMutation.mutateAsync(value);
+      setDisplayNameSuccess(true);
+    } catch (e) {
+      if (e instanceof Error && e.message === "INVALID_DISPLAY_NAME") {
+        setDisplayNameError("Anzeigename muss 2–40 Zeichen lang sein (oder leer lassen).");
+      } else {
+        setDisplayNameError("Speichern fehlgeschlagen.");
+      }
+    }
+  }
 
   async function handleExport() {
     if (!session) return;
@@ -75,6 +98,53 @@ export default function SettingsPage() {
         <div style={{ fontSize: 14, marginBottom: 4 }}>{session?.user.email}</div>
         <div style={{ fontSize: 12, color: "#94a3b8" }}>
           Tarif: {profile?.tier ?? "free"}
+        </div>
+      </section>
+
+      <section style={{
+        background: "white", borderRadius: 16, padding: 18,
+        boxShadow: "0 1px 3px rgba(0,0,0,0.06)", marginBottom: 14,
+      }}>
+        <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#94a3b8", marginBottom: 6 }}>
+          Anzeigename
+        </div>
+        <div style={{ fontSize: 12, color: "#64748b", marginBottom: 10, lineHeight: 1.5 }}>
+          Wird bei eigenen Bibliotheks-Formationen als "von …" angezeigt. Leer lassen für anonym ("Community-Formation").
+        </div>
+        {displayNameError && (
+          <div style={{ fontSize: 13, color: "#b91c1c", background: "#fef2f2", borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
+            {displayNameError}
+          </div>
+        )}
+        {displayNameSuccess && (
+          <div style={{ fontSize: 13, color: "#166534", background: "#f0fdf4", borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
+            Gespeichert.
+          </div>
+        )}
+        <div style={{ display: "flex", gap: 8 }}>
+          <input
+            type="text"
+            value={displayNameInput}
+            onChange={(e) => { setDisplayNameInput(e.target.value); setDisplayNameSuccess(false); }}
+            placeholder="z. B. Ralf M."
+            maxLength={40}
+            style={{
+              flex: 1, borderRadius: 10, border: "1px solid #cbd5e1", padding: "9px 12px",
+              fontSize: 13, outline: "none", boxSizing: "border-box" as const,
+            }}
+          />
+          <button
+            onClick={handleSaveDisplayName}
+            disabled={setDisplayNameMutation.isPending}
+            style={{
+              borderRadius: 10, border: "1px solid var(--c-primary, #2563eb)",
+              background: "var(--c-primary, #2563eb)", color: "white",
+              padding: "9px 16px", fontSize: 13, cursor: setDisplayNameMutation.isPending ? "wait" : "pointer",
+              fontWeight: 600, whiteSpace: "nowrap" as const,
+            }}
+          >
+            {setDisplayNameMutation.isPending ? "…" : "Speichern"}
+          </button>
         </div>
       </section>
 

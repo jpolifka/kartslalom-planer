@@ -10,14 +10,14 @@ import type { MapConfig } from "../components/TrackCanvas";
 import MapSelector from "../components/MapSelector";
 import { getEffectiveDuration } from "../lib/formationRegistry";
 import { runValidation } from "../lib/validation";
-import { generateTrackSVG, downloadSVG, printAsPDF } from "../lib/exportSVG";
+import { generateTrackSVG, downloadSVG, exportPDF } from "../lib/exportSVG";
 import type { AreaSelection } from "../lib/areaSelection";
-import type { FormationKey, PlacedArrow, PlacedFormation } from "../types";
-import { saveState, loadState, clearSavedState, exportAsFile, parseImportFile } from "../lib/storage";
-import { supabase } from "../lib/supabase";
+import type { DirectionMode, FormationKey, PlacedArrow, PlacedFormation } from "../types";
+import { saveState, loadState, clearSavedState, exportAsFile, parseImportFile, sanitizeItems } from "../lib/storage";
 import { useAuthStore } from "../store/authStore";
-import { useTrack, useCreateTrack, useSaveTrack, useRenameTrack } from "../hooks/useTracks";
+import { useTrack, useCreateTrack, useSaveTrack, useRenameTrack, useAdminTrack } from "../hooks/useTracks";
 import { useTier } from "../hooks/useTier";
+import { useCustomFormationList, useLibraryFormations } from "../hooks/useCustomFormations";
 import { getFormation } from "../lib/formationRegistry";
 import { trackReducer, INITIAL_TRACK } from "./editor/trackReducer";
 import { useIsMobile } from "./editor/hooks/useIsMobile";
@@ -33,7 +33,8 @@ let _initialSaved = loadState();
 export default function EditorPage() {
   const { trackId: trackIdParam } = useParams<{ trackId: string }>();
   const navigate = useNavigate();
-  const { session } = useAuthStore();
+  const { session, profile } = useAuthStore();
+  const isAdmin = profile?.role === "admin";
   const isCloudMode = !!session;
   const { canUseSatellite } = useTier();
   const satelliteLocked = isCloudMode && !canUseSatellite;
@@ -41,6 +42,12 @@ export default function EditorPage() {
   const trackId = isNewTrack ? null : trackIdParam!;
 
   const trackQuery = useTrack(isCloudMode && !isNewTrack ? trackId! : undefined);
+  // Admin-Fallback: fremde Strecke via SECURITY DEFINER RPC laden (read-only)
+  // data === null bedeutet: maybeSingle hat 0 Zeilen geliefert (RLS blockiert — fremde Strecke)
+  const needAdminTrack = isAdmin && !isNewTrack && !trackQuery.isLoading && trackQuery.data === null;
+  const adminTrackQuery = useAdminTrack(needAdminTrack ? trackId! : undefined);
+  const effectiveTrackData = trackQuery.data ?? adminTrackQuery.data;
+  const isAdminViewingForeignTrack = needAdminTrack && !!adminTrackQuery.data;
   const createTrackMutation = useCreateTrack();
   const saveTrackMutation = useSaveTrack();
   const renameTrackMutation = useRenameTrack();
@@ -84,6 +91,7 @@ export default function EditorPage() {
   // UI state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const selectedId = selectedIds.size === 1 ? [...selectedIds][0] : null;
+  const [clipboard, setClipboard] = useState<PlacedFormation[]>([]);
   const [selectedArrowId, setSelectedArrowId] = useState<string | null>(null);
   const [mode, setMode] = useState<"select" | "drawArrow">("select");
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
@@ -93,6 +101,8 @@ export default function EditorPage() {
   const [nameFocused, setNameFocused] = useState(false);
   const isMobile = useIsMobile();
   const [mobilePanel, setMobilePanel] = useState<"formations" | "properties" | null>(null);
+  const { data: customFormations } = useCustomFormationList();
+  const { data: libraryFormations } = useLibraryFormations();
   useEffect(() => { if (!isMobile) setMobilePanel(null); }, [isMobile]);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedFadeRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -112,8 +122,12 @@ export default function EditorPage() {
   // Keyboard shortcuts — refs to avoid stale closures
   const selectedIdsRef = useRef(selectedIds);
   const selectedArrowIdRef = useRef(selectedArrowId);
+  const clipboardRef = useRef(clipboard);
+  const itemsRef = useRef(items);
   useEffect(() => { selectedIdsRef.current = selectedIds; }, [selectedIds]);
   useEffect(() => { selectedArrowIdRef.current = selectedArrowId; }, [selectedArrowId]);
+  useEffect(() => { clipboardRef.current = clipboard; }, [clipboard]);
+  useEffect(() => { itemsRef.current = items; }, [items]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -123,6 +137,29 @@ export default function EditorPage() {
 
       if (meta && e.key === "z" && !e.shiftKey) { e.preventDefault(); dispatch({ type: "UNDO" }); return; }
       if (meta && (e.key === "y" || (e.key === "z" && e.shiftKey))) { e.preventDefault(); dispatch({ type: "REDO" }); return; }
+      if (meta && e.key === "a" && !inputFocused) {
+        e.preventDefault();
+        setSelectedIds(new Set(itemsRef.current.map((it) => it.id)));
+        return;
+      }
+      if (meta && e.key === "c" && !inputFocused) {
+        const sel = selectedIdsRef.current;
+        if (sel.size > 0) setClipboard(itemsRef.current.filter((it) => sel.has(it.id)));
+        return;
+      }
+      if (meta && e.key === "v" && !inputFocused) {
+        if (clipboardRef.current.length > 0) {
+          const pasted = clipboardRef.current.map((it) => ({
+            ...it,
+            id: crypto.randomUUID(),
+            x: it.x + 1,
+            y: it.y + 1,
+          }));
+          dispatch({ type: "ADD_FORMATIONS", formations: pasted });
+          setSelectedIds(new Set(pasted.map((it) => it.id)));
+        }
+        return;
+      }
       if (e.key === "Escape") { setMode("select"); return; }
       if (!inputFocused && (e.key === "Delete" || e.key === "Backspace")) {
         const ids = [...selectedIdsRef.current];
@@ -156,15 +193,15 @@ export default function EditorPage() {
     });
   }, [isCloudMode, isNewTrack]);
 
-  // Cloud: apply loaded track data once
+  // Cloud: apply loaded track data once (own track or admin fallback)
   useEffect(() => {
-    if (!isCloudMode || isNewTrack || !trackQuery.data || cloudAppliedRef.current) return;
+    if (!isCloudMode || isNewTrack || !effectiveTrackData || cloudAppliedRef.current) return;
     cloudAppliedRef.current = true;
-    const d = trackQuery.data;
+    const d = effectiveTrackData;
     dispatch({
       type: "RESET",
       state: {
-        items: (d.state_json.items ?? []) as PlacedFormation[],
+        items: sanitizeItems(d.state_json.items ?? []),
         arrows: (d.state_json.arrows ?? []) as PlacedArrow[],
       },
     });
@@ -177,11 +214,12 @@ export default function EditorPage() {
     setMapOpacity(d.map_opacity);
     setTrackName(d.name);
     setCloudLoaded(true);
-  }, [isCloudMode, isNewTrack, trackQuery.data]);
+  }, [isCloudMode, isNewTrack, effectiveTrackData]);
 
   // Autosave — debounced 1 s after last change
   useEffect(() => {
     if (!cloudLoaded) return;
+    if (isAdminViewingForeignTrack) return; // Admin kann fremde Strecken nicht speichern
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     if (savedFadeRef.current) clearTimeout(savedFadeRef.current);
     setSaveStatus("pending");
@@ -223,6 +261,29 @@ export default function EditorPage() {
     setSelectedIds(new Set([newItem.id]));
     setSelectedArrowId(null);
     setSubMenuKey(null);
+  }
+
+  function addCustomFormation(id: string) {
+    const f = customFormations?.find((c) => c.id === id) ?? libraryFormations?.find((c) => c.id === id);
+    if (!f) return;
+    const newItem: PlacedFormation = {
+      id: crypto.randomUUID(),
+      key: "custom",
+      x: 1,
+      y: 1,
+      rotationDeg: 0,
+      direction: (f.default_direction as DirectionMode | null) ?? "none",
+      durationSeconds: f.duration_seconds ?? undefined,
+      customFormationId: f.id,
+      customSnapshot: {
+        cones: f.cones_json,
+        arrows: f.arrows_json,
+        label: f.name,
+      },
+    };
+    dispatch({ type: "ADD_FORMATION", formation: newItem });
+    setSelectedIds(new Set([newItem.id]));
+    setSelectedArrowId(null);
   }
 
   function updateFormation(id: string, patch: Partial<PlacedFormation>) {
@@ -272,7 +333,7 @@ export default function EditorPage() {
   }
 
   function handleExport() {
-    exportAsFile({ items, arrows, manualWidth, manualLength, mapSatellite, mapOpacity, areaSel });
+    exportAsFile({ name: trackName, items, arrows, manualWidth, manualLength, mapSatellite, mapOpacity, areaSel });
   }
 
   function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
@@ -343,14 +404,17 @@ export default function EditorPage() {
     return <div style={{ padding: 40 }}>Neue Strecke wird angelegt…</div>;
   }
   if (isCloudMode && !isNewTrack && !cloudLoaded) {
-    if (trackQuery.isError) {
+    if (trackQuery.isError && adminTrackQuery.isError) {
+      return <div style={{ padding: 40 }}>Strecke konnte nicht geladen werden.</div>;
+    }
+    if (trackQuery.isError && !isAdmin) {
       return <div style={{ padding: 40 }}>Strecke konnte nicht geladen werden.</div>;
     }
     return <div style={{ padding: 40 }}>Lädt…</div>;
   }
 
   return (
-    <div style={{ height: "100vh", overflow: "hidden", background: "#f1f5f9", color: "#0f172a", display: "flex", flexDirection: "column" }}>
+    <div style={{ flex: 1, minHeight: 0, overflow: "hidden", background: "#f1f5f9", color: "#0f172a", display: "flex", flexDirection: "column" }}>
 
       {/* ── Modal: Map Selector ─────────────────────────────────────── */}
       {showMapSelector && (
@@ -419,12 +483,12 @@ export default function EditorPage() {
           trackId={trackId}
           trackName={trackName}
           nameFocused={nameFocused}
+          nameReadOnly={isAdminViewingForeignTrack}
           onSetTrackName={setTrackName}
           onNameFocus={() => setNameFocused(true)}
           onNameBlur={handleNameBlur}
           onNameKeyDown={handleNameKeyDown}
           onShowHelp={() => setShowHelp(true)}
-          onSignOut={async () => { await supabase.auth.signOut(); navigate("/login"); }}
         />
 
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "276px 1fr 296px", gap: 14, flex: 1, minHeight: 0, overflow: "hidden" }}>
@@ -452,6 +516,11 @@ export default function EditorPage() {
             subMenuKey={subMenuKey}
             onToggleSubMenu={(key) => setSubMenuKey(subMenuKey === key ? null : key)}
             onAddFormation={addFormation}
+            customFormations={[
+              ...(customFormations ?? []).map((f) => ({ id: f.id, name: f.name, pylon_count: f.pylon_count })),
+              ...(libraryFormations ?? []).map((f) => ({ id: f.id, name: f.name, pylon_count: f.pylon_count, isLibrary: true, displayName: f.display_name })),
+            ]}
+            onAddCustomFormation={addCustomFormation}
           />
 
           {/* Canvas */}
@@ -471,11 +540,13 @@ export default function EditorPage() {
               errorCount={errorCount}
               warnCount={warnCount}
               hasItems={items.length > 0}
-              fieldWidth={fieldWidth}
-              fieldLength={fieldLength}
               saveStatus={saveStatus}
-              onExportSVG={() => downloadSVG(generateTrackSVG(fieldWidth, fieldLength, items, arrows))}
-              onExportPDF={() => printAsPDF(generateTrackSVG(fieldWidth, fieldLength, items, arrows), fieldWidth, fieldLength)}
+              onExportSVG={() => downloadSVG(generateTrackSVG(fieldWidth, fieldLength, items, arrows, mapConfig))}
+              onExportPDF={() => {
+                exportPDF(fieldWidth, fieldLength, items, arrows, mapConfig).catch((err) => {
+                  alert(`PDF-Export fehlgeschlagen: ${err instanceof Error ? err.message : "Unbekannter Fehler"}`);
+                });
+              }}
               onExportJSON={handleExport}
               onImportClick={() => fileInputRef.current?.click()}
               onImportChange={handleImport}
@@ -521,6 +592,8 @@ export default function EditorPage() {
             onSelectFormation={handleSelectFormation}
             totalDurationSeconds={totalDurationSeconds}
             hasItems={items.length > 0}
+            fieldWidth={fieldWidth}
+            fieldLength={fieldLength}
             issues={issues}
           />
 

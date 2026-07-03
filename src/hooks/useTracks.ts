@@ -3,7 +3,7 @@
 // All rights reserved.
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchTracks, fetchTrack, createTrack, saveTrack, renameTrack, deleteTrack } from "../lib/api/tracks";
+import { fetchTracks, fetchTrack, createTrack, saveTrack, renameTrack, deleteTrack, adminListTracks, adminGetTrack, adminDeleteTrack } from "../lib/api/tracks";
 import { useAuthStore } from "../store/authStore";
 
 export function useTrackList() {
@@ -12,7 +12,12 @@ export function useTrackList() {
 }
 
 export function useTrack(id: string | undefined) {
-  return useQuery({ queryKey: ["track", id], queryFn: () => fetchTrack(id!), enabled: !!id });
+  return useQuery({
+    queryKey: ["track", id],
+    queryFn: () => fetchTrack(id!),
+    enabled: !!id,
+    retry: false, // kein Retry — null (RLS) und Fehler sofort als Admin-Fallback behandeln
+  });
 }
 
 export function useCreateTrack() {
@@ -52,5 +57,31 @@ export function useDeleteTrack() {
   return useMutation({
     mutationFn: deleteTrack,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["tracks"] }),
+  });
+}
+
+// --- Admin ---
+
+export function useAdminTrackList() {
+  return useQuery({
+    queryKey: ["admin_tracks"],
+    queryFn: () => adminListTracks(),
+    staleTime: 0,
+  });
+}
+
+export function useAdminTrack(id: string | undefined) {
+  return useQuery({
+    queryKey: ["admin_track", id],
+    queryFn: () => adminGetTrack(id!),
+    enabled: !!id,
+  });
+}
+
+export function useAdminDeleteTrack() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: adminDeleteTrack,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin_tracks"] }),
   });
 }

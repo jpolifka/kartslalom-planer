@@ -8,6 +8,7 @@ export type TrackState = { items: PlacedFormation[]; arrows: PlacedArrow[] };
 
 export type TrackAction =
   | { type: "ADD_FORMATION"; formation: PlacedFormation }
+  | { type: "ADD_FORMATIONS"; formations: PlacedFormation[] }
   | { type: "DELETE_FORMATION"; id: string }
   | { type: "DELETE_FORMATIONS"; ids: string[] }
   | { type: "MOVE_FORMATION"; id: string; dx: number; dy: number }
@@ -37,6 +38,9 @@ export function trackReducer(s: HistState, action: TrackAction): HistState {
   switch (action.type) {
     case "ADD_FORMATION":
       return commit({ ...present, items: [...present.items, action.formation] });
+
+    case "ADD_FORMATIONS":
+      return commit({ ...present, items: [...present.items, ...action.formations] });
 
     case "DELETE_FORMATION":
       return commit({ ...present, items: present.items.filter((it) => it.id !== action.id) });

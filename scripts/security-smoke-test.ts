@@ -52,7 +52,7 @@ function assertErr(error: unknown, msg: string) {
   else ok(msg);
 }
 
-async function createTestUser(email: string) {
+async function createTestUser(email: string, tier: "free" | "pro" | "team") {
   const { data, error } = await admin.auth.admin.createUser({
     email,
     email_confirm: true,
@@ -60,6 +60,17 @@ async function createTestUser(email: string) {
   if (error || !data.user) {
     throw new Error(
       `Test-User anlegen fehlgeschlagen für ${email}: ${error?.message}`
+    );
+  }
+  // Schema-Default ist vorübergehend 'pro' (Übergangspolitik) → immer explizit setzen
+  const { error: tierError } = await admin
+    .from("profiles")
+    .update({ tier })
+    .eq("id", data.user.id);
+  if (tierError) {
+    await admin.auth.admin.deleteUser(data.user.id);
+    throw new Error(
+      `Tier für ${email} konnte nicht auf ${tier} gesetzt werden: ${tierError.message}`
     );
   }
   return data.user;
@@ -102,14 +113,15 @@ async function main() {
   const emailA = `sec-test-a-${ts}@test.invalid`;
   const emailB = `sec-test-b-${ts}@test.invalid`;
   const userIds: string[] = [];
+  const formationIds: string[] = [];
 
   console.log("\n=== Kartslalom Security Smoke Test ===\n");
   console.log(`  Supabase: ${SUPABASE_URL}`);
   console.log("  Setup: ephemere Test-User anlegen …");
 
-  const userA = await createTestUser(emailA);
+  const userA = await createTestUser(emailA, "free");
   userIds.push(userA.id);
-  const userB = await createTestUser(emailB);
+  const userB = await createTestUser(emailB, "pro");
   userIds.push(userB.id);
 
   try {
@@ -179,11 +191,11 @@ async function main() {
       "Direktes tier-Update auf profiles ist gesperrt (kein UPDATE-Policy)"
     );
 
-    // 7 — Feature-Bypass: Satellite für Free-User gesperrt
-    console.log("\n--- 7: Feature-Bypass Satellite (Free-Tier) ---");
-    const { error: satErr } = await clientA.rpc("save_track", {
+    // 7 — Feature-Bypass: Satellite-Gate — beide Tier-Seiten
+    console.log("\n--- 7: Feature-Bypass Satellite (Free abgelehnt, Pro erlaubt) ---");
+    const { error: freeSatErr } = await clientA.rpc("save_track", {
       p_track_id: trackId,
-      p_state_json: {},
+      p_state_json: { items: [], arrows: [] },
       p_area_sel: null,
       p_width: 18,
       p_length: 36,
@@ -191,8 +203,92 @@ async function main() {
       p_opacity: 0.5,
     });
     assertErr(
-      satErr,
-      "Free-User kann map_satellite=true nicht setzen (satellite_requires_pro)"
+      freeSatErr,
+      "Expliziter Free-User kann map_satellite=true nicht setzen (satellite_requires_pro)"
+    );
+
+    const { data: proTrackId, error: proCreateErr } = await clientB.rpc(
+      "create_track",
+      { track_name: `Pro Satellite Test ${ts}` }
+    );
+    assertOk(!proCreateErr && proTrackId, "Pro-User kann eigenen Track anlegen");
+
+    const { error: proSatErr } = await clientB.rpc("save_track", {
+      p_track_id: proTrackId,
+      p_state_json: { items: [], arrows: [] },
+      p_area_sel: null,
+      p_width: 18,
+      p_length: 36,
+      p_satellite: true,
+      p_opacity: 0.5,
+    });
+    assertOk(
+      !proSatErr,
+      "Expliziter Pro-User kann map_satellite=true speichern"
+    );
+
+    // 8 — H0: Custom-Formation anlegen, RLS Fremdzugriff
+    console.log("\n--- 8: H0 – Custom-Formation RLS (Fremdzugriff) ---");
+    const { data: formationId, error: formationErr } = await clientA.rpc(
+      "create_custom_formation",
+      {
+        p_name: `Test-Formation ${ts}`,
+        p_description: null,
+        p_category: "individuell",
+        p_cones_json: [],
+        p_arrows_json: [],
+        p_default_direction: null,
+        p_lichte_breite: null,
+        p_duration_seconds: null,
+        p_source_formation_key: null,
+        p_source_custom_formation_id: null,
+      }
+    );
+    assertOk(!formationErr && formationId, "User A kann Custom-Formation anlegen (RPC)");
+    if (formationId) formationIds.push(formationId);
+
+    const { data: bFormRead } = await clientB
+      .from("custom_formations")
+      .select("id")
+      .eq("id", formationId);
+    assertOk(
+      Array.isArray(bFormRead) && bFormRead.length === 0,
+      "User B sieht Custom-Formation von User A nicht (RLS)"
+    );
+
+    // 9 — H0: Direktes INSERT auf custom_formations gesperrt
+    console.log("\n--- 9: H0 – Direktes INSERT auf custom_formations gesperrt ---");
+    const { error: cfInsertErr } = await clientA
+      .from("custom_formations")
+      .insert({ name: "Direct", cones_json: [], arrows_json: [] });
+    assertErr(cfInsertErr, "Direktes INSERT auf custom_formations ist gesperrt (REVOKE)");
+
+    // 10 — H0: Library-Formation für anon lesbar
+    console.log("\n--- 10: H0 – Library-Formation für anon lesbar ---");
+    const { data: libRow, error: libInsertErr } = await admin
+      .from("custom_formations")
+      .insert({
+        name: `Library-Test ${ts}`,
+        cones_json: [],
+        arrows_json: [],
+        is_library: true,
+        status: "library",
+      })
+      .select("id")
+      .single();
+    assertOk(!libInsertErr && libRow?.id, "Admin kann Library-Formation direkt anlegen");
+    if (libRow?.id) formationIds.push(libRow.id);
+
+    const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    const { data: anonRead } = await anonClient
+      .from("custom_formations")
+      .select("id")
+      .eq("id", libRow?.id);
+    assertOk(
+      Array.isArray(anonRead) && anonRead.length === 1,
+      "Anon-User kann Library-Formation lesen (is_library=true)"
     );
 
     console.log(
@@ -200,7 +296,10 @@ async function main() {
     );
     if (failed > 0) process.exit(1);
   } finally {
-    console.log("  Cleanup: Test-User löschen …");
+    console.log("  Cleanup: Test-Daten löschen …");
+    if (formationIds.length > 0) {
+      await admin.from("custom_formations").delete().in("id", formationIds);
+    }
     await Promise.all(userIds.map((id) => admin.auth.admin.deleteUser(id)));
     console.log("  Fertig.\n");
   }

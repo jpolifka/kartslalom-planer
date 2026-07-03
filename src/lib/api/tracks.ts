@@ -4,6 +4,7 @@
 
 import { supabase } from "../supabase";
 import type { SavedState } from "../storage";
+import type { PlacedFormation, PlacedArrow } from "../../types";
 
 export type TrackRow = {
   id: string;
@@ -14,10 +15,22 @@ export type TrackRow = {
 };
 
 export type TrackDetail = TrackRow & {
-  state_json: { items: unknown[]; arrows: unknown[] };
+  state_json: { items: PlacedFormation[]; arrows: PlacedArrow[] };
   area_sel_json: unknown;
   map_satellite: boolean;
   map_opacity: number;
+};
+
+export type AdminTrackRow = {
+  id: string;
+  owner_id: string;
+  owner_email: string | null;
+  name: string;
+  is_public: boolean;
+  manual_width: number;
+  manual_length: number;
+  created_at: string;
+  updated_at: string;
 };
 
 export async function fetchTracks(): Promise<TrackRow[]> {
@@ -29,14 +42,17 @@ export async function fetchTracks(): Promise<TrackRow[]> {
   return data;
 }
 
-export async function fetchTrack(id: string): Promise<TrackDetail> {
+const TRACK_DETAIL_COLUMNS =
+  "id, name, state_json, area_sel_json, manual_width, manual_length, map_satellite, map_opacity, created_at, updated_at" as const;
+
+export async function fetchTrack(id: string): Promise<TrackDetail | null> {
   const { data, error } = await supabase
     .from("tracks")
-    .select("*")
+    .select(TRACK_DETAIL_COLUMNS)
     .eq("id", id)
-    .single();
+    .maybeSingle(); // null statt 406 wenn RLS keine Zeile liefert (Admin fremde Strecke)
   if (error) throw error;
-  return data;
+  return data as TrackDetail | null;
 }
 
 // Erstellen via RPC — serverseitiges Limit-Check
@@ -85,5 +101,26 @@ export async function renameTrack(id: string, name: string): Promise<void> {
 // Löschen: RLS reicht (kein Feature-Bypass möglich)
 export async function deleteTrack(id: string): Promise<void> {
   const { error } = await supabase.from("tracks").delete().eq("id", id);
+  if (error) throw error;
+}
+
+// --- Admin ---
+
+export async function adminListTracks(ownerId?: string): Promise<AdminTrackRow[]> {
+  const { data, error } = await supabase.rpc("admin_list_tracks", {
+    p_owner_id: ownerId ?? null,
+  });
+  if (error) throw error;
+  return data as AdminTrackRow[];
+}
+
+export async function adminGetTrack(id: string): Promise<TrackDetail> {
+  const { data, error } = await supabase.rpc("admin_get_track", { p_id: id });
+  if (error) throw error;
+  return data as TrackDetail;
+}
+
+export async function adminDeleteTrack(id: string): Promise<void> {
+  const { error } = await supabase.rpc("admin_delete_track", { p_id: id });
   if (error) throw error;
 }

@@ -2,11 +2,11 @@
 // Copyright (c) Jens Polifka
 // All rights reserved.
 
-import { getFormation } from "../formationRegistry";
+import { resolveFormation } from "../formationRegistry";
 import type { ValidationContext, ValidationIssue } from "./types";
 
 function centerOfItem(item: ValidationContext["items"][number]) {
-  const formation = getFormation(item.key);
+  const formation = resolveFormation(item);
 
   if (formation.cones.length === 0) {
     return { x: item.x, y: item.y };
@@ -129,7 +129,7 @@ function nearestFormationGap(
 export function validateTrack(ctx: ValidationContext): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
 
-  const tasks = ctx.items.filter((item) => !getFormation(item.key).arrow);
+  const tasks = ctx.items.filter((item) => !resolveFormation(item).arrow);
 
   if (tasks.length === 0) {
     issues.push({

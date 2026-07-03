@@ -2,7 +2,7 @@
 // Copyright (c) Jens Polifka
 // All rights reserved.
 
-import { getFormation } from "./formationRegistry";
+import { resolveFormation } from "./formationRegistry";
 import { boundsFromCones, rotateConesAroundOwnCenter } from "./geometry";
 import { lngToGlobalX, latToGlobalY } from "./geo";
 import { areaSelectionToBounds } from "./areaSelection";
@@ -14,16 +14,17 @@ const PYLON_MIN_PX = 6;
 const SVG_WIDTH = 900;
 const TILE_SIZE = 256;
 
-// A4 landscape, 10mm margins → printable area
-const MM_TO_PX = 3.779527559;
-const PAGE_W_PX = 277 * MM_TO_PX;  // ~1047px
-const PAGE_H_PX = 190 * MM_TO_PX;  // ~718px
-const HEADER_H_PX = 26;
+export type PdfMapConfig = { selection: AreaSelection; satellite: boolean; opacity: number };
 
-type PdfMapConfig = { selection: AreaSelection; satellite: boolean; opacity: number };
+const TILE_ATTRIBUTION = {
+  satellite: "Esri, Maxar, Earthstar Geographics",
+  street: "© OpenStreetMap contributors",
+};
 
-function buildTileHtml(mapConfig: PdfMapConfig, canvasW: number, canvasH: number): string {
-  const { selection, satellite, opacity } = mapConfig;
+// Shared tile-grid math: which tiles cover the field, and how to place them
+// in a canvasW x canvasH box (used by both the SVG and the live MapBackground).
+function computeTileLayout(mapConfig: PdfMapConfig, canvasW: number, canvasH: number) {
+  const { selection, satellite } = mapConfig;
   const θ = (selection.rotationDeg * Math.PI) / 180;
   const cosT = Math.abs(Math.cos(θ));
   const sinT = Math.abs(Math.sin(θ));
@@ -43,29 +44,50 @@ function buildTileHtml(mapConfig: PdfMapConfig, canvasW: number, canvasH: number
   const scaleY = bgH / (gy2 - gy1);
   const n = Math.pow(2, zoom);
 
-  const imgs: string[] = [];
+  const tiles: { url: string; x: number; y: number; w: number; h: number }[] = [];
   for (let ty = Math.floor(gy1 / TILE_SIZE); ty <= Math.ceil(gy2 / TILE_SIZE); ty++) {
     for (let tx = Math.floor(gx1 / TILE_SIZE); tx <= Math.ceil(gx2 / TILE_SIZE); tx++) {
       const wrappedTx = ((tx % n) + n) % n;
       const url = satellite
         ? `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${ty}/${wrappedTx}`
         : `https://tile.openstreetmap.org/${zoom}/${wrappedTx}/${ty}.png`;
-      const left = (tx * TILE_SIZE - gx1) * scaleX;
-      const top = (ty * TILE_SIZE - gy1) * scaleY;
-      const w = TILE_SIZE * scaleX;
-      const h = TILE_SIZE * scaleY;
-      imgs.push(`<img src="${url}" alt="" style="position:absolute;left:${left.toFixed(1)}px;top:${top.toFixed(1)}px;width:${w.toFixed(1)}px;height:${h.toFixed(1)}px">`);
+      tiles.push({
+        url,
+        x: (tx * TILE_SIZE - gx1) * scaleX,
+        y: (ty * TILE_SIZE - gy1) * scaleY,
+        w: TILE_SIZE * scaleX,
+        h: TILE_SIZE * scaleY,
+      });
     }
   }
 
-  const left = ((canvasW - bgW) / 2).toFixed(1);
-  const top = ((canvasH - bgH) / 2).toFixed(1);
+  return {
+    tiles,
+    bgW,
+    bgH,
+    left: (canvasW - bgW) / 2,
+    top: (canvasH - bgH) / 2,
+    attribution: satellite ? TILE_ATTRIBUTION.satellite : TILE_ATTRIBUTION.street,
+  };
+}
+
+// Renders the satellite/street tiles as SVG <image> elements, clipped to the
+// field box and rotated to match the selected area. Used both for the
+// standalone SVG export and as the base layer for the vector PDF export.
+function buildTileSvg(mapConfig: PdfMapConfig, canvasW: number, canvasH: number): string {
+  const { tiles, bgW, bgH, left, top } = computeTileLayout(mapConfig, canvasW, canvasH);
+
+  const imgs = tiles.map(
+    (t) =>
+      `<image href="${t.url}" crossorigin="anonymous" x="${t.x.toFixed(1)}" y="${t.y.toFixed(1)}"` +
+      ` width="${t.w.toFixed(1)}" height="${t.h.toFixed(1)}" preserveAspectRatio="none"/>`
+  );
 
   return (
-    `<div style="position:absolute;inset:0;opacity:${opacity};pointer-events:none;overflow:hidden;">` +
-    `<div style="position:absolute;left:${left}px;top:${top}px;width:${bgW.toFixed(1)}px;height:${bgH.toFixed(1)}px;transform:rotate(${-selection.rotationDeg}deg);transform-origin:50% 50%;overflow:hidden;">` +
+    `<g opacity="${mapConfig.opacity}" clip-path="url(#mapClip)">` +
+    `<g transform="translate(${left.toFixed(1)},${top.toFixed(1)}) rotate(${-mapConfig.selection.rotationDeg},${(bgW / 2).toFixed(1)},${(bgH / 2).toFixed(1)})">` +
     imgs.join("") +
-    `</div></div>`
+    `</g></g>`
   );
 }
 
@@ -91,7 +113,8 @@ export function generateTrackSVG(
   fieldWidth: number,
   fieldLength: number,
   items: PlacedFormation[],
-  arrows: PlacedArrow[]
+  arrows: PlacedArrow[],
+  mapConfig?: PdfMapConfig | null
 ): string {
   const scale = SVG_WIDTH / fieldWidth;
   const svgH = fieldLength * scale;
@@ -101,13 +124,18 @@ export function generateTrackSVG(
   const out: string[] = [];
 
   out.push(
-    `<svg xmlns="http://www.w3.org/2000/svg"` +
+    `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"` +
     ` width="${SVG_WIDTH}" height="${fmt(svgH)}"` +
     ` viewBox="0 0 ${SVG_WIDTH} ${fmt(svgH)}">`
   );
 
-  // White background
-  out.push(`<rect width="${SVG_WIDTH}" height="${fmt(svgH)}" fill="white"/>`);
+  if (mapConfig) {
+    // Satellite/street tiles as the base layer; grid, border and formations are drawn on top.
+    out.push(`<defs><clipPath id="mapClip"><rect width="${SVG_WIDTH}" height="${fmt(svgH)}"/></clipPath></defs>`);
+    out.push(buildTileSvg(mapConfig, SVG_WIDTH, svgH));
+  } else {
+    out.push(`<rect width="${SVG_WIDTH}" height="${fmt(svgH)}" fill="white"/>`);
+  }
 
   // Grid (1 m cells)
   out.push(`<g stroke="#e2e8f0" stroke-width="1">`);
@@ -150,7 +178,7 @@ export function generateTrackSVG(
 
   // Formations
   for (const item of items) {
-    const formation = getFormation(item.key);
+    const formation = resolveFormation(item);
 
     // Pre-rotate cones mathematically (same approach as TrackCanvas) to avoid rotation bbox bugs
     const src = formation.cones;
@@ -244,6 +272,16 @@ export function generateTrackSVG(
     out.push(`<polygon points="${arrowHeadPoints(ex, ey, cpx, cpy, arrowHeadSize)}" fill="#334155"/>`);
   }
 
+  if (mapConfig) {
+    const attribution = mapConfig.satellite ? TILE_ATTRIBUTION.satellite : TILE_ATTRIBUTION.street;
+    const fontSize = 7;
+    const boxW = attribution.length * 4.2 + 8;
+    out.push(
+      `<rect x="${fmt(SVG_WIDTH - boxW - 4)}" y="${fmt(svgH - 14)}" width="${fmt(boxW)}" height="11" fill="white" fill-opacity="0.75" rx="2"/>` +
+      `<text x="${SVG_WIDTH - 8}" y="${fmt(svgH - 6)}" font-family="Arial,sans-serif" font-size="${fontSize}" fill="#1f2937" text-anchor="end">${attribution}</text>`
+    );
+  }
+
   out.push(`</svg>`);
   return out.join("\n");
 }
@@ -260,78 +298,65 @@ export function downloadSVG(svg: string, filename = "kartslalom.svg") {
   URL.revokeObjectURL(url);
 }
 
-export function printAsPDF(
-  svg: string,
+// Renders the track (and, if given, the satellite/street background) as a
+// vector PDF and triggers a direct file download via jsPDF — no browser
+// print dialog involved.
+export async function exportPDF(
   fieldWidth: number,
   fieldLength: number,
-  mapConfig?: PdfMapConfig | null
-) {
+  items: PlacedFormation[],
+  arrows: PlacedArrow[],
+  mapConfig?: PdfMapConfig | null,
+  filename = "kartslalom-streckenplan.pdf"
+): Promise<void> {
+  const svg = generateTrackSVG(fieldWidth, fieldLength, items, arrows, mapConfig);
   const svgH = fieldLength * (SVG_WIDTH / fieldWidth);
-  const trackAreaH = PAGE_H_PX - HEADER_H_PX;
-  const scale = Math.min(PAGE_W_PX / SVG_WIDTH, trackAreaH / svgH);
 
-  const dim = `${fieldWidth.toFixed(1)} m × ${fieldLength.toFixed(1)} m`;
+  // svg2pdf.js needs the source element attached to the document to resolve
+  // computed styles; keep it off-screen so nothing flashes on screen.
+  const container = document.createElement("div");
+  container.style.position = "fixed";
+  container.style.left = "-99999px";
+  container.style.top = "0";
+  container.innerHTML = svg;
+  document.body.appendChild(container);
+  const svgEl = container.firstElementChild as unknown as SVGSVGElement;
 
-  // Remove white background from SVG so satellite tiles show through
-  const printSvg = mapConfig
-    ? svg.replace('fill="white"', 'fill="none"')
-    : svg;
+  try {
+    const { jsPDF } = await import("jspdf");
+    await import("svg2pdf.js");
 
-  const tileHtml = mapConfig ? buildTileHtml(mapConfig, SVG_WIDTH, svgH) : "";
-  const attribution = mapConfig?.satellite
-    ? "Esri, Maxar, Earthstar Geographics"
-    : mapConfig
-    ? "© OpenStreetMap contributors"
-    : "";
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    const margin = 10;
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const headerH = 10;
 
-  const html = `<!DOCTYPE html>
-<html lang="de">
-<head>
-  <meta charset="utf-8">
-  <title>Kartslalom Streckenplan</title>
-  <style>
-    @page { size: A4 landscape; margin: 10mm; }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Arial, sans-serif; background: white; overflow: hidden; }
-    .page { width: ${PAGE_W_PX.toFixed(0)}px; height: ${PAGE_H_PX.toFixed(0)}px; position: relative; overflow: hidden; }
-    .hdr { height: ${HEADER_H_PX}px; display: flex; align-items: flex-end; justify-content: space-between; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; }
-    h1 { font-size: 12pt; color: #0f172a; }
-    .meta { font-size: 9pt; color: #64748b; }
-    .track { position: absolute; top: ${HEADER_H_PX}px; left: 0; overflow: hidden; }
-    .wrapper { position: relative; width: ${SVG_WIDTH}px; height: ${svgH.toFixed(0)}px; transform-origin: top left; transform: scale(${scale.toFixed(6)}); }
-    .wrapper svg { position: absolute; top: 0; left: 0; }
-  </style>
-</head>
-<body>
-  <div class="page">
-    <div class="hdr">
-      <h1>Kartslalom Streckenplan</h1>
-      <span class="meta">${dim}</span>
-    </div>
-    <div class="track">
-      <div class="wrapper">
-        ${tileHtml}
-        ${printSvg}
-        ${attribution ? `<div style="position:absolute;bottom:4px;right:6px;font-size:8px;color:rgba(0,0,0,0.55);background:rgba(255,255,255,0.7);padding:1px 5px;border-radius:3px;">${attribution}</div>` : ""}
-      </div>
-    </div>
-  </div>
-  <script>
-    var imgs = document.querySelectorAll('img');
-    if (!imgs.length) {
-      setTimeout(function() { window.print(); }, 200);
-    } else {
-      var n = 0;
-      function done() { if (++n >= imgs.length) setTimeout(function() { window.print(); }, 200); }
-      imgs.forEach(function(img) { img.complete ? done() : (img.onload = done, img.onerror = done); });
-    }
-  </script>
-</body>
-</html>`;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.setTextColor(15, 23, 42);
+    doc.text("Kartslalom Streckenplan", margin, margin + 5);
 
-  const win = window.open("", "_blank");
-  if (win) {
-    win.document.write(html);
-    win.document.close();
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`${fieldWidth.toFixed(1)} m × ${fieldLength.toFixed(1)} m`, pageW - margin, margin + 5, { align: "right" });
+
+    doc.setDrawColor(226, 232, 240);
+    doc.line(margin, margin + 7, pageW - margin, margin + 7);
+
+    const areaTop = margin + headerH;
+    const areaW = pageW - margin * 2;
+    const areaH = pageH - areaTop - margin;
+    const fitScale = Math.min(areaW / SVG_WIDTH, areaH / svgH);
+    const renderW = SVG_WIDTH * fitScale;
+    const renderH = svgH * fitScale;
+    const offsetX = margin + (areaW - renderW) / 2;
+
+    await doc.svg(svgEl, { x: offsetX, y: areaTop, width: renderW, height: renderH });
+
+    doc.save(filename);
+  } finally {
+    document.body.removeChild(container);
   }
 }

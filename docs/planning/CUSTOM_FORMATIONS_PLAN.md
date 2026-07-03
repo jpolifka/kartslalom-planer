@@ -1,8 +1,8 @@
 # Kartslalom Streckenplaner — Custom-Hindernis-Editor (Community-Formationen)
 
-**Dokument-Version:** 1.2
+**Dokument-Version:** 1.3
 **Erstellt:** 2026-06-15
-**Zuletzt geändert:** 2026-06-15
+**Zuletzt geändert:** 2026-07-02
 **Änderungen v1.1:** Review-Feedback eingearbeitet — `profiles.email`-Bezug
 geklärt, `auth.uid()`-Checks und Eingabe-/Kategorie-Validierung in allen RPCs,
 neue Admin-Read-RPCs (`admin_list_custom_formations`,
@@ -14,6 +14,15 @@ ergänzt.
 serverseitige `name`-Validierung (1–80 Zeichen) in allen Schreib-RPCs,
 `username`-Eindeutigkeit case-insensitiv (`lower(username)`-Index), neue RPC
 `unshare_custom_formation` inkl. Status-Reset auf `private`.
+**Änderungen v1.3 (2026-07-02):**
+- Sharing **nur noch per E-Mail** (kein Username-Lookup mehr). `find_shareable_user(p_email)` gibt `(id, email)` zurück.
+- `profiles.username` bleibt als Altlast-Feld in der DB (kein Drop, kein Index-Remove) — wird aber im Produkt nicht mehr verwendet.
+- `profiles.display_name` (nullable text) ersetzt `owner_username` als optionale Attribution. Null → UI zeigt "Community-Formation".
+- `get_library_formations()` gibt `display_name` statt `owner_username` zurück.
+- Username-Onboarding-Dialog (5.1) entfällt vollständig.
+- `is_current_user_admin()` RPC ergänzt — AdminGuard prüft nicht mehr nur den Client-Store.
+- `admin_list_custom_formations` erhält `p_limit`/`p_offset` (Paginierung, max. 500) und `edited_by_admin_email` (JOIN auf `profiles`).
+- Attribution in 9.4: "[gelöschter Nutzer]" → `display_name = null` → "Community-Formation" (keine E-Mail-Exposition).
 **Autor:** Claude Sonnet 4.6 (Analyse-Agent)
 **Referenz:** `SAAS_PLAN.md` v1.2, `IMPLEMENTATION_PLAN.md` v2.1
 **Zweck:** Maschinenlesbares Planungsdokument für das Feature "Nutzer bauen eigene
@@ -30,7 +39,7 @@ Dieses Dokument beschreibt **ausschließlich** das Custom-Formation-Feature:
   `IMPLEMENTATION_PLAN.md` Phase 1 "Login + Cloud Save")
 - Vorbereitung auf ein zukünftiges Premium-Modell, ohne dass ein solches Modell
   heute existiert
-- Sharing von Hindernissen an andere User (Username **oder** E-Mail, Nextcloud-Stil)
+- Sharing von Hindernissen an andere User (exakte **E-Mail**, Nextcloud-Stil — kein Username-Lookup)
 - Admin-Funktionalität: Übernahme in die allgemeine Bibliothek, Löschen,
   Weiterbearbeiten im Admin-Kontext
 - WYSIWYG-Editor (online-fähig) mit Regel-Einhaltung (50 cm lichte
@@ -50,23 +59,25 @@ referenziert, nicht wiederholt.
 
 ```sql
 alter table public.profiles
-  add column username text,               -- nullable; Pflicht-Onboarding nach Login
+  add column username text,               -- Altlast, nicht mehr im Produkt genutzt (v1.3)
+  add column display_name text,           -- NEU (v1.3): optionale Attribution, null → "Community-Formation"
   add column role text not null default 'user'
     check (role in ('user', 'admin'));
 
--- Eindeutigkeit case-insensitiv: "Ralf" und "ralf" dürfen nicht parallel
--- existieren. Die UI normalisiert zusätzlich auf lowercase vor dem Speichern;
--- dieser Index erzwingt es serverseitig (ersetzt einen einfachen UNIQUE-Constraint).
+-- Username-Index bleibt als Altlast erhalten, wird aber nicht mehr im
+-- Produkt-Flow gesetzt. Kein Onboarding-Dialog mehr (v1.3).
 create unique index profiles_username_lower_idx on public.profiles (lower(username));
 ```
 
-`username` ist *nullable*, damit bestehende/neue Profile zunächst ohne Username
-existieren können — die UI erzwingt die Vergabe vor dem ersten Zugriff auf
-Dashboard-Funktionen (siehe 6.2).
+`username` ist *nullable* (Altlast, nicht mehr migriert oder im UI gesetzt).
+
+`display_name` ist ebenfalls *nullable*: wenn null → UI zeigt "Community-Formation".
+Nutzer können optional einen Anzeigenamen setzen — E-Mail wird niemals öffentlich
+ausgegeben (Datenschutz).
 
 `profiles.email` existiert bereits gemäß `IMPLEMENTATION_PLAN.md` Abschnitt 0.5
 (`email text not null`, per Trigger `handle_new_user()` aus `auth.users`
-gespiegelt) — `find_shareable_user()` (2.6) kann darauf direkt zugreifen, ohne
+gespiegelt) — `find_shareable_user(p_email)` (2.6) kann darauf direkt zugreifen, ohne
 `auth.users` ansprechen zu müssen.
 
 ### 2.2 `custom_formations`
@@ -377,11 +388,12 @@ $$;
 grant execute on function public.delete_custom_formation(uuid) to authenticated;
 ```
 
-**find_shareable_user — Username ODER E-Mail, kein Enumeration-Leak**
+**find_shareable_user — nur E-Mail, kein Enumeration-Leak (v1.3)**
 
 ```sql
-create or replace function public.find_shareable_user(p_query text)
-returns table(id uuid, username text)
+-- Alte Signatur (p_query text) → (id uuid, username text) entfernt (v1.3).
+create or replace function public.find_shareable_user(p_email text)
+returns table(id uuid, email text)
 language plpgsql security definer set search_path = public as $$
 begin
   if auth.uid() is null then
@@ -389,8 +401,8 @@ begin
   end if;
 
   return query
-    select p.id, p.username from public.profiles p
-    where (p.username = p_query or p.email = p_query)
+    select p.id, p.email from public.profiles p
+    where lower(trim(p.email)) = lower(trim(p_email))
       and p.id <> auth.uid()
       and p.is_deleted = false
     limit 1;
@@ -400,10 +412,10 @@ $$;
 grant execute on function public.find_shareable_user(text) to authenticated;
 ```
 
-Liefert nur bei **exaktem** Treffer ein Ergebnis (kein Teilstring-Match) — die
-UI zeigt bei leerem Ergebnis "Nutzer nicht gefunden", was ein gewisses
-Enumeration-Risiko birgt (üblich bei Sharing-Features, vgl. Nextcloud), aber
-keine Teilstring-Suche über alle User erlaubt.
+Liefert nur bei **exaktem E-Mail-Treffer** (case-insensitiv, getrimmt) ein
+Ergebnis — die UI zeigt bei leerem Ergebnis neutral "Kein Nutzer gefunden."
+(keine Unterscheidung "nicht registriert" vs. "Tippfehler"), was das
+Enumeration-Risiko auf das unvermeidliche Minimum reduziert.
 
 **share_custom_formation**
 
@@ -844,8 +856,8 @@ aus der Registry.
 
 ```yaml
 flow:
-  1: "Such-Eingabe akzeptiert Username ODER E-Mail-Adresse"
-  2: "find_shareable_user(query) -> exakter Treffer {id, username} oder leer"
+  1: "Such-Eingabe akzeptiert ausschließlich E-Mail-Adresse (type='email')"
+  2: "find_shareable_user(p_email) -> exakter Treffer {id, email} oder leer (v1.3: kein username)"
   3: "share_custom_formation(formation_id, target_id, permission: view|edit)"
   4: "Empfänger sieht Formation unter 'Geteilt mit mir' (Status: shared)"
 
@@ -863,14 +875,18 @@ unshare:
     'private'. status in (submitted, library, rejected) bleibt unberührt.
 ```
 
-### 5.1 Username-Onboarding
+### 5.1 Attribution (display_name) — kein Username-Onboarding (v1.3)
+
+Username-Onboarding entfällt vollständig. Stattdessen:
 
 ```yaml
-trigger: "Erster Login nach Implementierung von Phase 1 (Login),
-          falls profiles.username IS NULL"
-ui: "Pflicht-Dialog 'Wähle deinen Benutzernamen' vor Zugriff auf Dashboard
-     (AuthGuard-Erweiterung, ähnlich AuthCallbackPage-Redirect-Logik)"
-validierung: "eindeutig (DB unique constraint), 3-24 Zeichen, [a-z0-9_-]"
+display_name:
+  quelle: "profiles.display_name (nullable text, opt-in)"
+  ui_attributions:
+    gesetzt: "von <display_name>"   # z.B. "von Ralf"
+    null: "Community-Formation"     # Default, wenn kein Name angegeben
+  datenschutz: "E-Mail wird niemals öffentlich angezeigt"
+  setzen: "optional im Profil-Bereich — kein Pflichtdialog, kein Redirect"
 ```
 
 ---
@@ -891,15 +907,16 @@ admin_dashboard:
                     umgeht die User-Select-Policies aus 2.5 nach serverseitiger
                     role='admin'-Prüfung"
       filter: [status, category, owner]
-      spalten: [name, owner_username, category, status, pylon_count, created_at]
+      spalten: [name, owner_email, category, status, pylon_count, created_at, audit]
+      # owner_email via LEFT JOIN profiles (v1.3); audit = edited_by_admin_email + edited_by_admin_at
 
     uebernahme_in_bibliothek:        # Punkt 1.3.1
       aktion: "admin_promote_to_library(formation_id, category)"
       verhalten: >
         Erstellt eine KOPIE mit is_library=true. Das Original bleibt beim
         Ersteller (Status, Bearbeitungsrechte unverändert) — siehe 9.2.
-        Attribution ('Erstellt von <username>') bleibt über
-        source_custom_formation_id nachvollziehbar.
+        Attribution via display_name bleibt über owner_id nachvollziehbar
+        (source_custom_formation_id für Rückverfolgung).
 
     loeschen:                        # Punkt 1.3.2
       aktion: "admin_delete_custom_formation(formation_id)"
@@ -986,9 +1003,11 @@ private Originale entwickeln sich unabhängig weiter.
 ### 9.4 DSGVO / Account-Löschung
 
 Bei Löschung eines Accounts mit `is_library=true`-Einträgen: `owner_id` wird
-durch `on delete set null` automatisch `NULL` (Bibliothek bleibt erhalten,
-Attribution wird in der UI als "[gelöschter Nutzer]" angezeigt) — analog zum
-Track-Anonymisierungs-Pattern aus `IMPLEMENTATION_PLAN.md` Abschnitt 1.14.
+durch `on delete set null` automatisch `NULL` (Bibliothek bleibt erhalten).
+`display_name` ist in `profiles`, nicht in `custom_formations` — nach Account-Löschung
+liefert `get_library_formations()` `display_name = null`, die UI zeigt "Community-Formation".
+Das ist konsistent mit anonymen Library-Beiträgen ohne gesetzten Namen. Kein
+separates "[gelöschter Nutzer]"-Label nötig.
 Private/geteilte (nicht-Library) Formationen werden über `formation_shares
 on delete cascade` und ggf. expliziten Cleanup im
 `delete-account`-Edge-Function-Flow entfernt.
@@ -1052,26 +1071,34 @@ phase_H2:
 phase_H3:
   name: "Sharing"
   voraussetzung: H2
+  status: "✅ abgeschlossen (2026-07-02)"
   scope:
-    - "Username-Onboarding-Dialog (5.1)"
-    - "find_shareable_user, share_custom_formation Anbindung"
+    - "find_shareable_user(p_email) — E-Mail-only, kein Username-Onboarding (5.1 v1.3)"
+    - "share_custom_formation, unshare_custom_formation Anbindung"
     - "'Geteilt mit mir'-Ansicht, Permission view/edit"
+    - "Sharing-Dialog: type='email', neutrale Fehlermeldung (kein Enumeration-Leak)"
 
 phase_H4:
   name: "Admin"
   voraussetzung: H2
+  status: "✅ abgeschlossen (2026-07-02)"
   scope:
-    - "/admin/formations Dashboard (6)"
+    - "/admin/formations Dashboard (6) mit Paginierung (p_limit/p_offset)"
     - "admin_promote_to_library, admin_delete_custom_formation, admin_update_custom_formation"
-    - "Audit-Anzeige (edited_by_admin_id/_at, previous_*_json-Diff)"
+    - "Audit-Spalte: edited_by_admin_email + Datum via Tooltip"
+    - "is_current_user_admin() RPC — AdminGuard prüft serverseitig, nicht nur Client-Store"
+    - "4 AdminGuard-Tests + 13 H4-Integrationstests"
 
 phase_H5:
   name: "Library-Integration & Export-Robustheit"
   voraussetzung: [H2, H4]
+  status: "✅ abgeschlossen (2026-07-02)"
   scope:
     - "Library-Custom-Formationen in Palette/Registry mergen, inkl. Gast-Zugriff (8, 9.5)"
     - "customSnapshot-Denormalisierung in PlacedFormation (9.1), Export/Import/SVG-Pfade verifizieren"
-    - "Attribution-UI ('Erstellt von <username>' / '[gelöschter Nutzer]')"
+    - "Attribution-UI: 'von <display_name>' wenn gesetzt, sonst 'Community-Formation' (5.1 v1.3)"
+    - "SVG-Export: 8 Tests + PDF-Smoke: 4 Tests"
+    - "Integrationstests: Library anon (11 Tests) + Account-Löschung (11 Tests)"
 ```
 
 ---

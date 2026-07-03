@@ -3,7 +3,7 @@
 // All rights reserved.
 
 import { RotateCw, Trash2, AlertTriangle, Info } from "lucide-react";
-import { getFormation } from "../../../lib/formationRegistry";
+import { resolveFormation } from "../../../lib/formationRegistry";
 import type { ValidationIssue } from "../../../lib/validation/types";
 import type { PlacedFormation, PlacedArrow } from "../../../types";
 import { card, outlineBtn, dangerBtn, numInput, mobileDrawerStyle } from "../editorStyles";
@@ -25,6 +25,8 @@ type Props = {
   onSelectFormation: (id: string, addToSelection?: boolean) => void;
   totalDurationSeconds: number;
   hasItems: boolean;
+  fieldWidth: number;
+  fieldLength: number;
   issues: ValidationIssue[];
 };
 
@@ -34,6 +36,7 @@ export default function RightPanel({
   onUpdateFormation, onDeleteFormation, onDeleteSelectedFormations, onDeleteArrow,
   onSelectFormation,
   totalDurationSeconds, hasItems,
+  fieldWidth, fieldLength,
   issues,
 }: Props) {
   const style = isMobile
@@ -85,7 +88,7 @@ export default function RightPanel({
 
         {selected && (
           <div style={{ display: "grid", gap: 10 }}>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>{getFormation(selected.key).label}</div>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>{resolveFormation(selected).label}</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               <label style={{ fontSize: 12 }}>
                 X (m)
@@ -125,7 +128,7 @@ export default function RightPanel({
                   type="number"
                   min="0"
                   step="1"
-                  value={selected.durationSeconds ?? getFormation(selected.key).defaultDurationSeconds ?? 0}
+                  value={selected.durationSeconds ?? resolveFormation(selected).defaultDurationSeconds ?? 0}
                   onChange={(e) => onUpdateFormation(selected.id, { durationSeconds: Math.max(0, Number(e.target.value) || 0) })}
                 />
                 {selected.durationSeconds !== undefined && (
@@ -144,7 +147,7 @@ export default function RightPanel({
               </div>
               {selected.durationSeconds !== undefined && (
                 <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>
-                  Standard: {getFormation(selected.key).defaultDurationSeconds ?? 0} s
+                  Standard: {resolveFormation(selected).defaultDurationSeconds ?? 0} s
                 </div>
               )}
             </label>
@@ -155,9 +158,12 @@ export default function RightPanel({
         )}
       </section>
 
-      {/* Course duration */}
+      {/* Course duration + field size */}
       <section style={card}>
-        <SectionLabel>Kursdauer</SectionLabel>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+          <SectionLabel>Kursdauer</SectionLabel>
+          <span style={{ fontSize: 11, color: "#94a3b8" }}>{fieldWidth.toFixed(1)} × {fieldLength.toFixed(1)} m</span>
+        </div>
         {!hasItems ? (
           <div style={{ fontSize: 13, color: "#94a3b8" }}>Noch keine Formationen platziert.</div>
         ) : (
