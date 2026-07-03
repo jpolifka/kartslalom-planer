@@ -3,8 +3,8 @@
 // All rights reserved.
 
 import React, { useMemo, useReducer, useRef, useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { X, HelpCircle } from "lucide-react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { X, HelpCircle, RotateCcw, Eye } from "lucide-react";
 import TrackCanvas from "../components/TrackCanvas";
 import type { MapConfig } from "../components/TrackCanvas";
 import MapSelector from "../components/MapSelector";
@@ -15,7 +15,7 @@ import type { AreaSelection } from "../lib/areaSelection";
 import type { DirectionMode, FormationKey, PlacedArrow, PlacedFormation } from "../types";
 import { saveState, loadState, clearSavedState, exportAsFile, parseImportFile, sanitizeItems } from "../lib/storage";
 import { useAuthStore } from "../store/authStore";
-import { useTrack, useCreateTrack, useSaveTrack, useRenameTrack, useAdminTrack } from "../hooks/useTracks";
+import { useTrack, useCreateTrack, useSaveTrack, useRenameTrack, useAdminTrack, useTrackVersionDetail, useRestoreTrackVersion } from "../hooks/useTracks";
 import { useTier } from "../hooks/useTier";
 import { useCustomFormationList, useLibraryFormations } from "../hooks/useCustomFormations";
 import { getFormation } from "../lib/formationRegistry";
@@ -33,6 +33,8 @@ let _initialSaved = loadState();
 export default function EditorPage() {
   const { trackId: trackIdParam } = useParams<{ trackId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const previewVersionId = searchParams.get("previewVersion") ?? undefined;
   const { session, profile } = useAuthStore();
   const isAdmin = profile?.role === "admin";
   const isCloudMode = !!session;
@@ -51,6 +53,8 @@ export default function EditorPage() {
   const createTrackMutation = useCreateTrack();
   const saveTrackMutation = useSaveTrack();
   const renameTrackMutation = useRenameTrack();
+  const versionDetailQuery = useTrackVersionDetail(previewVersionId);
+  const restoreVersionMutation = useRestoreTrackVersion(trackId ?? "");
   const createCalledRef = useRef(false);
   const cloudAppliedRef = useRef(false);
   const [cloudLoaded, setCloudLoaded] = useState(!isCloudMode);
@@ -216,9 +220,27 @@ export default function EditorPage() {
     setCloudLoaded(true);
   }, [isCloudMode, isNewTrack, effectiveTrackData]);
 
+  // Version-Vorschau: Snapshot-Zustand laden und einmalig anwenden
+  const versionPreviewAppliedRef = useRef(false);
+  useEffect(() => {
+    if (!previewVersionId || !versionDetailQuery.data || versionPreviewAppliedRef.current) return;
+    versionPreviewAppliedRef.current = true;
+    const v = versionDetailQuery.data;
+    dispatch({
+      type: "RESET",
+      state: {
+        items: sanitizeItems(v.state_json.items ?? []),
+        arrows: (v.state_json.arrows ?? []) as PlacedArrow[],
+      },
+    });
+    if (v.area_sel_json) setAreaSel(v.area_sel_json as AreaSelection);
+    setCloudLoaded(true);
+  }, [previewVersionId, versionDetailQuery.data]);
+
   // Autosave — debounced 1 s after last change
   useEffect(() => {
     if (!cloudLoaded) return;
+    if (previewVersionId) return; // kein Autosave im Vorschau-Modus
     if (isAdminViewingForeignTrack) return; // Admin kann fremde Strecken nicht speichern
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     if (savedFadeRef.current) clearTimeout(savedFadeRef.current);
@@ -476,6 +498,51 @@ export default function EditorPage() {
       )}
 
       <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", maxWidth: 1600, width: "100%", margin: "0 auto", padding: isMobile ? "10px 10px" : "16px 20px", boxSizing: "border-box" }}>
+
+        {/* ── Vorschau-Banner ─────────────────────────────────────────── */}
+        {previewVersionId && versionDetailQuery.data && (
+          <div style={{
+            background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 10,
+            padding: "10px 14px", marginBottom: 10,
+            display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
+          }}>
+            <Eye size={15} color="#92400e" style={{ flexShrink: 0 }} />
+            <span style={{ fontSize: 13, color: "#92400e", fontWeight: 600, flex: 1, minWidth: 120 }}>
+              Vorschau: Version {versionDetailQuery.data.version_number} vom{" "}
+              {new Date(versionDetailQuery.data.created_at).toLocaleString("de-DE")}
+              {" "}— Schreibschutz
+            </span>
+            <button
+              onClick={async () => {
+                if (!confirm(`Version ${versionDetailQuery.data!.version_number} als aktuelle Version wiederherstellen?`)) return;
+                try {
+                  await restoreVersionMutation.mutateAsync(previewVersionId);
+                  navigate(`/editor/${trackId}`, { replace: true });
+                } catch {
+                  alert("Wiederherstellen fehlgeschlagen.");
+                }
+              }}
+              disabled={restoreVersionMutation.isPending}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 5,
+                border: "none", borderRadius: 7, background: "#d97706",
+                color: "white", padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer",
+              }}
+            >
+              <RotateCcw size={13} /> Wiederherstellen
+            </button>
+            <button
+              onClick={() => navigate(`/editor/${trackId}`, { replace: true })}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 5,
+                border: "1px solid #d97706", borderRadius: 7, background: "white",
+                color: "#92400e", padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer",
+              }}
+            >
+              <X size={13} /> Vorschau schließen
+            </button>
+          </div>
+        )}
 
         <EditorHeader
           isMobile={isMobile}
