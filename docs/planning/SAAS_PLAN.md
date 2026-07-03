@@ -248,7 +248,7 @@ features_included:
   - everything_in_free
   - cloud_sync               # automatische Cloud-Speicherung
   - 50_saved_tracks
-  - satellite_imagery        # Mapbox/Google Maps Satellite
+  - satellite_imagery        # Esri World Imagery (direkter Client-Abruf, kein API-Key)
   - polygon_area_selection   # komplexe Geländeformen
   - full_undo_redo_30_steps
   - shareable_view_links     # URL zum Betrachten (read-only)
@@ -567,7 +567,7 @@ infrastructure:
   monitoring:
     errors: "Sentry (Free-Tier)"
     analytics: "Posthog (self-hosted auf dem VPS, oder EU-Cloud)"
-  maps: "Mapbox (Satellite-Tiles, API-Key server-seitig gesichert) + OSM (Standard, direkt)"
+  maps: "OSM (Standard, direkter Client-Abruf) + Esri World Imagery (Satellite, direkter Client-Abruf, kein API-Key)"
 
 data_model:
   users:
@@ -809,7 +809,7 @@ api_security:
   secrets_management:
     - "Alle Secrets in Umgebungsvariablen, nie in Code"
     - "Stripe Webhooks mit Signature-Verification"
-    - "Mapbox API-Keys: domain-restricted"
+    - "Kartenquellen: OSM (Straße) + Esri World Imagery (Satellite) — kein API-Key erforderlich"
 ```
 
 ### 5.4 Infrastruktur-Sicherheit
@@ -997,7 +997,7 @@ roadmap:
     duration: "4-6 Wochen"
     priority: "hoch"
     tasks:
-      - "Satellite-Maps (Mapbox)"
+      - "Satellite-Maps (Esri World Imagery, bereits implementiert — Tier-Gate aktivieren)"
       - "Polygon-Area-Selection (bereits im Code, nur Tier-Gate)"
       - "Share-Links (read-only)"
       - "Version-Historie (10 Versionen)"
@@ -1039,10 +1039,10 @@ roadmap:
 ```yaml
 critical_dependencies:
   maps_satellite:
-    provider: "Mapbox"
-    why: "OSM bietet kein offizielles Satellite-Tile-API"
-    cost: "Free bis 50.000 Map loads/Monat, dann $0.50/1000"
-    risk: "API-Key muss server-seitig proxied werden"
+    provider: "Esri World Imagery"
+    why: "OSM bietet kein offizielles Satellite-Tile-API; Esri WMS ist frei nutzbar"
+    cost: "Kostenlos bei nicht-kommerziellem / niedrigem Volumen — Nutzungsbedingungen prüfen"
+    risk: "Keine API-Key-Abhängigkeit; Verfügbarkeit und ToS des Esri-Dienstes beachten"
 
   pdf_generation:
     current: "window.print() (client-side, kein server-side control)"
@@ -1228,7 +1228,7 @@ stack:
 
   maps:
     standard: "OpenStreetMap (direkt, keine API-Key nötig)"
-    satellite: "Mapbox (API-Key server-seitig via Edge Function proxied)"
+    satellite: "Esri World Imagery (direkter Client-Abruf, kein API-Key, kein Proxy)"
 
   lifecycle_cron:
     preferred: "Supabase Edge Function + pg_cron Extension"

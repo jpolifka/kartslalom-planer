@@ -371,7 +371,7 @@ export default function FormationEditorPage() {
       {showBasis && <BasisAuswahl onConfirm={handleBasisConfirm} />}
 
       <header style={s.header}>
-        <button style={s.headerBtn} onClick={() => navigate(isEdit ? "/formations" : -1 as never)}>← Zurück</button>
+        <button style={s.headerBtn} onClick={() => { if (isEdit) navigate("/formations"); else navigate(-1); }}>← Zurück</button>
         <span style={s.title}>{name || (isEdit ? "Hindernis bearbeiten" : "Neues Hindernis")}</span>
 
         {isReadOnly && (

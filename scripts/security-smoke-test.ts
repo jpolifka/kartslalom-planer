@@ -52,7 +52,7 @@ function assertErr(error: unknown, msg: string) {
   else ok(msg);
 }
 
-async function createTestUser(email: string) {
+async function createTestUser(email: string, tier: "free" | "pro" | "team") {
   const { data, error } = await admin.auth.admin.createUser({
     email,
     email_confirm: true,
@@ -60,6 +60,17 @@ async function createTestUser(email: string) {
   if (error || !data.user) {
     throw new Error(
       `Test-User anlegen fehlgeschlagen für ${email}: ${error?.message}`
+    );
+  }
+  // Schema-Default ist vorübergehend 'pro' (Übergangspolitik) → immer explizit setzen
+  const { error: tierError } = await admin
+    .from("profiles")
+    .update({ tier })
+    .eq("id", data.user.id);
+  if (tierError) {
+    await admin.auth.admin.deleteUser(data.user.id);
+    throw new Error(
+      `Tier für ${email} konnte nicht auf ${tier} gesetzt werden: ${tierError.message}`
     );
   }
   return data.user;
@@ -108,9 +119,9 @@ async function main() {
   console.log(`  Supabase: ${SUPABASE_URL}`);
   console.log("  Setup: ephemere Test-User anlegen …");
 
-  const userA = await createTestUser(emailA);
+  const userA = await createTestUser(emailA, "free");
   userIds.push(userA.id);
-  const userB = await createTestUser(emailB);
+  const userB = await createTestUser(emailB, "pro");
   userIds.push(userB.id);
 
   try {
@@ -180,11 +191,11 @@ async function main() {
       "Direktes tier-Update auf profiles ist gesperrt (kein UPDATE-Policy)"
     );
 
-    // 7 — Feature-Bypass: Satellite für Free-User gesperrt
-    console.log("\n--- 7: Feature-Bypass Satellite (Free-Tier) ---");
-    const { error: satErr } = await clientA.rpc("save_track", {
+    // 7 — Feature-Bypass: Satellite-Gate — beide Tier-Seiten
+    console.log("\n--- 7: Feature-Bypass Satellite (Free abgelehnt, Pro erlaubt) ---");
+    const { error: freeSatErr } = await clientA.rpc("save_track", {
       p_track_id: trackId,
-      p_state_json: {},
+      p_state_json: { items: [], arrows: [] },
       p_area_sel: null,
       p_width: 18,
       p_length: 36,
@@ -192,8 +203,28 @@ async function main() {
       p_opacity: 0.5,
     });
     assertErr(
-      satErr,
-      "Free-User kann map_satellite=true nicht setzen (satellite_requires_pro)"
+      freeSatErr,
+      "Expliziter Free-User kann map_satellite=true nicht setzen (satellite_requires_pro)"
+    );
+
+    const { data: proTrackId, error: proCreateErr } = await clientB.rpc(
+      "create_track",
+      { track_name: `Pro Satellite Test ${ts}` }
+    );
+    assertOk(!proCreateErr && proTrackId, "Pro-User kann eigenen Track anlegen");
+
+    const { error: proSatErr } = await clientB.rpc("save_track", {
+      p_track_id: proTrackId,
+      p_state_json: { items: [], arrows: [] },
+      p_area_sel: null,
+      p_width: 18,
+      p_length: 36,
+      p_satellite: true,
+      p_opacity: 0.5,
+    });
+    assertOk(
+      !proSatErr,
+      "Expliziter Pro-User kann map_satellite=true speichern"
     );
 
     // 8 — H0: Custom-Formation anlegen, RLS Fremdzugriff
