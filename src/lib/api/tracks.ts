@@ -151,6 +151,10 @@ export type TrackVersionDetail = {
   version_number: number;
   state_json: { items: PlacedFormation[]; arrows: PlacedArrow[] };
   area_sel_json: unknown;
+  manual_width: number | null;   // numeric → JS number
+  manual_length: number | null;
+  map_satellite: boolean | null;
+  map_opacity: number | null;
   created_at: string;
 };
 

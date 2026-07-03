@@ -234,6 +234,10 @@ export default function EditorPage() {
       },
     });
     if (v.area_sel_json) setAreaSel(v.area_sel_json as AreaSelection);
+    if (v.manual_width != null) { setManualWidth(v.manual_width); setManualWidthInput(String(v.manual_width)); }
+    if (v.manual_length != null) { setManualLength(v.manual_length); setManualLengthInput(String(v.manual_length)); }
+    if (v.map_satellite != null) setMapSatellite(v.map_satellite);
+    if (v.map_opacity != null) setMapOpacity(v.map_opacity);
     setCloudLoaded(true);
   }, [previewVersionId, versionDetailQuery.data]);
 
@@ -517,7 +521,9 @@ export default function EditorPage() {
                 if (!confirm(`Version ${versionDetailQuery.data!.version_number} als aktuelle Version wiederherstellen?`)) return;
                 try {
                   await restoreVersionMutation.mutateAsync(previewVersionId);
-                  navigate(`/editor/${trackId}`, { replace: true });
+                  // Voller Seitenreload — setzt cloudAppliedRef zurück, sodass der
+                  // frisch restaurierte Track-Stand sauber in den Editor geladen wird.
+                  window.location.assign(`/editor/${trackId}`);
                 } catch {
                   alert("Wiederherstellen fehlgeschlagen.");
                 }
