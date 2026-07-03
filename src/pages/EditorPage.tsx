@@ -12,7 +12,7 @@ import { getEffectiveDuration } from "../lib/formationRegistry";
 import { runValidation } from "../lib/validation";
 import { generateTrackSVG, downloadSVG, exportPDF } from "../lib/exportSVG";
 import type { AreaSelection } from "../lib/areaSelection";
-import type { FormationKey, PlacedArrow, PlacedFormation } from "../types";
+import type { DirectionMode, FormationKey, PlacedArrow, PlacedFormation } from "../types";
 import { saveState, loadState, clearSavedState, exportAsFile, parseImportFile, sanitizeItems } from "../lib/storage";
 import { useAuthStore } from "../store/authStore";
 import { useTrack, useCreateTrack, useSaveTrack, useRenameTrack, useAdminTrack } from "../hooks/useTracks";
@@ -272,12 +272,12 @@ export default function EditorPage() {
       x: 1,
       y: 1,
       rotationDeg: 0,
-      direction: (f as { default_direction?: string }).default_direction as never ?? "none",
+      direction: (f.default_direction as DirectionMode | null) ?? "none",
       durationSeconds: f.duration_seconds ?? undefined,
       customFormationId: f.id,
       customSnapshot: {
-        cones: f.cones_json as never,
-        arrows: f.arrows_json as never,
+        cones: f.cones_json,
+        arrows: f.arrows_json,
         label: f.name,
       },
     };

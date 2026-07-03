@@ -56,7 +56,7 @@ export default function BasisAuswahl({ onConfirm }: Props) {
       const raw = f.cones_json as ConePoint[];
       const norm = raw.length > 0 ? normalizeCones(raw) : raw;
       const cones: EditableCone[] = norm.map((c) => ({ ...c, id: crypto.randomUUID() }));
-      onConfirm({ cones, arrows: f.arrows_json as never });
+      onConfirm({ cones, arrows: f.arrows_json });
     }
   }
 

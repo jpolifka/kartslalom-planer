@@ -159,7 +159,7 @@ export default function FormationEditorPage() {
       setVisibleM(fit);
     }
 
-    dispatch({ type: "RESET", snap: { cones: cones as never, arrows: effectiveFormation.arrows_json as never } });
+    dispatch({ type: "RESET", snap: { cones, arrows: effectiveFormation.arrows_json } });
     setName(effectiveFormation.name);
     setDescription(effectiveFormation.description ?? "");
     setCategory(effectiveFormation.category);
@@ -176,8 +176,8 @@ export default function FormationEditorPage() {
         name: name.trim(),
         description: description || null,
         category,
-        cones_json: cones as never,
-        arrows_json: arrows as never,
+        cones_json: cones,
+        arrows_json: arrows,
         default_direction: null,
         // 0 ist semantisch leer — RPC lehnt <= 0 ab
         lichte_breite: lichteBreite && lichteBreite > 0 ? lichteBreite : null,
@@ -301,8 +301,8 @@ export default function FormationEditorPage() {
     // Mathematisches Zentrum der Formation auf Canvas-Mitte legen
     const centered = initialSnap.cones.length > 0
       ? (() => {
-          const b = boundsFromCones(initialSnap.cones as never);
-          return translateCones(initialSnap.cones as never, visibleM / 2 - b.cx, visibleM / 2 - b.cy) as never;
+          const b = boundsFromCones(initialSnap.cones);
+          return translateCones(initialSnap.cones, visibleM / 2 - b.cx, visibleM / 2 - b.cy) as EditableCone[];
         })()
       : initialSnap.cones;
     dispatch({ type: "RESET", snap: { ...initialSnap, cones: centered } });

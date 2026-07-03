@@ -42,10 +42,13 @@ export async function fetchTracks(): Promise<TrackRow[]> {
   return data;
 }
 
+const TRACK_DETAIL_COLUMNS =
+  "id, name, state_json, area_sel_json, manual_width, manual_length, map_satellite, map_opacity, created_at, updated_at" as const;
+
 export async function fetchTrack(id: string): Promise<TrackDetail | null> {
   const { data, error } = await supabase
     .from("tracks")
-    .select("*")
+    .select(TRACK_DETAIL_COLUMNS)
     .eq("id", id)
     .maybeSingle(); // null statt 406 wenn RLS keine Zeile liefert (Admin fremde Strecke)
   if (error) throw error;

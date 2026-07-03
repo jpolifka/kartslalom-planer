@@ -950,8 +950,15 @@ version_history:
   tier: "Pro+"
 
 satellite_imagery:
-  provider: "Mapbox"
-  security: "API-Key via Edge-Function-Proxy — nie im Client-Bundle"
+  street_tiles:
+    provider: "OpenStreetMap"
+    url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+    attribution: "© OpenStreetMap contributors"
+  satellite_tiles:
+    provider: "Esri World Imagery"
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+    attribution: "Esri, Maxar, Earthstar Geographics"
+    implementation: "Direkter Tile-Abruf im Browser — kein API-Key, kein Proxy nötig"
   tier: "Pro+"
 
 upgrade_hint:
@@ -972,7 +979,7 @@ lifecycle_emails:
 - [ ] Share-Link: Token-Hash in DB, Plaintext einmalig zurückgegeben, Track über `/share/...` abrufbar
 - [ ] Kein SELECT `WHERE is_public = true` ohne RPC für Fremdzugriff möglich
 - [ ] PNG-Export für Pro, Upgrade-Hinweis mit Kontakt-Link für Free
-- [ ] Mapbox-Key nicht im Client-Bundle (über Edge-Function-Proxy)
+- [ ] Satellite-Kacheln: Nutzungsbedingungen von Esri World Imagery und OSM für die geplante Nutzung geprüft
 - [ ] Lifecycle-E-Mails mit Abmeldemöglichkeit, Datenschutz-Review dokumentiert
 - [ ] Versionshistorie: Wiederherstellen lädt korrekte Version
 
