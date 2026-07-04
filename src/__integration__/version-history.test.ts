@@ -133,6 +133,37 @@ describe("Versionshistorie — Pro-User", () => {
     expect(versions).toHaveLength(1);
     expect(versions![0].version_number).toBe(2);
   });
+
+  it("restore_track_version stellt area_sel_json korrekt wieder her", async () => {
+    const mockAreaSel = { widthM: 80, heightM: 40, centerLat: 50.517, centerLng: 7.317, zoom: 17 };
+
+    // Zustand mit area_sel speichern und Snapshot anlegen
+    await client.rpc("save_track", {
+      p_track_id: trackId, p_state_json: initialState,
+      p_area_sel: mockAreaSel, p_width: 18, p_length: 36, p_satellite: false, p_opacity: 0.5,
+    });
+    const { data: areaVId, error: createErr } = await client.rpc("create_track_version", { p_track_id: trackId });
+    assertNoError(createErr, "create area_sel version");
+
+    // area_sel leeren (Zustand ändern)
+    await client.rpc("save_track", {
+      p_track_id: trackId, p_state_json: modifiedState,
+      p_area_sel: null, p_width: 20, p_length: 40, p_satellite: false, p_opacity: 0.8,
+    });
+
+    // Wiederherstellen
+    const { error: restErr } = await client.rpc("restore_track_version", { p_version_id: areaVId as string });
+    assertNoError(restErr, "restore area_sel version");
+
+    // area_sel_json muss den ursprünglichen Wert haben
+    const { data: track, error: fetchErr } = await client
+      .from("tracks")
+      .select("area_sel_json")
+      .eq("id", trackId)
+      .single();
+    assertNoError(fetchErr, "fetch area_sel nach restore");
+    expect(track!.area_sel_json).toMatchObject({ widthM: 80, heightM: 40 });
+  });
 });
 
 describe("Versionshistorie — Free-User abgelehnt", () => {

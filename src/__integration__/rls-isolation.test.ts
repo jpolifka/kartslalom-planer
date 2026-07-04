@@ -6,7 +6,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
-  createTestUser, loginAsUser, cleanupUsers,
+  createTestUser, loginAsUser, cleanupUsers, anon,
   assertNoError, assertRpcError, ts,
 } from "./helpers";
 
@@ -76,5 +76,39 @@ describe("RLS isolation (Tracks)", () => {
       .from("tracks")
       .insert({ name: "Direct Insert", owner_id: userIds[0] });
     expect(error).not.toBeNull();
+  });
+});
+
+describe("Versions-RPCs — Anon-Zugriff verweigert (permission denied)", () => {
+  const dummyId = "00000000-0000-0000-0000-000000000000";
+
+  it("create_track_version ist für Anon nicht ausführbar", async () => {
+    const { error } = await anon.rpc("create_track_version", { p_track_id: dummyId });
+    expect(error).not.toBeNull();
+    expect(error!.message.toLowerCase()).toContain("permission denied");
+  });
+
+  it("get_track_versions ist für Anon nicht ausführbar", async () => {
+    const { error } = await anon.rpc("get_track_versions", { p_track_id: dummyId });
+    expect(error).not.toBeNull();
+    expect(error!.message.toLowerCase()).toContain("permission denied");
+  });
+
+  it("get_track_version_detail ist für Anon nicht ausführbar", async () => {
+    const { error } = await anon.rpc("get_track_version_detail", { p_version_id: dummyId });
+    expect(error).not.toBeNull();
+    expect(error!.message.toLowerCase()).toContain("permission denied");
+  });
+
+  it("restore_track_version ist für Anon nicht ausführbar", async () => {
+    const { error } = await anon.rpc("restore_track_version", { p_version_id: dummyId });
+    expect(error).not.toBeNull();
+    expect(error!.message.toLowerCase()).toContain("permission denied");
+  });
+
+  it("delete_track_version ist für Anon nicht ausführbar", async () => {
+    const { error } = await anon.rpc("delete_track_version", { p_version_id: dummyId });
+    expect(error).not.toBeNull();
+    expect(error!.message.toLowerCase()).toContain("permission denied");
   });
 });

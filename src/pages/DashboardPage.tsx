@@ -32,7 +32,7 @@ function TrackVersionPanel({ trackId }: { trackId: string }) {
   }
 
   async function handleRestore(versionId: string, versionNum: number) {
-    if (!confirm(`Version ${versionNum} als aktuelle Version wiederherstellen?`)) return;
+    if (!confirm(`Version ${versionNum} wiederherstellen?\n\nDer aktuelle Stand wird überschrieben. Nicht gespeicherte Änderungen gehen verloren.`)) return;
     try {
       await restoreVersionMutation.mutateAsync(versionId);
       navigate(`/editor/${trackId}`);

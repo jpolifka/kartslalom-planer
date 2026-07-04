@@ -518,7 +518,7 @@ export default function EditorPage() {
             </span>
             <button
               onClick={async () => {
-                if (!confirm(`Version ${versionDetailQuery.data!.version_number} als aktuelle Version wiederherstellen?`)) return;
+                if (!confirm(`Version ${versionDetailQuery.data!.version_number} wiederherstellen?\n\nDer aktuelle Stand wird überschrieben. Nicht gespeicherte Änderungen gehen verloren.`)) return;
                 try {
                   await restoreVersionMutation.mutateAsync(previewVersionId);
                   // Voller Seitenreload — setzt cloudAppliedRef zurück, sodass der
