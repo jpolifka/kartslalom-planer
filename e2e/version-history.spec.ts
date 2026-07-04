@@ -1,12 +1,13 @@
 /**
  * Playwright E2E — Versionshistorie (Phase 2)
  *
- * Testet den vollständigen UI-Flow:
+ * Flow:
  *   Snapshot bei Breite=18 erstellen
+ *   → Preview-URL sofort beim Dashboard-Besuch sichern (kein zweiter Dashboard-Umweg)
  *   → Breite auf 24 ändern + Autosave
- *   → Vorschau (Schreibschutz prüfen)
- *   → Wiederherstellen
- *   → Reload bestätigt Breite=18 im Eingabefeld
+ *   → Vorschau über gespeicherte URL direkt ansteuern (Race-Condition-frei)
+ *   → Schreibschutz prüfen
+ *   → Wiederherstellen → Reload bestätigt Breite=18
  *   → Version löschen
  *
  * Voraussetzung: Dev-Stack läuft, Test-User hat Pro-Tier (global-setup).
@@ -26,7 +27,9 @@ test("Versionshistorie: Snapshot → Vorschau → Wiederherstellen (Zustand prü
   await expect(page.getByText("✓")).toBeVisible({ timeout: 10_000 });
   const editorUrl = page.url();
 
-  // ── 2. Snapshot bei Breite=18 erstellen (über Dashboard) ───────────────
+  // ── 2. Dashboard: Snapshot erstellen + Preview-URL sofort sichern ───────
+  // Beide Schritte beim selben Dashboard-Besuch, damit Paralleltest-Tracks
+  // den .first()-Index noch nicht verschoben haben (updated_at frisch).
   await page.goto("/dashboard");
   await page.waitForURL("**/dashboard");
   await page.getByTitle("Snapshots anzeigen").first().click();
@@ -34,31 +37,33 @@ test("Versionshistorie: Snapshot → Vorschau → Wiederherstellen (Zustand prü
   await page.getByRole("button", { name: /\+ snapshot/i }).click();
   await expect(page.getByText("Version 1")).toBeVisible({ timeout: 8_000 });
 
+  // Eye-Button klicken + resultierender URL-Wechsel abfangen → Preview-URL
+  await Promise.all([
+    page.waitForURL(/\/editor\/[0-9a-f-]{36}\?previewVersion=/, { timeout: 10_000 }),
+    page.getByTitle("Vorschau im Editor (schreibgeschützt)").click(),
+  ]);
+  const previewUrl = page.url();
+
   // ── 3. Editor: Breite auf 24 ändern + Autosave ─────────────────────────
   await page.goto(editorUrl);
   await page.waitForURL(editorUrl, { timeout: 10_000 });
 
   // Cloud-Zustand abwarten — Breite-Input zeigt 18
   await expect(page.getByLabel(/breite/i)).toHaveValue("18", { timeout: 10_000 });
-
   await page.getByLabel(/breite/i).fill("24");
   await page.getByLabel(/breite/i).press("Tab"); // blur → onManualWidthBlur
   await expect(page.getByText("✓")).toBeVisible({ timeout: 10_000 }); // Autosave ✓
 
-  // ── 4. Versionshistorie: Vorschau öffnen ────────────────────────────────
-  await page.goto("/dashboard");
-  await page.waitForURL("**/dashboard");
-  await page.getByTitle("Snapshots anzeigen").first().click();
-  await expect(page.getByText("Version 1")).toBeVisible({ timeout: 5_000 });
-
-  await page.getByTitle("Vorschau im Editor (schreibgeschützt)").click();
-  await page.waitForURL(/\/editor\/[0-9a-f-]{36}\?previewVersion=/, { timeout: 10_000 });
+  // ── 4. Vorschau direkt ansteuern (gesicherte URL, kein Dashboard-Umweg) ─
+  // Vermeidet Race Condition: Parallel-Tests können .first() verschieben.
+  await page.goto(previewUrl);
+  await page.waitForURL(previewUrl, { timeout: 10_000 });
 
   // Vorschau-Banner: Version + Schreibschutz-Hinweis
   await expect(page.getByText(/vorschau: version 1/i)).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText(/schreibschutz/i)).toBeVisible();
 
-  // Autosave-Indikator darf nicht erscheinen (Schreibschutz deaktiviert Autosave)
+  // Autosave-Pending-Indikator darf nicht erscheinen (Schreibschutz blockiert Autosave)
   await expect(page.getByText("…")).not.toBeVisible();
 
   // ── 5. Wiederherstellen via Vorschau-Banner ─────────────────────────────
@@ -74,6 +79,8 @@ test("Versionshistorie: Snapshot → Vorschau → Wiederherstellen (Zustand prü
   await expect(page.getByLabel(/breite/i)).toHaveValue("18", { timeout: 10_000 });
 
   // ── 6. Version löschen ───────────────────────────────────────────────────
+  // restore_track_version() setzt updated_at = now() → unser Track ist wieder
+  // der zuletzt geänderte → .first() trifft das korrekte Panel.
   await page.goto("/dashboard");
   await page.waitForURL("**/dashboard");
   await page.getByTitle("Snapshots anzeigen").first().click();
