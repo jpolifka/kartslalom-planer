@@ -50,8 +50,10 @@ test("Versionshistorie: Snapshot → Vorschau → Wiederherstellen → Löschen"
   await expect(page.getByText("✓")).not.toBeVisible();
 
   // ── 5. Wiederherstellen über Vorschau-Banner ──────────────────────────────
+  // exact:true nötig — sonst trifft /wiederherstellen/i auch den Redo-Button
+  // "Wiederherstellen (⌘⇧Z)" in der Toolbar (strict mode violation).
   page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: /wiederherstellen/i }).click();
+  await page.getByRole("button", { name: "Wiederherstellen", exact: true }).click();
 
   // Voller Seitenreload (window.location.assign) → Editor ohne previewVersion-Param
   await page.waitForURL(/\/editor\/[0-9a-f-]{36}$/, { timeout: 15_000 });

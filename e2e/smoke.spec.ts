@@ -44,11 +44,12 @@ test("Sharing: Hindernisse-Liste erreichbar", async ({ page }) => {
   // Zur Formationen-Übersicht navigieren
   await page.goto("/formations");
 
-  // Die Seite enthält entweder Hindernisse oder den "Neues Hindernis"-Button
-  // (Formationen-Feature ist für Pro-User aktiv — Test-User hat Pro-Tier)
+  // Die Seite enthält entweder Hindernisse oder den "Neues Hindernis"-Button.
+  // .first() nötig: Beide Elemente können gleichzeitig sichtbar sein (strict mode).
   await expect(
     page.getByRole("button", { name: /neues hindernis/i })
       .or(page.getByText(/noch keine hindernisse/i))
+      .first()
   ).toBeVisible({ timeout: 10_000 });
 });
 
