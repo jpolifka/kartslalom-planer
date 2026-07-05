@@ -104,6 +104,87 @@ export async function deleteTrack(id: string): Promise<void> {
   if (error) throw error;
 }
 
+// --- Versionshistorie ---
+
+export type TrackVersion = {
+  id: string;
+  version_number: number;
+  created_at: string;
+};
+
+export async function createTrackVersion(trackId: string): Promise<string> {
+  const { data, error } = await supabase.rpc("create_track_version", { p_track_id: trackId });
+  if (error) {
+    if (error.message.includes("version_history_requires_pro")) throw new Error("VERSION_HISTORY_REQUIRES_PRO");
+    if (error.message.includes("not_owner"))                   throw new Error("NOT_OWNER");
+    throw error;
+  }
+  return data as string;
+}
+
+export async function getTrackVersions(trackId: string): Promise<TrackVersion[]> {
+  const { data, error } = await supabase.rpc("get_track_versions", { p_track_id: trackId });
+  if (error) {
+    if (error.message.includes("not_owner")) throw new Error("NOT_OWNER");
+    throw error;
+  }
+  return (data ?? []) as TrackVersion[];
+}
+
+export async function restoreTrackVersion(versionId: string): Promise<void> {
+  const { error } = await supabase.rpc("restore_track_version", { p_version_id: versionId });
+  if (error) {
+    if (error.message.includes("satellite_requires_pro")) throw new Error("SATELLITE_REQUIRES_PRO");
+    if (error.message.includes("not_owner"))              throw new Error("NOT_OWNER");
+    throw error;
+  }
+}
+
+export async function deleteTrackVersion(versionId: string): Promise<void> {
+  const { error } = await supabase.rpc("delete_track_version", { p_version_id: versionId });
+  if (error) {
+    if (error.message.includes("not_owner")) throw new Error("NOT_OWNER");
+    throw error;
+  }
+}
+
+// "Speichern unter" — legt den Snapshot als NEUEN, eigenständigen Track an.
+// Der Ursprungstrack bleibt dabei unverändert (im Unterschied zu restoreTrackVersion).
+export async function createTrackFromVersion(versionId: string, name: string): Promise<string> {
+  const { data, error } = await supabase.rpc("create_track_from_version", {
+    p_version_id: versionId,
+    p_name: name,
+  });
+  if (error) {
+    if (error.message.includes("track_limit_reached"))    throw new Error("TRACK_LIMIT_REACHED");
+    if (error.message.includes("satellite_requires_pro")) throw new Error("SATELLITE_REQUIRES_PRO");
+    if (error.message.includes("not_owner"))               throw new Error("NOT_OWNER");
+    throw error;
+  }
+  return data as string;
+}
+
+export type TrackVersionDetail = {
+  version_number: number;
+  state_json: { items: PlacedFormation[]; arrows: PlacedArrow[] };
+  area_sel_json: unknown;
+  manual_width: number | null;   // numeric → JS number
+  manual_length: number | null;
+  map_satellite: boolean | null;
+  map_opacity: number | null;
+  created_at: string;
+};
+
+export async function getTrackVersionDetail(versionId: string): Promise<TrackVersionDetail | null> {
+  const { data, error } = await supabase.rpc("get_track_version_detail", { p_version_id: versionId });
+  if (error) {
+    if (error.message.includes("not_owner")) throw new Error("NOT_OWNER");
+    throw error;
+  }
+  const rows = data as TrackVersionDetail[] | null;
+  return rows?.[0] ?? null;
+}
+
 // --- Admin ---
 
 export async function adminListTracks(ownerId?: string): Promise<AdminTrackRow[]> {

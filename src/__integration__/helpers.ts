@@ -29,6 +29,12 @@ export const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
+// Unauthentifizierter Client — zum Testen von Anon-Zugriffsverboten
+export const anon = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  ...supabaseOptions,
+  auth: { autoRefreshToken: false, persistSession: false },
+});
+
 export async function createTestUser(email: string, tier: "free" | "pro" | "team" = "free") {
   const { data, error } = await admin.auth.admin.createUser({
     email,

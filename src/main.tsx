@@ -15,9 +15,14 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000 } },
 });
 
-supabase.auth.getSession().then(({ data: { session } }) => {
-  useAuthStore.getState().setSession(session);
-});
+supabase.auth.getSession()
+  .then(({ data: { session } }) => {
+    useAuthStore.getState().setSession(session);
+  })
+  .catch(() => {
+    // Netzwerkfehler beim Start → unauthentifiziert, nicht eingefroren
+    useAuthStore.getState().setSession(null);
+  });
 
 supabase.auth.onAuthStateChange((_event, session) => {
   useAuthStore.getState().setSession(session);

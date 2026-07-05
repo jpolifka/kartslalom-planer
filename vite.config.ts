@@ -54,7 +54,7 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
-    allowedHosts: ["kart.cheezuscraizt.de"]
+    allowedHosts: ["kart.cheezuscraizt.de", "host.docker.internal"]
   },
   build: {
     sourcemap: false,

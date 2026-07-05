@@ -3,8 +3,8 @@
 // All rights reserved.
 
 import React, { useMemo, useReducer, useRef, useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { X, HelpCircle } from "lucide-react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { X, HelpCircle, RotateCcw, Eye } from "lucide-react";
 import TrackCanvas from "../components/TrackCanvas";
 import type { MapConfig } from "../components/TrackCanvas";
 import MapSelector from "../components/MapSelector";
@@ -15,7 +15,8 @@ import type { AreaSelection } from "../lib/areaSelection";
 import type { DirectionMode, FormationKey, PlacedArrow, PlacedFormation } from "../types";
 import { saveState, loadState, clearSavedState, exportAsFile, parseImportFile, sanitizeItems } from "../lib/storage";
 import { useAuthStore } from "../store/authStore";
-import { useTrack, useCreateTrack, useSaveTrack, useRenameTrack, useAdminTrack } from "../hooks/useTracks";
+import { useTrack, useCreateTrack, useSaveTrack, useRenameTrack, useAdminTrack, useTrackVersionDetail, useRestoreTrackVersion, useCreateTrackFromVersion } from "../hooks/useTracks";
+import SaveAsDialog from "../components/SaveAsDialog";
 import { useTier } from "../hooks/useTier";
 import { useCustomFormationList, useLibraryFormations } from "../hooks/useCustomFormations";
 import { getFormation } from "../lib/formationRegistry";
@@ -33,6 +34,8 @@ let _initialSaved = loadState();
 export default function EditorPage() {
   const { trackId: trackIdParam } = useParams<{ trackId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const previewVersionId = searchParams.get("previewVersion") ?? undefined;
   const { session, profile } = useAuthStore();
   const isAdmin = profile?.role === "admin";
   const isCloudMode = !!session;
@@ -51,6 +54,11 @@ export default function EditorPage() {
   const createTrackMutation = useCreateTrack();
   const saveTrackMutation = useSaveTrack();
   const renameTrackMutation = useRenameTrack();
+  const versionDetailQuery = useTrackVersionDetail(previewVersionId);
+  const restoreVersionMutation = useRestoreTrackVersion(trackId ?? "");
+  const createFromVersionMutation = useCreateTrackFromVersion();
+  const [showSaveAsDialog, setShowSaveAsDialog] = useState(false);
+  const [saveAsError, setSaveAsError] = useState<string | null>(null);
   const createCalledRef = useRef(false);
   const cloudAppliedRef = useRef(false);
   const [cloudLoaded, setCloudLoaded] = useState(!isCloudMode);
@@ -216,9 +224,31 @@ export default function EditorPage() {
     setCloudLoaded(true);
   }, [isCloudMode, isNewTrack, effectiveTrackData]);
 
+  // Version-Vorschau: Snapshot-Zustand laden und einmalig anwenden
+  const versionPreviewAppliedRef = useRef(false);
+  useEffect(() => {
+    if (!previewVersionId || !versionDetailQuery.data || versionPreviewAppliedRef.current) return;
+    versionPreviewAppliedRef.current = true;
+    const v = versionDetailQuery.data;
+    dispatch({
+      type: "RESET",
+      state: {
+        items: sanitizeItems(v.state_json.items ?? []),
+        arrows: (v.state_json.arrows ?? []) as PlacedArrow[],
+      },
+    });
+    if (v.area_sel_json) setAreaSel(v.area_sel_json as AreaSelection);
+    if (v.manual_width != null) { setManualWidth(v.manual_width); setManualWidthInput(String(v.manual_width)); }
+    if (v.manual_length != null) { setManualLength(v.manual_length); setManualLengthInput(String(v.manual_length)); }
+    if (v.map_satellite != null) setMapSatellite(v.map_satellite);
+    if (v.map_opacity != null) setMapOpacity(v.map_opacity);
+    setCloudLoaded(true);
+  }, [previewVersionId, versionDetailQuery.data]);
+
   // Autosave — debounced 1 s after last change
   useEffect(() => {
     if (!cloudLoaded) return;
+    if (previewVersionId) return; // kein Autosave im Vorschau-Modus
     if (isAdminViewingForeignTrack) return; // Admin kann fremde Strecken nicht speichern
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     if (savedFadeRef.current) clearTimeout(savedFadeRef.current);
@@ -476,6 +506,95 @@ export default function EditorPage() {
       )}
 
       <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", maxWidth: 1600, width: "100%", margin: "0 auto", padding: isMobile ? "10px 10px" : "16px 20px", boxSizing: "border-box" }}>
+
+        {/* ── Vorschau-Banner ─────────────────────────────────────────── */}
+        {previewVersionId && versionDetailQuery.data && (
+          <div style={{
+            background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 10,
+            padding: "10px 14px", marginBottom: 10,
+            display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
+          }}>
+            <Eye size={15} color="#92400e" style={{ flexShrink: 0 }} />
+            <span style={{ fontSize: 13, color: "#92400e", fontWeight: 600, flex: 1, minWidth: 120 }}>
+              Vorschau: Version {versionDetailQuery.data.version_number} vom{" "}
+              {new Date(versionDetailQuery.data.created_at).toLocaleString("de-DE")}
+              {" "}— Schreibschutz
+            </span>
+            <button
+              onClick={async () => {
+                if (!confirm(`Version ${versionDetailQuery.data!.version_number} wiederherstellen?\n\nDer aktuelle Stand wird überschrieben. Nicht gespeicherte Änderungen gehen verloren.`)) return;
+                try {
+                  await restoreVersionMutation.mutateAsync(previewVersionId);
+                  // Voller Seitenreload — setzt cloudAppliedRef zurück, sodass der
+                  // frisch restaurierte Track-Stand sauber in den Editor geladen wird.
+                  window.location.assign(`/editor/${trackId}`);
+                } catch (err) {
+                  if (err instanceof Error && err.message === "SATELLITE_REQUIRES_PRO") {
+                    alert("Dieser Snapshot enthält Satellitenbilder, die den Pro-Tarif erfordern.");
+                  } else {
+                    alert("Wiederherstellen fehlgeschlagen.");
+                  }
+                }
+              }}
+              disabled={restoreVersionMutation.isPending}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 5,
+                border: "none", borderRadius: 7, background: "#d97706",
+                color: "white", padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer",
+              }}
+            >
+              <RotateCcw size={13} /> Wiederherstellen
+            </button>
+            <button
+              onClick={() => { setSaveAsError(null); setShowSaveAsDialog(true); }}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 5,
+                border: "1px solid #d97706", borderRadius: 7, background: "white",
+                color: "#92400e", padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer",
+              }}
+            >
+              Speichern unter…
+            </button>
+            <button
+              onClick={() => navigate(`/editor/${trackId}`, { replace: true })}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 5,
+                border: "1px solid #d97706", borderRadius: 7, background: "white",
+                color: "#92400e", padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer",
+              }}
+            >
+              <X size={13} /> Vorschau schließen
+            </button>
+          </div>
+        )}
+
+        {previewVersionId && versionDetailQuery.data && (
+          <SaveAsDialog
+            isOpen={showSaveAsDialog}
+            initialName={`${trackName} (Version ${versionDetailQuery.data.version_number})`}
+            isPending={createFromVersionMutation.isPending}
+            errorMessage={saveAsError}
+            onConfirm={async (name) => {
+              setSaveAsError(null);
+              try {
+                const newId = await createFromVersionMutation.mutateAsync({ versionId: previewVersionId, name });
+                setShowSaveAsDialog(false);
+                navigate(`/editor/${newId}`);
+              } catch (err) {
+                if (err instanceof Error && err.message === "TRACK_LIMIT_REACHED") {
+                  setSaveAsError("Du hast die maximale Anzahl an Strecken für deinen Tarif erreicht.");
+                  return;
+                }
+                if (err instanceof Error && err.message === "SATELLITE_REQUIRES_PRO") {
+                  setSaveAsError("Dieser Snapshot enthält Satellitenbilder, die den Pro-Tarif erfordern.");
+                  return;
+                }
+                setSaveAsError("Strecke konnte nicht gespeichert werden.");
+              }
+            }}
+            onCancel={() => setShowSaveAsDialog(false)}
+          />
+        )}
 
         <EditorHeader
           isMobile={isMobile}

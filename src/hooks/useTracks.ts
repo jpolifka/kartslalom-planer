@@ -3,7 +3,7 @@
 // All rights reserved.
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchTracks, fetchTrack, createTrack, saveTrack, renameTrack, deleteTrack, adminListTracks, adminGetTrack, adminDeleteTrack } from "../lib/api/tracks";
+import { fetchTracks, fetchTrack, createTrack, saveTrack, renameTrack, deleteTrack, adminListTracks, adminGetTrack, adminDeleteTrack, createTrackVersion, getTrackVersions, restoreTrackVersion, deleteTrackVersion, getTrackVersionDetail, createTrackFromVersion } from "../lib/api/tracks";
 import { useAuthStore } from "../store/authStore";
 
 export function useTrackList() {
@@ -57,6 +57,63 @@ export function useDeleteTrack() {
   return useMutation({
     mutationFn: deleteTrack,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["tracks"] }),
+  });
+}
+
+// --- Versionshistorie ---
+
+export function useTrackVersions(trackId: string | undefined) {
+  return useQuery({
+    queryKey: ["track_versions", trackId],
+    queryFn: () => getTrackVersions(trackId!),
+    enabled: !!trackId,
+  });
+}
+
+export function useCreateTrackVersion(trackId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => createTrackVersion(trackId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["track_versions", trackId] }),
+  });
+}
+
+export function useRestoreTrackVersion(trackId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (versionId: string) => restoreTrackVersion(versionId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["track", trackId] });
+      qc.invalidateQueries({ queryKey: ["tracks"] });
+    },
+  });
+}
+
+// Legt eine neue, eigenständige Strecke aus einem Snapshot an.
+// Invalidiert bewusst nur ["tracks"] (Liste) — der Ursprungstrack
+// (["track", trackId]) bleibt unverändert und muss nicht neu geladen werden.
+export function useCreateTrackFromVersion() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ versionId, name }: { versionId: string; name: string }) =>
+      createTrackFromVersion(versionId, name),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["tracks"] }),
+  });
+}
+
+export function useTrackVersionDetail(versionId: string | undefined) {
+  return useQuery({
+    queryKey: ["track_version_detail", versionId],
+    queryFn: () => getTrackVersionDetail(versionId!),
+    enabled: !!versionId,
+  });
+}
+
+export function useDeleteTrackVersion(trackId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (versionId: string) => deleteTrackVersion(versionId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["track_versions", trackId] }),
   });
 }
 

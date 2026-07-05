@@ -291,6 +291,32 @@ async function main() {
       "Anon-User kann Library-Formation lesen (is_library=true)"
     );
 
+    // 11 — Phase 2: create_track_from_version ("Speichern unter") — Fremdzugriff gesperrt
+    console.log("\n--- 11: Phase 2 – create_track_from_version Fremdzugriff gesperrt ---");
+    const { error: bVersionErr } = await clientB.rpc("save_track", {
+      p_track_id: proTrackId,
+      p_state_json: { items: [], arrows: [] },
+      p_area_sel: null,
+      p_width: 18,
+      p_length: 36,
+      p_satellite: false,
+      p_opacity: 0.5,
+    });
+    assertOk(!bVersionErr, "Setup: Pro-User speichert Track vor Snapshot");
+    const { data: versionId, error: versionErr } = await clientB.rpc("create_track_version", {
+      p_track_id: proTrackId,
+    });
+    assertOk(!versionErr && versionId, "Setup: Pro-User erstellt Snapshot für Fremdzugriffs-Test");
+
+    const { error: saveAsForeignErr } = await clientA.rpc("create_track_from_version", {
+      p_version_id: versionId,
+      p_name: "Fremdzugriff-Versuch",
+    });
+    assertErr(
+      saveAsForeignErr,
+      "User A kann aus Snapshot von User B keinen neuen Track anlegen (not_owner)"
+    );
+
     console.log(
       `\n=== ${passed} von ${passed + failed} Tests bestanden${failed > 0 ? ` — ${failed} FEHLGESCHLAGEN` : ""} ===\n`
     );

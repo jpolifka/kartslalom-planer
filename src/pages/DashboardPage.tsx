@@ -4,11 +4,169 @@
 
 import { useNavigate } from "react-router-dom";
 import React, { useState } from "react";
-import { Plus, Trash2, MapPin, Pencil, Check, X, Layers, Share2 } from "lucide-react";
-import { useTrackList, useCreateTrack, useDeleteTrack, useRenameTrack } from "../hooks/useTracks";
+import { Plus, Trash2, MapPin, Pencil, Check, X, Layers, Share2, ChevronDown, ChevronRight, History, RotateCcw, Eye, Copy } from "lucide-react";
+import { useTrackList, useCreateTrack, useDeleteTrack, useRenameTrack, useTrackVersions, useCreateTrackVersion, useRestoreTrackVersion, useDeleteTrackVersion, useCreateTrackFromVersion } from "../hooks/useTracks";
 import { useCustomFormationList, useDeleteCustomFormation } from "../hooks/useCustomFormations";
 import { useFeatureGate } from "../hooks/useFeatureGate";
 import { useTier } from "../hooks/useTier";
+import SaveAsDialog from "../components/SaveAsDialog";
+
+// --- TrackVersionPanel ---
+
+function TrackVersionPanel({ trackId, trackName }: { trackId: string; trackName: string }) {
+  const navigate = useNavigate();
+  const { data: versions, isLoading } = useTrackVersions(trackId);
+  const createVersionMutation = useCreateTrackVersion(trackId);
+  const restoreVersionMutation = useRestoreTrackVersion(trackId);
+  const deleteVersionMutation = useDeleteTrackVersion(trackId);
+  const createFromVersionMutation = useCreateTrackFromVersion();
+  const [saveAsVersion, setSaveAsVersion] = useState<{ id: string; versionNum: number } | null>(null);
+  const [saveAsError, setSaveAsError] = useState<string | null>(null);
+
+  async function handleSnapshot() {
+    try {
+      await createVersionMutation.mutateAsync();
+    } catch (err) {
+      if (err instanceof Error && err.message === "VERSION_HISTORY_REQUIRES_PRO") {
+        alert("Versionshistorie erfordert den Pro-Tarif.");
+        return;
+      }
+      alert("Snapshot konnte nicht erstellt werden.");
+    }
+  }
+
+  async function handleRestore(versionId: string, versionNum: number) {
+    if (!confirm(`Version ${versionNum} wiederherstellen?\n\nDer aktuelle Stand wird überschrieben. Nicht gespeicherte Änderungen gehen verloren.`)) return;
+    try {
+      await restoreVersionMutation.mutateAsync(versionId);
+      navigate(`/editor/${trackId}`);
+    } catch (err) {
+      if (err instanceof Error && err.message === "SATELLITE_REQUIRES_PRO") {
+        alert("Dieser Snapshot enthält Satellitenbilder, die den Pro-Tarif erfordern.");
+        return;
+      }
+      alert("Wiederherstellen fehlgeschlagen.");
+    }
+  }
+
+  async function handleDelete(versionId: string, versionNum: number) {
+    if (!confirm(`Version ${versionNum} wirklich löschen?`)) return;
+    await deleteVersionMutation.mutateAsync(versionId);
+  }
+
+  async function handleSaveAsConfirm(name: string) {
+    if (!saveAsVersion) return;
+    setSaveAsError(null);
+    try {
+      const newId = await createFromVersionMutation.mutateAsync({ versionId: saveAsVersion.id, name });
+      setSaveAsVersion(null);
+      navigate(`/editor/${newId}`);
+    } catch (err) {
+      if (err instanceof Error && err.message === "TRACK_LIMIT_REACHED") {
+        setSaveAsError("Du hast die maximale Anzahl an Strecken für deinen Tarif erreicht.");
+        return;
+      }
+      if (err instanceof Error && err.message === "SATELLITE_REQUIRES_PRO") {
+        setSaveAsError("Dieser Snapshot enthält Satellitenbilder, die den Pro-Tarif erfordern.");
+        return;
+      }
+      setSaveAsError("Strecke konnte nicht gespeichert werden.");
+    }
+  }
+
+  return (
+    <div style={{
+      borderTop: "1px solid #f1f5f9", marginTop: 10, paddingTop: 10,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: "#64748b", display: "flex", alignItems: "center", gap: 5 }}>
+          <History size={13} /> Snapshots
+        </span>
+        <button
+          onClick={handleSnapshot}
+          disabled={createVersionMutation.isPending}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 4,
+            border: "1px solid var(--c-primary-border)", background: "var(--c-primary-bg)",
+            borderRadius: 6, padding: "3px 8px", cursor: "pointer",
+            color: "var(--c-primary)", fontSize: 11, fontWeight: 600,
+          }}
+        >
+          + Snapshot
+        </button>
+      </div>
+
+      {isLoading && <div style={{ fontSize: 12, color: "#94a3b8" }}>Lädt…</div>}
+
+      {!isLoading && versions?.length === 0 && (
+        <div style={{ fontSize: 12, color: "#94a3b8" }}>
+          Noch keine Snapshots. Erstelle den ersten Snapshot um den aktuellen Stand zu sichern.
+        </div>
+      )}
+
+      {versions?.map((v) => (
+        <div key={v.id} style={{
+          display: "flex", alignItems: "center", gap: 8,
+          padding: "5px 0", borderBottom: "1px solid #f8fafc",
+        }}>
+          <span style={{ fontSize: 12, color: "#374151", minWidth: 72, fontWeight: 600 }}>
+            Version {v.version_number}
+          </span>
+          <span style={{ fontSize: 12, color: "#94a3b8", flex: 1 }}>
+            {new Date(v.created_at).toLocaleString("de-DE")}
+          </span>
+          <button
+            onClick={() => navigate(`/editor/${trackId}?previewVersion=${v.id}`)}
+            style={versionActionBtn}
+            title="Vorschau im Editor (schreibgeschützt)"
+          >
+            <Eye size={12} color="var(--c-primary)" />
+          </button>
+          <button
+            onClick={() => handleRestore(v.id, v.version_number)}
+            disabled={restoreVersionMutation.isPending}
+            style={versionActionBtn}
+            title="Als aktuelle Version wiederherstellen"
+          >
+            <RotateCcw size={12} color="#16a34a" />
+          </button>
+          <button
+            onClick={() => handleDelete(v.id, v.version_number)}
+            disabled={deleteVersionMutation.isPending}
+            style={{ ...versionActionBtn, borderColor: "#fecaca" }}
+            title="Snapshot löschen"
+          >
+            <Trash2 size={12} color="#b91c1c" />
+          </button>
+          <button
+            onClick={() => { setSaveAsError(null); setSaveAsVersion({ id: v.id, versionNum: v.version_number }); }}
+            style={versionActionBtn}
+            title="Als neue Strecke speichern"
+          >
+            <Copy size={12} color="var(--c-primary)" />
+          </button>
+        </div>
+      ))}
+
+      <SaveAsDialog
+        isOpen={!!saveAsVersion}
+        initialName={saveAsVersion ? `${trackName} (Version ${saveAsVersion.versionNum})` : ""}
+        isPending={createFromVersionMutation.isPending}
+        errorMessage={saveAsError}
+        onConfirm={handleSaveAsConfirm}
+        onCancel={() => setSaveAsVersion(null)}
+      />
+    </div>
+  );
+}
+
+const versionActionBtn: React.CSSProperties = {
+  display: "inline-flex", alignItems: "center", justifyContent: "center",
+  border: "1px solid #e2e8f0", background: "white", borderRadius: 5,
+  padding: 4, cursor: "pointer", flexShrink: 0,
+};
+
+// --- Kategorie-Labels ---
 
 const CATEGORY_LABELS: Record<string, string> = {
   individuell: "Individuell", basis: "Basis", kurven: "Kurven",
@@ -21,9 +179,10 @@ export default function DashboardPage() {
   const createTrackMutation = useCreateTrack();
   const deleteTrackMutation = useDeleteTrack();
   const renameTrackMutation = useRenameTrack();
-  const { trackLimit } = useTier();
+  const { trackLimit, canUseVersionHistory } = useTier();
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [expandedVersionTrackId, setExpandedVersionTrackId] = useState<string | null>(null);
 
   const { data: formations, isLoading: formationsLoading } = useCustomFormationList();
   const deleteFormationMutation = useDeleteCustomFormation();
@@ -113,61 +272,79 @@ export default function DashboardPage() {
 
       {!!tracks?.length && (
         <div style={{ display: "grid", gap: 10 }}>
-          {tracks.map((track) => (
-            <div key={track.id} style={{
-              background: "white", borderRadius: 14, padding: "14px 16px",
-              display: "flex", alignItems: "center", gap: 12,
-              boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
-            }}>
-              <MapPin size={18} color="var(--c-primary)" style={{ flexShrink: 0 }} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                {renamingId === track.id ? (
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <input
-                      autoFocus value={renameValue}
-                      onChange={(e) => setRenameValue(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter") commitRename(); if (e.key === "Escape") cancelRename(); }}
-                      style={{ fontSize: 14, fontWeight: 700, border: "1px solid var(--c-primary)", borderRadius: 6, padding: "3px 7px", outline: "none", minWidth: 160 }}
-                    />
-                    <button onClick={commitRename} style={iconActionBtn} title="Speichern"><Check size={13} color="#16a34a" /></button>
-                    <button onClick={cancelRename} style={iconActionBtn} title="Abbrechen"><X size={13} color="#64748b" /></button>
-                  </div>
-                ) : (
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, cursor: "pointer" }} onClick={() => navigate(`/editor/${track.id}`)}>
-                      {track.name}
-                    </div>
+          {tracks.map((track) => {
+            const versionsExpanded = expandedVersionTrackId === track.id;
+            return (
+              <div key={track.id} data-testid={`track-card-${track.id}`} style={{
+                background: "white", borderRadius: 14, padding: "14px 16px",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  {canUseVersionHistory ? (
                     <button
-                      onClick={() => startRename(track.id, track.name)}
-                      style={{
-                        display: "inline-flex", alignItems: "center", gap: 4,
-                        border: "1px solid var(--c-primary-border)", background: "var(--c-primary-bg)",
-                        borderRadius: 6, padding: "3px 8px", cursor: "pointer",
-                        color: "var(--c-primary)", fontSize: 11, fontWeight: 600, flexShrink: 0,
-                      }}
-                      title="Umbenennen"
+                      onClick={() => setExpandedVersionTrackId(versionsExpanded ? null : track.id)}
+                      style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", flexShrink: 0 }}
+                      title={versionsExpanded ? "Snapshots ausblenden" : "Snapshots anzeigen"}
                     >
-                      <Pencil size={11} /> Umbenennen
+                      {versionsExpanded
+                        ? <ChevronDown size={18} color="var(--c-primary)" />
+                        : <ChevronRight size={18} color="#94a3b8" />}
                     </button>
+                  ) : (
+                    <MapPin size={18} color="var(--c-primary)" style={{ flexShrink: 0 }} />
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {renamingId === track.id ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <input
+                          autoFocus value={renameValue}
+                          onChange={(e) => setRenameValue(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter") commitRename(); if (e.key === "Escape") cancelRename(); }}
+                          style={{ fontSize: 14, fontWeight: 700, border: "1px solid var(--c-primary)", borderRadius: 6, padding: "3px 7px", outline: "none", minWidth: 160 }}
+                        />
+                        <button onClick={commitRename} style={iconActionBtn} title="Speichern"><Check size={13} color="#16a34a" /></button>
+                        <button onClick={cancelRename} style={iconActionBtn} title="Abbrechen"><X size={13} color="#64748b" /></button>
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <div style={{ fontWeight: 700, fontSize: 14, cursor: "pointer" }} onClick={() => navigate(`/editor/${track.id}`)}>
+                          {track.name}
+                        </div>
+                        <button
+                          onClick={() => startRename(track.id, track.name)}
+                          style={{
+                            display: "inline-flex", alignItems: "center", gap: 4,
+                            border: "1px solid var(--c-primary-border)", background: "var(--c-primary-bg)",
+                            borderRadius: 6, padding: "3px 8px", cursor: "pointer",
+                            color: "var(--c-primary)", fontSize: 11, fontWeight: 600, flexShrink: 0,
+                          }}
+                          title="Umbenennen"
+                        >
+                          <Pencil size={11} /> Umbenennen
+                        </button>
+                      </div>
+                    )}
+                    <div
+                      style={{ fontSize: 12, color: "#94a3b8", cursor: renamingId === track.id ? "default" : "pointer" }}
+                      onClick={renamingId === track.id ? undefined : () => navigate(`/editor/${track.id}`)}
+                    >
+                      {track.manual_width} × {track.manual_length} m · zuletzt geändert{" "}
+                      {new Date(track.updated_at).toLocaleString("de-DE")}
+                    </div>
                   </div>
-                )}
-                <div
-                  style={{ fontSize: 12, color: "#94a3b8", cursor: renamingId === track.id ? "default" : "pointer" }}
-                  onClick={renamingId === track.id ? undefined : () => navigate(`/editor/${track.id}`)}
-                >
-                  {track.manual_width} × {track.manual_length} m · zuletzt geändert{" "}
-                  {new Date(track.updated_at).toLocaleString("de-DE")}
+                  <button
+                    onClick={() => handleDeleteTrack(track.id, track.name)}
+                    style={{ border: "1px solid #fecaca", background: "white", borderRadius: 8, padding: 7, cursor: "pointer", color: "#b91c1c", display: "flex", flexShrink: 0 }}
+                    title="Strecke löschen"
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </div>
+
+                {versionsExpanded && <TrackVersionPanel trackId={track.id} trackName={track.name} />}
               </div>
-              <button
-                onClick={() => handleDeleteTrack(track.id, track.name)}
-                style={{ border: "1px solid #fecaca", background: "white", borderRadius: 8, padding: 7, cursor: "pointer", color: "#b91c1c", display: "flex", flexShrink: 0 }}
-                title="Strecke löschen"
-              >
-                <Trash2 size={14} />
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
