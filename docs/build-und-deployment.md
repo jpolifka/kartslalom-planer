@@ -112,21 +112,94 @@ Abhängigkeit mehr von Supabase Cloud.
 > | `kart.cheezuscraizt.de` | `http://kartslalom:8080` (im `edge`-Netz) |
 > | `api.kart.cheezuscraizt.de` | `http://kong:8000` (im `edge`-Netz) |
 >
-> Voraussetzungen auf der Proxy-Seite:
-> 1. Netzwerk `kartslalom-edge` muss existieren, bevor dieser Stack startet
->    (`docker network create kartslalom-edge`, oder das Proxy-Projekt legt es
->    an und dieser Stack hängt sich als `external: true` ein — beides geht,
->    Hauptsache es existiert vorher einmalig).
-> 2. Der nginx-Container muss ebenfalls an `kartslalom-edge` angeschlossen
->    werden (im externen Proxy-Compose-Projekt, `networks: - kartslalom-edge`
->    mit `external: true` referenziert).
-> 3. `proxy_pass` in der nginx-Config zeigt auf die Containernamen oben, nicht
->    auf `localhost`/`127.0.0.1`.
->
 > Ohne das gemeinsame Netzwerk sind App/Kong nur noch vom Docker-Host selbst
 > aus erreichbar (`127.0.0.1:5173` / `127.0.0.1:8000`, siehe unten) — das ist
 > beabsichtigt (P1-Fix: vorher waren diese Ports auf allen Interfaces
 > veröffentlicht).
+>
+> **Konkret auf der Proxy-Seite umzusetzen** (im externen nginx-Compose-
+> Projekt, nicht in diesem Repo):
+>
+> 1. Netzwerk `kartslalom-edge` muss existieren, bevor beide Stacks
+>    hochfahren: `docker network create kartslalom-edge` (einmalig, egal von
+>    welcher Seite) — oder eines der beiden Compose-Projekte legt es nicht
+>    als `external` an, sondern besitzt es, das andere hängt sich per
+>    `external: true` ein.
+> 2. Im nginx-Compose-Projekt den Service an `kartslalom-edge` anschließen:
+>    ```yaml
+>    services:
+>      nginx:
+>        # ... bestehende Config ...
+>        networks:
+>          - default          # bzw. euer bisheriges Netz für andere Subdomains
+>          - kartslalom-edge
+>    networks:
+>      kartslalom-edge:
+>        external: true
+>    ```
+> 3. Zwei neue Server-Blöcke in der nginx-Config, `proxy_pass` auf die
+>    Containernamen im `edge`-Netz (NICHT `localhost`/`127.0.0.1`):
+>    ```nginx
+>    # WICHTIG: nginx loest den Hostnamen bei proxy_pass mit fester Adresse
+>    # sonst nur EINMAL beim Start/Reload auf. Startet Kong/App neu und
+>    # bekommt eine neue Container-IP, zeigt nginx bis zum naechsten Reload
+>    # ins Leere. Mit resolver + Variable wird pro Request neu aufgeloest:
+>    resolver 127.0.0.11 valid=10s;
+>
+>    server {
+>        listen 80;
+>        server_name kart.cheezuscraizt.de;
+>
+>        set $upstream_app kartslalom:8080;
+>        location / {
+>            proxy_pass http://$upstream_app;
+>            proxy_set_header Host $host;
+>            proxy_set_header X-Real-IP $remote_addr;
+>            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+>            proxy_set_header X-Forwarded-Proto $scheme;
+>        }
+>    }
+>
+>    server {
+>        listen 80;
+>        server_name api.kart.cheezuscraizt.de;
+>
+>        set $upstream_kong kong:8000;
+>        location / {
+>            proxy_pass http://$upstream_kong;
+>            proxy_set_header Host $host;
+>            proxy_set_header X-Real-IP $remote_addr;
+>            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+>            proxy_set_header X-Forwarded-Proto $scheme;
+>
+>            # Realtime laeuft ueber WebSockets (wss://) -- ohne Upgrade-Header
+>            # bricht die Realtime-Verbindung des Browsers ab.
+>            proxy_http_version 1.1;
+>            proxy_set_header Upgrade $http_upgrade;
+>            proxy_set_header Connection "upgrade";
+>        }
+>    }
+>    ```
+> 4. Cloudflare-Tunnel-Seite: für beide Hostnamen einen Public-Hostname-
+>    Eintrag ergänzen (Zero-Trust-Dashboard oder `ingress:` in der
+>    Tunnel-Config, je nachdem wie eure bestehenden Subdomains dort verwaltet
+>    werden) — Ziel ist derselbe interne nginx-Service, den ihr auch für die
+>    anderen Subdomains schon nutzt (z. B. `http://nginx:80`), NICHT direkt
+>    `kartslalom`/`kong`. Falls die Tunnel-Config dateibasiert ist (nicht nur
+>    Dashboard-verwaltet), zusätzlich als YAML-Ingress-Regel:
+>    ```yaml
+>    ingress:
+>      - hostname: kart.cheezuscraizt.de
+>        service: http://nginx:80
+>      - hostname: api.kart.cheezuscraizt.de
+>        service: http://nginx:80
+>      # ... eure bestehenden Regeln ...
+>      - service: http_status:404
+>    ```
+> 5. Falls für `api.kart.cheezuscraizt.de` bereits eine
+>    Cloudflare-Access-Policy geplant ist (siehe Studio-Hinweis unten): die
+>    Policy VOR dem ersten produktiven Start aktivieren, nicht danach —
+>    sonst ist Studio zwischenzeitlich ungeschützt erreichbar.
 >
 > `api.kart.cheezuscraizt.de` ist eine **Übergangslösung**: der Browser
 > spricht damit direkt mit Kong/Supabase (REST/Auth/Realtime/Storage/
@@ -149,14 +222,19 @@ Abhängigkeit mehr von Supabase Cloud.
 cd docker/supabase
 cp .env.example .env
 sh utils/generate-keys.sh --update-env   # ersetzt Demo-Keys/Passwörter in .env
-sh preflight-check.sh                    # bricht mit Exit-Code 1 ab, falls doch noch Demo-Werte drin sind
 ```
 
-`preflight-check.sh` sollte vor jedem `docker compose up` in Produktion laufen
-(z. B. als erster Schritt in einem Deploy-Script) — er prüft `.env` gegen die
-bekannten Platzhalter-/Demo-Werte aus `.env.example` (u. a. den öffentlichen
-Supabase-Demo-JWT für `ANON_KEY`/`SERVICE_ROLE_KEY`) und listet alle
-gefundenen Probleme auf einmal auf.
+`CRON_SECRET` generiert `generate-keys.sh` nicht mit (kein Supabase-eigener
+Wert) — frei wählbares Secret selbst setzen, muss mit dem `x-cron-secret`-
+Header übereinstimmen, den der externe Cron-Trigger beim Aufruf von
+`user-lifecycle` mitschickt.
+
+`docker/supabase/preflight-check.sh` prüft `.env` gegen bekannte Platzhalter-
+/Demo-Werte (u. a. den öffentlichen Supabase-Demo-JWT für `ANON_KEY`/
+`SERVICE_ROLE_KEY`) sowie fehlende Pflichtwerte (`CRON_SECRET`) und listet
+alle gefundenen Probleme auf einmal auf. Er läuft nicht manuell separat,
+sondern ist über `docker/deploy-prod.sh` (Schritt 3) fest verdrahtet — so
+kann er nicht versehentlich übersprungen werden.
 
 Danach in `docker/supabase/.env` von Hand setzen (siehe Kommentare in
 `.env.example`):
@@ -197,11 +275,18 @@ docker network create kartslalom-edge
 
 [`docker/docker-compose.yml`](../docker/docker-compose.yml) bindet den
 Supabase-Stack per `include` ein (ohne `dev`-Profil, Projektname
-`kartslalom-prod`):
+`kartslalom-prod`). Start über den offiziellen Wrapper
+[`docker/deploy-prod.sh`](../docker/deploy-prod.sh) statt direkt per
+`docker compose`, damit der Secret-Preflight (Schritt 1) nicht versehentlich
+übersprungen werden kann:
 
 ```bash
-docker compose -f docker/docker-compose.yml up -d --build
+sh docker/deploy-prod.sh
 ```
+
+(Führt `docker/supabase/preflight-check.sh` aus und bricht bei Demo-/
+fehlenden Secrets ab, bevor `docker compose -f docker/docker-compose.yml up
+-d --build` überhaupt läuft.)
 
 - **App:** nur `127.0.0.1:5173` auf dem Docker-Host (Debug/lokaler Zugriff),
   extern über `edge`-Netz + Reverse-Proxy erreichbar (s. o.)
