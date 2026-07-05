@@ -70,6 +70,10 @@ function TrackVersionPanel({ trackId, trackName }: { trackId: string; trackName:
         setSaveAsError("Dieser Snapshot enthält Satellitenbilder, die den Pro-Tarif erfordern.");
         return;
       }
+      if (err instanceof Error && err.message === "INVALID_NAME") {
+        setSaveAsError("Der Name ist zu lang (maximal 100 Zeichen).");
+        return;
+      }
       setSaveAsError("Strecke konnte nicht gespeichert werden.");
     }
   }
@@ -298,6 +302,7 @@ export default function DashboardPage() {
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         <input
                           autoFocus value={renameValue}
+                          maxLength={100}
                           onChange={(e) => setRenameValue(e.target.value)}
                           onKeyDown={(e) => { if (e.key === "Enter") commitRename(); if (e.key === "Escape") cancelRename(); }}
                           style={{ fontSize: 14, fontWeight: 700, border: "1px solid var(--c-primary)", borderRadius: 6, padding: "3px 7px", outline: "none", minWidth: 160 }}

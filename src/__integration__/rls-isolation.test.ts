@@ -111,4 +111,10 @@ describe("Versions-RPCs — Anon-Zugriff verweigert (permission denied)", () => 
     expect(error).not.toBeNull();
     expect(error!.message.toLowerCase()).toContain("permission denied");
   });
+
+  it("create_track_from_version ist für Anon nicht ausführbar", async () => {
+    const { error } = await anon.rpc("create_track_from_version", { p_version_id: dummyId, p_name: "x" });
+    expect(error).not.toBeNull();
+    expect(error!.message.toLowerCase()).toContain("permission denied");
+  });
 });
