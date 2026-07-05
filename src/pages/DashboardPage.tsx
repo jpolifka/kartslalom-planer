@@ -4,20 +4,24 @@
 
 import { useNavigate } from "react-router-dom";
 import React, { useState } from "react";
-import { Plus, Trash2, MapPin, Pencil, Check, X, Layers, Share2, ChevronDown, ChevronRight, History, RotateCcw, Eye } from "lucide-react";
-import { useTrackList, useCreateTrack, useDeleteTrack, useRenameTrack, useTrackVersions, useCreateTrackVersion, useRestoreTrackVersion, useDeleteTrackVersion } from "../hooks/useTracks";
+import { Plus, Trash2, MapPin, Pencil, Check, X, Layers, Share2, ChevronDown, ChevronRight, History, RotateCcw, Eye, Copy } from "lucide-react";
+import { useTrackList, useCreateTrack, useDeleteTrack, useRenameTrack, useTrackVersions, useCreateTrackVersion, useRestoreTrackVersion, useDeleteTrackVersion, useCreateTrackFromVersion } from "../hooks/useTracks";
 import { useCustomFormationList, useDeleteCustomFormation } from "../hooks/useCustomFormations";
 import { useFeatureGate } from "../hooks/useFeatureGate";
 import { useTier } from "../hooks/useTier";
+import SaveAsDialog from "../components/SaveAsDialog";
 
 // --- TrackVersionPanel ---
 
-function TrackVersionPanel({ trackId }: { trackId: string }) {
+function TrackVersionPanel({ trackId, trackName }: { trackId: string; trackName: string }) {
   const navigate = useNavigate();
   const { data: versions, isLoading } = useTrackVersions(trackId);
   const createVersionMutation = useCreateTrackVersion(trackId);
   const restoreVersionMutation = useRestoreTrackVersion(trackId);
   const deleteVersionMutation = useDeleteTrackVersion(trackId);
+  const createFromVersionMutation = useCreateTrackFromVersion();
+  const [saveAsVersion, setSaveAsVersion] = useState<{ id: string; versionNum: number } | null>(null);
+  const [saveAsError, setSaveAsError] = useState<string | null>(null);
 
   async function handleSnapshot() {
     try {
@@ -48,6 +52,26 @@ function TrackVersionPanel({ trackId }: { trackId: string }) {
   async function handleDelete(versionId: string, versionNum: number) {
     if (!confirm(`Version ${versionNum} wirklich löschen?`)) return;
     await deleteVersionMutation.mutateAsync(versionId);
+  }
+
+  async function handleSaveAsConfirm(name: string) {
+    if (!saveAsVersion) return;
+    setSaveAsError(null);
+    try {
+      const newId = await createFromVersionMutation.mutateAsync({ versionId: saveAsVersion.id, name });
+      setSaveAsVersion(null);
+      navigate(`/editor/${newId}`);
+    } catch (err) {
+      if (err instanceof Error && err.message === "TRACK_LIMIT_REACHED") {
+        setSaveAsError("Du hast die maximale Anzahl an Strecken für deinen Tarif erreicht.");
+        return;
+      }
+      if (err instanceof Error && err.message === "SATELLITE_REQUIRES_PRO") {
+        setSaveAsError("Dieser Snapshot enthält Satellitenbilder, die den Pro-Tarif erfordern.");
+        return;
+      }
+      setSaveAsError("Strecke konnte nicht gespeichert werden.");
+    }
   }
 
   return (
@@ -114,8 +138,24 @@ function TrackVersionPanel({ trackId }: { trackId: string }) {
           >
             <Trash2 size={12} color="#b91c1c" />
           </button>
+          <button
+            onClick={() => { setSaveAsError(null); setSaveAsVersion({ id: v.id, versionNum: v.version_number }); }}
+            style={versionActionBtn}
+            title="Als neue Strecke speichern"
+          >
+            <Copy size={12} color="var(--c-primary)" />
+          </button>
         </div>
       ))}
+
+      <SaveAsDialog
+        isOpen={!!saveAsVersion}
+        initialName={saveAsVersion ? `${trackName} (Version ${saveAsVersion.versionNum})` : ""}
+        isPending={createFromVersionMutation.isPending}
+        errorMessage={saveAsError}
+        onConfirm={handleSaveAsConfirm}
+        onCancel={() => setSaveAsVersion(null)}
+      />
     </div>
   );
 }
@@ -235,7 +275,7 @@ export default function DashboardPage() {
           {tracks.map((track) => {
             const versionsExpanded = expandedVersionTrackId === track.id;
             return (
-              <div key={track.id} style={{
+              <div key={track.id} data-testid={`track-card-${track.id}`} style={{
                 background: "white", borderRadius: 14, padding: "14px 16px",
                 boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
               }}>
@@ -301,7 +341,7 @@ export default function DashboardPage() {
                   </button>
                 </div>
 
-                {versionsExpanded && <TrackVersionPanel trackId={track.id} />}
+                {versionsExpanded && <TrackVersionPanel trackId={track.id} trackName={track.name} />}
               </div>
             );
           })}

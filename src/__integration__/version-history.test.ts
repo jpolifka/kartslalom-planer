@@ -388,3 +388,223 @@ describe("Versionshistorie — Gleitendes Limit (Pro=10)", () => {
     expect(minNum).toBe(2);
   });
 });
+
+describe("Versionshistorie — Speichern unter (create_track_from_version)", () => {
+  let client: Awaited<ReturnType<typeof loginAsUser>>;
+  const userIds: string[] = [];
+  let trackId: string;
+  let versionId: string;
+
+  const snapshotState = {
+    items: [{ id: "f1", key: "singlePylon", x: 3, y: 4, rotationDeg: 0, direction: "none" }],
+    arrows: [],
+  };
+  const mockAreaSel = { widthM: 80, heightM: 40, centerLat: 50.517, centerLng: 7.317, zoom: 17 };
+
+  beforeAll(async () => {
+    const email = `int-saveas-pro-${ts()}@test.invalid`;
+    const user = await createTestUser(email, "pro");
+    userIds.push(user.id);
+    client = await loginAsUser(email);
+
+    const { data } = await client.rpc("create_track", { track_name: "Save-As-Quelle" });
+    trackId = data as string;
+    await client.rpc("save_track", {
+      p_track_id: trackId, p_state_json: snapshotState,
+      p_area_sel: mockAreaSel, p_width: 22, p_length: 44, p_satellite: false, p_opacity: 0.6,
+    });
+    const { data: vid } = await client.rpc("create_track_version", { p_track_id: trackId });
+    versionId = vid as string;
+
+    // Ursprungstrack danach verändern — Save-As muss diesen NICHT beeinflussen
+    await client.rpc("save_track", {
+      p_track_id: trackId, p_state_json: { items: [], arrows: [] },
+      p_area_sel: null, p_width: 30, p_length: 50, p_satellite: false, p_opacity: 0.9,
+    });
+  });
+
+  afterAll(async () => {
+    await cleanupUsers(userIds);
+  });
+
+  it("legt einen neuen, eigenständigen Track mit dem Snapshot-Inhalt an", async () => {
+    const { data: newId, error } = await client.rpc("create_track_from_version", {
+      p_version_id: versionId,
+      p_name: "Kopie von Save-As-Quelle",
+    });
+    assertNoError(error, "create_track_from_version");
+    expect(newId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(newId).not.toBe(trackId);
+
+    const { data: newTrack, error: fetchErr } = await client
+      .from("tracks")
+      .select("name, state_json, area_sel_json, manual_width, manual_length, map_satellite, map_opacity")
+      .eq("id", newId as string)
+      .single();
+    assertNoError(fetchErr, "fetch neuer Track");
+    expect(newTrack!.name).toBe("Kopie von Save-As-Quelle");
+    const stateJson = newTrack!.state_json as { items: Array<{ x: number; y: number }> };
+    expect(stateJson.items[0].x).toBe(3);
+    expect(stateJson.items[0].y).toBe(4);
+    expect(newTrack!.area_sel_json).toMatchObject({ widthM: 80, heightM: 40 });
+    expect(newTrack!.manual_width).toBe(22);
+    expect(newTrack!.manual_length).toBe(44);
+    expect(newTrack!.map_satellite).toBe(false);
+    expect(Number(newTrack!.map_opacity)).toBeCloseTo(0.6);
+
+    // Kern-Anforderung: der Ursprungstrack bleibt vom Save-As unberührt
+    const { data: originalTrack, error: origErr } = await client
+      .from("tracks")
+      .select("name, state_json, manual_width, manual_length")
+      .eq("id", trackId)
+      .single();
+    assertNoError(origErr, "fetch Ursprungstrack nach Save-As");
+    expect(originalTrack!.name).toBe("Save-As-Quelle");
+    expect(originalTrack!.manual_width).toBe(30);
+    expect(originalTrack!.manual_length).toBe(50);
+    const origState = originalTrack!.state_json as { items: unknown[] };
+    expect(origState.items).toHaveLength(0);
+  });
+
+  it("leerer/Whitespace-Name fällt auf 'Neue Strecke' zurück statt zu scheitern", async () => {
+    const { data: newId, error } = await client.rpc("create_track_from_version", {
+      p_version_id: versionId,
+      p_name: "   ",
+    });
+    assertNoError(error, "create_track_from_version leerer Name");
+    const { data: newTrack } = await client
+      .from("tracks").select("name").eq("id", newId as string).single();
+    expect(newTrack!.name).toBe("Neue Strecke");
+  });
+});
+
+describe("Versionshistorie — Speichern unter: Tier-Limit greift", () => {
+  let client: Awaited<ReturnType<typeof loginAsUser>>;
+  const userIds: string[] = [];
+  let versionId: string;
+
+  beforeAll(async () => {
+    const email = `int-saveas-limit-${ts()}@test.invalid`;
+    const user = await createTestUser(email, "pro");
+    userIds.push(user.id);
+    client = await loginAsUser(email);
+
+    const { data: tid } = await client.rpc("create_track", { track_name: "Limit-Quelle" });
+    const { data: vid } = await client.rpc("create_track_version", { p_track_id: tid as string });
+    versionId = vid as string;
+
+    // Pro-Limit ist 50 Tracks — der erste zählt bereits, 49 weitere bis zum Limit anlegen
+    for (let i = 0; i < 49; i++) {
+      const { error } = await client.rpc("create_track", { track_name: `Limit-Filler ${i}` });
+      assertNoError(error, `create_track filler ${i}`);
+    }
+  });
+
+  afterAll(async () => {
+    await cleanupUsers(userIds);
+  });
+
+  it("create_track_from_version schlägt bei erreichtem Tier-Limit fehl", async () => {
+    const { error } = await client.rpc("create_track_from_version", {
+      p_version_id: versionId,
+      p_name: "Sollte scheitern",
+    });
+    assertRpcError(error, "track_limit_reached", "create_track_from_version am Limit");
+  });
+});
+
+describe("Versionshistorie — Speichern unter: Satellite-Gate (Pro→Free)", () => {
+  let client: Awaited<ReturnType<typeof loginAsUser>>;
+  const userIds: string[] = [];
+  let userId: string;
+  let versionWithSatelliteId: string;
+  let versionWithoutSatelliteId: string;
+
+  beforeAll(async () => {
+    const email = `int-saveas-sat-${ts()}@test.invalid`;
+    const user = await createTestUser(email, "pro");
+    userId = user.id;
+    userIds.push(user.id);
+    client = await loginAsUser(email);
+
+    const { data: tid } = await client.rpc("create_track", { track_name: "Satellite-SaveAs-Test" });
+    const trackId = tid as string;
+
+    await client.rpc("save_track", {
+      p_track_id: trackId, p_state_json: { items: [], arrows: [] },
+      p_area_sel: null, p_width: 18, p_length: 36, p_satellite: false, p_opacity: 0.5,
+    });
+    const { data: v1 } = await client.rpc("create_track_version", { p_track_id: trackId });
+    versionWithoutSatelliteId = v1 as string;
+
+    await client.rpc("save_track", {
+      p_track_id: trackId, p_state_json: { items: [], arrows: [] },
+      p_area_sel: null, p_width: 20, p_length: 40, p_satellite: true, p_opacity: 0.7,
+    });
+    const { data: v2 } = await client.rpc("create_track_version", { p_track_id: trackId });
+    versionWithSatelliteId = v2 as string;
+
+    // Downgrade auf Free — der Ursprungstrack + 1 Snapshot-Track zählen gegen das Free-Limit (3)
+    await admin.from("profiles").update({ tier: "free" }).eq("id", userId);
+  });
+
+  afterAll(async () => {
+    await cleanupUsers(userIds);
+  });
+
+  it("Save-As eines Satellite-Snapshots schlägt für Free-User fehl", async () => {
+    const { error } = await client.rpc("create_track_from_version", {
+      p_version_id: versionWithSatelliteId,
+      p_name: "Satellite-Kopie",
+    });
+    assertRpcError(error, "satellite_requires_pro", "create_track_from_version satellite als Free-User");
+  });
+
+  it("Save-As eines Nicht-Satellite-Snapshots gelingt für Free-User", async () => {
+    const { data: newId, error } = await client.rpc("create_track_from_version", {
+      p_version_id: versionWithoutSatelliteId,
+      p_name: "Non-Satellite-Kopie",
+    });
+    assertNoError(error, "create_track_from_version non-satellite als Free-User");
+    const { data: newTrack } = await client
+      .from("tracks").select("map_satellite").eq("id", newId as string).single();
+    expect(newTrack?.map_satellite).toBe(false);
+  });
+});
+
+describe("Versionshistorie — Speichern unter: RLS Fremdzugriff", () => {
+  let clientA: Awaited<ReturnType<typeof loginAsUser>>;
+  let clientB: Awaited<ReturnType<typeof loginAsUser>>;
+  const userIds: string[] = [];
+  let versionIdA: string;
+
+  beforeAll(async () => {
+    const emailA = `int-saveas-rls-a-${ts()}@test.invalid`;
+    const emailB = `int-saveas-rls-b-${ts()}@test.invalid`;
+    const userA = await createTestUser(emailA, "pro");
+    const userB = await createTestUser(emailB, "pro");
+    userIds.push(userA.id, userB.id);
+    clientA = await loginAsUser(emailA);
+    clientB = await loginAsUser(emailB);
+
+    const { data: tid } = await clientA.rpc("create_track", { track_name: "RLS-SaveAs-A" });
+    await clientA.rpc("save_track", {
+      p_track_id: tid as string, p_state_json: { items: [], arrows: [] },
+      p_area_sel: null, p_width: 18, p_length: 36, p_satellite: false, p_opacity: 0.5,
+    });
+    const { data: vid } = await clientA.rpc("create_track_version", { p_track_id: tid as string });
+    versionIdA = vid as string;
+  });
+
+  afterAll(async () => {
+    await cleanupUsers(userIds);
+  });
+
+  it("User B kann aus einer Version von User A keinen Track anlegen", async () => {
+    const { error } = await clientB.rpc("create_track_from_version", {
+      p_version_id: versionIdA,
+      p_name: "Fremdzugriff-Versuch",
+    });
+    assertRpcError(error, "not_owner", "create_track_from_version fremde Version");
+  });
+});

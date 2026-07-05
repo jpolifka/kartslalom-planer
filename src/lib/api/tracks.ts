@@ -148,6 +148,22 @@ export async function deleteTrackVersion(versionId: string): Promise<void> {
   }
 }
 
+// "Speichern unter" — legt den Snapshot als NEUEN, eigenständigen Track an.
+// Der Ursprungstrack bleibt dabei unverändert (im Unterschied zu restoreTrackVersion).
+export async function createTrackFromVersion(versionId: string, name: string): Promise<string> {
+  const { data, error } = await supabase.rpc("create_track_from_version", {
+    p_version_id: versionId,
+    p_name: name,
+  });
+  if (error) {
+    if (error.message.includes("track_limit_reached"))    throw new Error("TRACK_LIMIT_REACHED");
+    if (error.message.includes("satellite_requires_pro")) throw new Error("SATELLITE_REQUIRES_PRO");
+    if (error.message.includes("not_owner"))               throw new Error("NOT_OWNER");
+    throw error;
+  }
+  return data as string;
+}
+
 export type TrackVersionDetail = {
   version_number: number;
   state_json: { items: PlacedFormation[]; arrows: PlacedArrow[] };

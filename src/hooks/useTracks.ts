@@ -3,7 +3,7 @@
 // All rights reserved.
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchTracks, fetchTrack, createTrack, saveTrack, renameTrack, deleteTrack, adminListTracks, adminGetTrack, adminDeleteTrack, createTrackVersion, getTrackVersions, restoreTrackVersion, deleteTrackVersion, getTrackVersionDetail } from "../lib/api/tracks";
+import { fetchTracks, fetchTrack, createTrack, saveTrack, renameTrack, deleteTrack, adminListTracks, adminGetTrack, adminDeleteTrack, createTrackVersion, getTrackVersions, restoreTrackVersion, deleteTrackVersion, getTrackVersionDetail, createTrackFromVersion } from "../lib/api/tracks";
 import { useAuthStore } from "../store/authStore";
 
 export function useTrackList() {
@@ -86,6 +86,18 @@ export function useRestoreTrackVersion(trackId: string) {
       qc.invalidateQueries({ queryKey: ["track", trackId] });
       qc.invalidateQueries({ queryKey: ["tracks"] });
     },
+  });
+}
+
+// Legt eine neue, eigenständige Strecke aus einem Snapshot an.
+// Invalidiert bewusst nur ["tracks"] (Liste) — der Ursprungstrack
+// (["track", trackId]) bleibt unverändert und muss nicht neu geladen werden.
+export function useCreateTrackFromVersion() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ versionId, name }: { versionId: string; name: string }) =>
+      createTrackFromVersion(versionId, name),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["tracks"] }),
   });
 }
 

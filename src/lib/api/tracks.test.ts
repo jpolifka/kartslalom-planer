@@ -13,7 +13,7 @@ vi.mock("../supabase", () => ({
   supabase: { rpc: mockRpc, from: mockFrom },
 }));
 
-import { saveTrack, fetchTracks, fetchTrack, createTrack, renameTrack, deleteTrack } from "./tracks";
+import { saveTrack, fetchTracks, fetchTrack, createTrack, renameTrack, deleteTrack, createTrackFromVersion } from "./tracks";
 
 const minimalState = {
   items: [],
@@ -94,6 +94,38 @@ describe("createTrack", () => {
   it("rethrows unknown errors", async () => {
     mockRpc.mockResolvedValue(err("db_error"));
     await expect(createTrack()).rejects.toMatchObject({ message: "db_error" });
+  });
+});
+
+describe("createTrackFromVersion", () => {
+  it("calls create_track_from_version RPC with correct params and returns new id", async () => {
+    mockRpc.mockResolvedValue(ok("new-track-id"));
+    const result = await createTrackFromVersion("version-1", "Kopie");
+    expect(result).toBe("new-track-id");
+    expect(mockRpc).toHaveBeenCalledWith("create_track_from_version", {
+      p_version_id: "version-1",
+      p_name: "Kopie",
+    });
+  });
+
+  it("maps track_limit_reached error", async () => {
+    mockRpc.mockResolvedValue(err("track_limit_reached"));
+    await expect(createTrackFromVersion("v", "n")).rejects.toThrow("TRACK_LIMIT_REACHED");
+  });
+
+  it("maps satellite_requires_pro error", async () => {
+    mockRpc.mockResolvedValue(err("satellite_requires_pro"));
+    await expect(createTrackFromVersion("v", "n")).rejects.toThrow("SATELLITE_REQUIRES_PRO");
+  });
+
+  it("maps not_owner error", async () => {
+    mockRpc.mockResolvedValue(err("not_owner"));
+    await expect(createTrackFromVersion("v", "n")).rejects.toThrow("NOT_OWNER");
+  });
+
+  it("rethrows unknown errors", async () => {
+    mockRpc.mockResolvedValue(err("db_error"));
+    await expect(createTrackFromVersion("v", "n")).rejects.toMatchObject({ message: "db_error" });
   });
 });
 

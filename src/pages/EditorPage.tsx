@@ -15,7 +15,8 @@ import type { AreaSelection } from "../lib/areaSelection";
 import type { DirectionMode, FormationKey, PlacedArrow, PlacedFormation } from "../types";
 import { saveState, loadState, clearSavedState, exportAsFile, parseImportFile, sanitizeItems } from "../lib/storage";
 import { useAuthStore } from "../store/authStore";
-import { useTrack, useCreateTrack, useSaveTrack, useRenameTrack, useAdminTrack, useTrackVersionDetail, useRestoreTrackVersion } from "../hooks/useTracks";
+import { useTrack, useCreateTrack, useSaveTrack, useRenameTrack, useAdminTrack, useTrackVersionDetail, useRestoreTrackVersion, useCreateTrackFromVersion } from "../hooks/useTracks";
+import SaveAsDialog from "../components/SaveAsDialog";
 import { useTier } from "../hooks/useTier";
 import { useCustomFormationList, useLibraryFormations } from "../hooks/useCustomFormations";
 import { getFormation } from "../lib/formationRegistry";
@@ -55,6 +56,9 @@ export default function EditorPage() {
   const renameTrackMutation = useRenameTrack();
   const versionDetailQuery = useTrackVersionDetail(previewVersionId);
   const restoreVersionMutation = useRestoreTrackVersion(trackId ?? "");
+  const createFromVersionMutation = useCreateTrackFromVersion();
+  const [showSaveAsDialog, setShowSaveAsDialog] = useState(false);
+  const [saveAsError, setSaveAsError] = useState<string | null>(null);
   const createCalledRef = useRef(false);
   const cloudAppliedRef = useRef(false);
   const [cloudLoaded, setCloudLoaded] = useState(!isCloudMode);
@@ -542,6 +546,16 @@ export default function EditorPage() {
               <RotateCcw size={13} /> Wiederherstellen
             </button>
             <button
+              onClick={() => { setSaveAsError(null); setShowSaveAsDialog(true); }}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 5,
+                border: "1px solid #d97706", borderRadius: 7, background: "white",
+                color: "#92400e", padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer",
+              }}
+            >
+              Speichern unter…
+            </button>
+            <button
               onClick={() => navigate(`/editor/${trackId}`, { replace: true })}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 5,
@@ -552,6 +566,34 @@ export default function EditorPage() {
               <X size={13} /> Vorschau schließen
             </button>
           </div>
+        )}
+
+        {previewVersionId && versionDetailQuery.data && (
+          <SaveAsDialog
+            isOpen={showSaveAsDialog}
+            initialName={`${trackName} (Version ${versionDetailQuery.data.version_number})`}
+            isPending={createFromVersionMutation.isPending}
+            errorMessage={saveAsError}
+            onConfirm={async (name) => {
+              setSaveAsError(null);
+              try {
+                const newId = await createFromVersionMutation.mutateAsync({ versionId: previewVersionId, name });
+                setShowSaveAsDialog(false);
+                navigate(`/editor/${newId}`);
+              } catch (err) {
+                if (err instanceof Error && err.message === "TRACK_LIMIT_REACHED") {
+                  setSaveAsError("Du hast die maximale Anzahl an Strecken für deinen Tarif erreicht.");
+                  return;
+                }
+                if (err instanceof Error && err.message === "SATELLITE_REQUIRES_PRO") {
+                  setSaveAsError("Dieser Snapshot enthält Satellitenbilder, die den Pro-Tarif erfordern.");
+                  return;
+                }
+                setSaveAsError("Strecke konnte nicht gespeichert werden.");
+              }
+            }}
+            onCancel={() => setShowSaveAsDialog(false)}
+          />
         )}
 
         <EditorHeader
