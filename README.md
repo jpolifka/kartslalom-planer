@@ -3,8 +3,8 @@
 Web-Applikation zum Entwerfen, Validieren und Exportieren von Kartslalom-Strecken
 (Pylonen-Formationen auf einer rechteckigen Fläche, optional über einem Kartenausschnitt).
 
-Unterstützt Offline-Nutzung (localStorage) sowie Cloud-Speicherung mit Account,
-Dashboard und Tier-System (Free / Pro).
+Unterstützt Offline-Nutzung (localStorage) sowie Server-Speicherung (self-hosted
+Supabase) mit Account, Dashboard und Tier-System (Free / Pro).
 
 > Eine Anleitung für **Endnutzer:innen** befindet sich direkt in der App
 > (Hilfe-Button in der Werkzeugleiste). Die hier verlinkte Dokumentation
@@ -24,11 +24,11 @@ frontend:
   deployment:    Docker (Multi-Stage-Build) + nginx
 
 backend:
-  plattform:     Supabase (self-hosted via Docker oder Supabase Cloud)
+  plattform:     Supabase (self-hosted via Docker, eigener Docker-Host)
   datenbank:     PostgreSQL mit Row-Level Security
   auth:          Supabase Auth (Magic Link)
   api:           PostgREST + RPC-Funktionen
-  speicher:      Cloud (Supabase) + localStorage (Fallback / Offline)
+  speicher:      Server (self-hosted Supabase) + localStorage (Fallback / Offline)
   tiers:         Free / Pro (serverseitig enforced via RLS & RPC)
 ```
 
@@ -48,7 +48,7 @@ npm ci
 # 2. Lokalen Supabase-Stack starten
 cd docker/supabase
 cp .env.example .env   # Secrets eintragen
-docker compose up -d
+docker compose --profile dev up -d   # --profile dev startet zusaetzlich Mailpit
 cd ../..
 
 # 3. Umgebungsvariablen
@@ -72,10 +72,11 @@ Für eine containerisierte Dev-Umgebung mit HMR siehe
 | Zeichenfläche (Canvas, Drag & Drop, Pfeile) | [docs/zeichenflaeche.md](docs/zeichenflaeche.md) |
 | Kartenintegration (OSM-Kacheln, Bereichsauswahl) | [docs/kartenintegration.md](docs/kartenintegration.md) |
 | Validierung (Geometrie- & Streckenregeln) | [docs/validierung.md](docs/validierung.md) |
-| Persistenz (Autosave, Cloud-Sync, JSON-Import/-Export) | [docs/persistenz.md](docs/persistenz.md) |
+| Persistenz (Autosave, Server-Sync, JSON-Import/-Export) | [docs/persistenz.md](docs/persistenz.md) |
 | Export (SVG/PDF) | [docs/export.md](docs/export.md) |
 | Bedienung (responsives Layout, Tastaturkürzel) | [docs/bedienung.md](docs/bedienung.md) |
 | Build & Deployment (Docker, nginx) | [docs/build-und-deployment.md](docs/build-und-deployment.md) |
+| Architekturentscheidungen (ADRs) | [docs/adr/](docs/adr/) |
 
 ## Lizenz
 

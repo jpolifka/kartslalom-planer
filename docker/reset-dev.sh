@@ -42,7 +42,7 @@ echo ""
 confirm
 
 echo "===> Container stoppen und Images entfernen..."
-docker compose -f "$COMPOSE_FILE" down --rmi all --remove-orphans
+docker compose --profile dev -f "$COMPOSE_FILE" down --rmi all --remove-orphans
 
 if [ "$do_prune" = "1" ]; then
     echo "===> Alle unbenutzten Images system-weit bereinigen (--prune)..."
@@ -55,10 +55,12 @@ rm -rf "${VOLUMES_DIR}/storage"
 mkdir -p "${VOLUMES_DIR}/storage"
 
 echo "===> App-Image neu bauen (kein Cache)..."
-docker compose -f "$COMPOSE_FILE" build --no-cache
+docker compose --profile dev -f "$COMPOSE_FILE" build --no-cache
 
 echo "===> Frischen Stack starten..."
-docker compose -f "$COMPOSE_FILE" up -d
+# --profile dev noetig, damit Mailpit (Magic-Link-Mailcatcher) mitstartet --
+# ohne dev-Profil bleibt der Service inaktiv (siehe supabase/docker-compose.yml).
+docker compose --profile dev -f "$COMPOSE_FILE" up -d
 
 echo ""
 echo "Fertig! Der frische DEV-Stack startet gerade."

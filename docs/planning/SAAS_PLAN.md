@@ -1,3 +1,14 @@
+> **Historisches Planungsdokument, teilweise überholt (Stand 2026-07-05):**
+> Dieses Dokument spiegelt den Planungsstand zum jeweiligen Änderungsdatum
+> wider und wird nicht mehr aktualisiert. Insbesondere die Hosting-/
+> Deployment-Annahmen (Vercel/Railway/Fly.io, Supabase Cloud in Frankfurt)
+> sind überholt — Produktion läuft inzwischen auf einem self-hosted
+> Supabase-Stack auf eigener Infrastruktur, siehe
+> [`docs/adr/0001-self-hosted-supabase.md`](../adr/0001-self-hosted-supabase.md)
+> und [`docs/build-und-deployment.md`](../build-und-deployment.md). Als
+> historischer Datensatz für vergangene Entscheidungen belassen, nicht als
+> aktuelle Betriebsanleitung verwenden.
+
 # Kartslalom Streckenplaner — SaaS-Transformation
 
 **Dokument-Version:** 1.4  

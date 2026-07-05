@@ -52,3 +52,9 @@ pnpm-debug.log*
 docker/supabase/volumes/
 docker/supabase/.env
 docker/supabase/.env.bak
+
+# Supabase (Prod-Deployment-Skript, enthaelt kein Secret, aber projektspezifisch)
+docker/supabase/push-to-prod.sh
+
+# Supabase (Backups: enthalten personenbezogene Nutzerdaten, siehe backup.sh)
+docker/supabase/backups/
