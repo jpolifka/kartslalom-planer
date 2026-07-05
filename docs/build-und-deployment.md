@@ -285,8 +285,13 @@ sh docker/deploy-prod.sh
 ```
 
 (Führt `docker/supabase/preflight-check.sh` aus und bricht bei Demo-/
-fehlenden Secrets ab, bevor `docker compose -f docker/docker-compose.yml up
--d --build` überhaupt läuft.)
+fehlenden Secrets ab, bevor `docker compose --env-file .env -f
+docker/docker-compose.yml up -d --build` überhaupt läuft. Das explizite
+`--env-file` ist wichtig: Compose sucht `.env` sonst im Verzeichnis der
+Compose-Datei, `docker/`, nicht im Repo-Root — ohne den Schalter würden
+`VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` beim Build still auf leer
+zurückfallen, wie im Frontend `Invalid supabaseUrl` verursachen und im
+`docker compose`-Output nur als leicht übersehbare `WARN`-Zeile auffallen.)
 
 - **App:** nur `127.0.0.1:5173` auf dem Docker-Host (Debug/lokaler Zugriff),
   extern über `edge`-Netz + Reverse-Proxy erreichbar (s. o.)
