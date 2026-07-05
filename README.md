@@ -24,7 +24,7 @@ frontend:
   deployment:    Docker (Multi-Stage-Build) + nginx
 
 backend:
-  plattform:     Supabase (self-hosted via Docker oder Supabase Cloud)
+  plattform:     Supabase (self-hosted via Docker, eigener Docker-Host)
   datenbank:     PostgreSQL mit Row-Level Security
   auth:          Supabase Auth (Magic Link)
   api:           PostgREST + RPC-Funktionen
@@ -48,7 +48,7 @@ npm ci
 # 2. Lokalen Supabase-Stack starten
 cd docker/supabase
 cp .env.example .env   # Secrets eintragen
-docker compose up -d
+docker compose --profile dev up -d   # --profile dev startet zusaetzlich Mailpit
 cd ../..
 
 # 3. Umgebungsvariablen

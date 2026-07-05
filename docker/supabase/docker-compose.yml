@@ -533,10 +533,13 @@ services:
 
   # Lokaler Mail-Catcher: faengt Magic-Link-Mails der Auth ab.
   # Web-UI unter http://localhost:8025
+  # Nur für Dev-Profil (`docker compose --profile dev ...`) - in Produktion
+  # bewusst ausgeschlossen, dort muss SMTP_* auf echten Mailversand zeigen.
   mailpit:
     container_name: supabase-mailpit
     image: axllent/mailpit:v1.21
     restart: unless-stopped
+    profiles: ["dev"]
     ports:
       - "8025:8025"
 

@@ -147,29 +147,39 @@ export function ImprintContent() {
         </p>
       </HelpSection>
 
-      <HelpSection title="7. Nutzung von Supabase (Cloud-Speicherung und Authentifizierung)">
+      {/*
+        PROD-RISK / Rechtlicher Hinweis: Text unten spiegelt den Umzug von
+        Supabase Cloud (Auftragsverarbeiter Supabase Inc., Singapur, Hosting
+        AWS eu-central-1) auf selbst betriebene, self-hosted Supabase-Software
+        auf eigener Infrastruktur (Deutschland). Vom Nutzer bestätigt: kein
+        Auftragsverarbeiter mehr für diesen Teil, stattdessen eigener Betrieb.
+        Trotzdem vor Live-Schaltung juristisch gegenprüfen lassen (z. B. ob
+        eine AV-Vereinbarung mit Cloudflare für den Zero-Trust-Tunnel nötig
+        ist) - das hier ist kein Ersatz für eine anwaltliche Prüfung.
+      */}
+      <HelpSection title="7. Speicherung von Konto- und Streckendaten (self-hosted)">
         Für registrierte Nutzer werden Authentifizierung und Cloud-Speicherung über
-        Supabase bereitgestellt.
+        die selbst betriebene Open-Source-Software Supabase bereitgestellt. Es findet
+        keine Auftragsverarbeitung durch die Supabase Inc. statt — die Software läuft
+        auf eigener Serverinfrastruktur des Betreibers.
         <p style={{ margin: "6px 0" }}>
-          Anbieter:<br />
-          Supabase, Inc.<br />
-          970 Toa Payoh North, #07-04<br />
-          Singapore 318992
+          Betreiber der Infrastruktur:<br />
+          Jens Polifka<br />
+          In der Maar 31<br />
+          56598 Rheinbrohl<br />
+          Deutschland
+        </p>
+        <p style={{ margin: "6px 0" }}>
+          Der Zugriff auf den Server erfolgt über einen Cloudflare-Tunnel
+          (Cloudflare Zero Trust) — siehe Abschnitt 5 zur Nutzung von Cloudflare.
         </p>
         <p style={{ margin: "6px 0" }}>
           Bei der Registrierung und Anmeldung per Magic Link wird die E-Mail-Adresse
           verarbeitet. Gespeichert werden außerdem die erstellten Streckenpläne sowie
-          das gewählte Nutzerprofil (Tarif). Die Datenhaltung erfolgt in der
-          EU (Frankfurt, AWS eu-central-1).
-        </p>
-        <p style={{ margin: "6px 0" }}>
-          Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO (Vertragserfüllung).
+          das gewählte Nutzerprofil (Tarif). Die Datenhaltung erfolgt in Deutschland.
         </p>
         <p style={{ margin: "6px 0 0" }}>
-          Weitere Informationen:{" "}
-          <a href="https://supabase.com/privacy" target="_blank" rel="noreferrer" style={link}>
-            supabase.com/privacy
-          </a>
+          Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO (Vertragserfüllung).
         </p>
       </HelpSection>
 

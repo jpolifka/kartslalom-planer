@@ -1,3 +1,16 @@
+# Eigener Compose-Projektname, damit Container/Netzwerke sich nicht mit einem
+# parallel laufenden docker-compose.dev.yml (Projekt "kartslalom") überschneiden.
+name: kartslalom-prod
+
+# Self-hosted Supabase-Stack (Postgres, Kong, Auth, PostgREST, Realtime,
+# Storage, Studio, Supavisor) wird ohne das "dev"-Compose-Profil eingebunden
+# -> Mailpit (nur Dev-Mailcatcher, siehe supabase/docker-compose.yml) startet
+# hier bewusst nicht mit, echte SMTP-Zustellung wird über supabase/.env
+# konfiguriert.
+include:
+  - path: supabase/docker-compose.yml
+    env_file: supabase/.env
+
 services:
   kartslalom:
     build:
@@ -9,3 +22,7 @@ services:
     ports:
       - "5173:8080"
     restart: unless-stopped
+    # PROD-RISK: VITE_SUPABASE_URL/ANON_KEY werden zur Build-Zeit fest in das
+    # Vite-Bundle eingebacken (kein Laufzeit-Env). Ändert sich die Domain oder
+    # der Key, reicht ein Container-Restart NICHT — es braucht
+    # `docker compose -f docker/docker-compose.yml up -d --build`.
