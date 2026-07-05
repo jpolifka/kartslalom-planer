@@ -91,6 +91,11 @@ describe("createTrack", () => {
     await expect(createTrack()).rejects.toThrow("TRACK_LIMIT_REACHED");
   });
 
+  it("maps invalid_name error", async () => {
+    mockRpc.mockResolvedValue(err("invalid_name"));
+    await expect(createTrack()).rejects.toThrow("INVALID_NAME");
+  });
+
   it("rethrows unknown errors", async () => {
     mockRpc.mockResolvedValue(err("db_error"));
     await expect(createTrack()).rejects.toMatchObject({ message: "db_error" });
@@ -123,6 +128,11 @@ describe("createTrackFromVersion", () => {
     await expect(createTrackFromVersion("v", "n")).rejects.toThrow("NOT_OWNER");
   });
 
+  it("maps invalid_name error", async () => {
+    mockRpc.mockResolvedValue(err("invalid_name"));
+    await expect(createTrackFromVersion("v", "n")).rejects.toThrow("INVALID_NAME");
+  });
+
   it("rethrows unknown errors", async () => {
     mockRpc.mockResolvedValue(err("db_error"));
     await expect(createTrackFromVersion("v", "n")).rejects.toMatchObject({ message: "db_error" });
@@ -148,6 +158,11 @@ describe("renameTrack", () => {
   it("maps not_owner error", async () => {
     mockRpc.mockResolvedValue(err("not_owner"));
     await expect(renameTrack("t", "X")).rejects.toThrow("NOT_OWNER");
+  });
+
+  it("maps invalid_name error", async () => {
+    mockRpc.mockResolvedValue(err("invalid_name"));
+    await expect(renameTrack("t", "X")).rejects.toThrow("INVALID_NAME");
   });
 });
 

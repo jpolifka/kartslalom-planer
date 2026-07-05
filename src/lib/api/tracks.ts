@@ -60,6 +60,7 @@ export async function createTrack(name = "Neue Strecke"): Promise<string> {
   const { data, error } = await supabase.rpc("create_track", { track_name: name });
   if (error) {
     if (error.message.includes("track_limit_reached")) throw new Error("TRACK_LIMIT_REACHED");
+    if (error.message.includes("invalid_name"))         throw new Error("INVALID_NAME");
     throw error;
   }
   return data as string;
@@ -93,7 +94,8 @@ export async function renameTrack(id: string, name: string): Promise<void> {
   if (!trimmed) return;
   const { error } = await supabase.rpc("rename_track", { p_track_id: id, p_name: trimmed });
   if (error) {
-    if (error.message.includes("not_owner")) throw new Error("NOT_OWNER");
+    if (error.message.includes("not_owner"))    throw new Error("NOT_OWNER");
+    if (error.message.includes("invalid_name")) throw new Error("INVALID_NAME");
     throw error;
   }
 }
@@ -159,6 +161,7 @@ export async function createTrackFromVersion(versionId: string, name: string): P
     if (error.message.includes("track_limit_reached"))    throw new Error("TRACK_LIMIT_REACHED");
     if (error.message.includes("satellite_requires_pro")) throw new Error("SATELLITE_REQUIRES_PRO");
     if (error.message.includes("not_owner"))               throw new Error("NOT_OWNER");
+    if (error.message.includes("invalid_name"))            throw new Error("INVALID_NAME");
     throw error;
   }
   return data as string;

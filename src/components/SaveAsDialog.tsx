@@ -53,6 +53,7 @@ export default function SaveAsDialog({ isOpen, initialName, isPending, errorMess
         <input
           ref={inputRef}
           aria-label="Name der neuen Strecke"
+          maxLength={100}
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => {

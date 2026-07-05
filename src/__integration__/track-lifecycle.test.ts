@@ -46,6 +46,24 @@ describe("Track lifecycle", () => {
     expect(data![0].name).toBe("Integration Test Track");
   });
 
+  it("create_track schlägt mit invalid_name bei Namen über 100 Zeichen fehl", async () => {
+    const { error } = await client.rpc("create_track", { track_name: "x".repeat(101) });
+    assertRpcError(error, "invalid_name", "create_track Name zu lang");
+  });
+
+  it("rename_track schlägt mit invalid_name bei Namen über 100 Zeichen fehl", async () => {
+    const { error } = await client.rpc("rename_track", { p_track_id: trackId, p_name: "y".repeat(101) });
+    assertRpcError(error, "invalid_name", "rename_track Name zu lang");
+  });
+
+  it("rename_track akzeptiert einen Namen mit genau 100 Zeichen", async () => {
+    const exactly100 = "z".repeat(100);
+    const { error } = await client.rpc("rename_track", { p_track_id: trackId, p_name: exactly100 });
+    assertNoError(error, "rename_track Name genau 100 Zeichen");
+    const { data } = await client.from("tracks").select("name").eq("id", trackId).single();
+    expect(data!.name).toBe(exactly100);
+  });
+
   it("save_track persistiert State", async () => {
     const state = {
       items: [{ id: "f1", key: "singlePylon", x: 2, y: 3, rotationDeg: 0, direction: "none" }],

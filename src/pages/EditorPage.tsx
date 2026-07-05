@@ -589,6 +589,10 @@ export default function EditorPage() {
                   setSaveAsError("Dieser Snapshot enthält Satellitenbilder, die den Pro-Tarif erfordern.");
                   return;
                 }
+                if (err instanceof Error && err.message === "INVALID_NAME") {
+                  setSaveAsError("Der Name ist zu lang (maximal 100 Zeichen).");
+                  return;
+                }
                 setSaveAsError("Strecke konnte nicht gespeichert werden.");
               }
             }}

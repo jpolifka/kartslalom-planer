@@ -476,6 +476,65 @@ describe("Versionshistorie — Speichern unter (create_track_from_version)", () 
       .from("tracks").select("name").eq("id", newId as string).single();
     expect(newTrack!.name).toBe("Neue Strecke");
   });
+
+  it("Name über 100 Zeichen schlägt mit invalid_name fehl", async () => {
+    const tooLong = "x".repeat(101);
+    const { error } = await client.rpc("create_track_from_version", {
+      p_version_id: versionId,
+      p_name: tooLong,
+    });
+    assertRpcError(error, "invalid_name", "create_track_from_version Name zu lang");
+  });
+
+  it("Name mit genau 100 Zeichen wird akzeptiert (Grenzfall)", async () => {
+    const exactly100 = "y".repeat(100);
+    const { data: newId, error } = await client.rpc("create_track_from_version", {
+      p_version_id: versionId,
+      p_name: exactly100,
+    });
+    assertNoError(error, "create_track_from_version Name genau 100 Zeichen");
+    const { data: newTrack } = await client
+      .from("tracks").select("name").eq("id", newId as string).single();
+    expect(newTrack!.name).toBe(exactly100);
+  });
+});
+
+describe("Versionshistorie — Speichern unter: gelöschter Account", () => {
+  let client: Awaited<ReturnType<typeof loginAsUser>>;
+  const userIds: string[] = [];
+  let userId: string;
+  let versionId: string;
+
+  beforeAll(async () => {
+    const email = `int-saveas-deleted-${ts()}@test.invalid`;
+    const user = await createTestUser(email, "pro");
+    userId = user.id;
+    userIds.push(user.id);
+    client = await loginAsUser(email);
+
+    const { data: tid } = await client.rpc("create_track", { track_name: "Deleted-Account-Test" });
+    await client.rpc("save_track", {
+      p_track_id: tid as string, p_state_json: { items: [], arrows: [] },
+      p_area_sel: null, p_width: 18, p_length: 36, p_satellite: false, p_opacity: 0.5,
+    });
+    const { data: vid } = await client.rpc("create_track_version", { p_track_id: tid as string });
+    versionId = vid as string;
+
+    // Account als gelöscht markieren — is_deleted-Prüfung muss danach greifen
+    await admin.from("profiles").update({ is_deleted: true }).eq("id", userId);
+  });
+
+  afterAll(async () => {
+    await cleanupUsers(userIds);
+  });
+
+  it("create_track_from_version schlägt für gelöschten Account fehl", async () => {
+    const { error } = await client.rpc("create_track_from_version", {
+      p_version_id: versionId,
+      p_name: "Sollte scheitern",
+    });
+    assertRpcError(error, "not_owner", "create_track_from_version gelöschter Account");
+  });
 });
 
 describe("Versionshistorie — Speichern unter: Tier-Limit greift", () => {
@@ -510,6 +569,89 @@ describe("Versionshistorie — Speichern unter: Tier-Limit greift", () => {
       p_name: "Sollte scheitern",
     });
     assertRpcError(error, "track_limit_reached", "create_track_from_version am Limit");
+  });
+});
+
+describe("Versionshistorie — Speichern unter: Tier-Limit ist race-sicher (FOR UPDATE)", () => {
+  let client: Awaited<ReturnType<typeof loginAsUser>>;
+  const userIds: string[] = [];
+  let versionId: string;
+
+  beforeAll(async () => {
+    const email = `int-saveas-race-${ts()}@test.invalid`;
+    const user = await createTestUser(email, "pro");
+    userIds.push(user.id);
+    client = await loginAsUser(email);
+
+    const { data: tid } = await client.rpc("create_track", { track_name: "Race-Quelle" });
+    const { data: vid } = await client.rpc("create_track_version", { p_track_id: tid as string });
+    versionId = vid as string;
+
+    // Genau 1 unter dem Pro-Limit (50) — die Quelle zählt bereits, 48 weitere anlegen (49 total)
+    for (let i = 0; i < 48; i++) {
+      const { error } = await client.rpc("create_track", { track_name: `Race-Filler ${i}` });
+      assertNoError(error, `create_track filler ${i}`);
+    }
+  });
+
+  afterAll(async () => {
+    await cleanupUsers(userIds);
+  });
+
+  it("zwei parallele create_track_from_version-Aufrufe am Limit erzeugen nicht mehr als 50 Tracks", async () => {
+    const [r1, r2] = await Promise.all([
+      client.rpc("create_track_from_version", { p_version_id: versionId, p_name: "Race A" }),
+      client.rpc("create_track_from_version", { p_version_id: versionId, p_name: "Race B" }),
+    ]);
+    const results = [r1, r2];
+    const successes = results.filter((r) => !r.error);
+    const failures = results.filter((r) => r.error);
+    // FOR UPDATE serialisiert die beiden Aufrufe — genau einer darf noch
+    // unter das Limit von 50 fallen, der andere muss track_limit_reached sehen.
+    expect(successes).toHaveLength(1);
+    expect(failures).toHaveLength(1);
+    assertRpcError(failures[0].error, "track_limit_reached", "paralleler create_track_from_version am Limit");
+
+    const { data: allTracks, error: countErr } = await client.from("tracks").select("id");
+    assertNoError(countErr, "Tracks nach Race zählen");
+    expect(allTracks).toHaveLength(50);
+  });
+});
+
+describe("Track-Limit ist race-sicher für create_track (FOR UPDATE)", () => {
+  let client: Awaited<ReturnType<typeof loginAsUser>>;
+  const userIds: string[] = [];
+
+  beforeAll(async () => {
+    const email = `int-createtrack-race-${ts()}@test.invalid`;
+    const user = await createTestUser(email, "free");
+    userIds.push(user.id);
+    client = await loginAsUser(email);
+
+    // Free-Limit ist 3 — 2 Tracks anlegen, damit der nächste Aufruf am Limit steht
+    await client.rpc("create_track", { track_name: "Filler 1" });
+    await client.rpc("create_track", { track_name: "Filler 2" });
+  });
+
+  afterAll(async () => {
+    await cleanupUsers(userIds);
+  });
+
+  it("zwei parallele create_track-Aufrufe am Limit erzeugen nicht mehr als 3 Tracks", async () => {
+    const [r1, r2] = await Promise.all([
+      client.rpc("create_track", { track_name: "Race A" }),
+      client.rpc("create_track", { track_name: "Race B" }),
+    ]);
+    const results = [r1, r2];
+    const successes = results.filter((r) => !r.error);
+    const failures = results.filter((r) => r.error);
+    expect(successes).toHaveLength(1);
+    expect(failures).toHaveLength(1);
+    assertRpcError(failures[0].error, "track_limit_reached", "paralleler create_track am Limit");
+
+    const { data: allTracks, error: countErr } = await client.from("tracks").select("id");
+    assertNoError(countErr, "Tracks nach Race zählen");
+    expect(allTracks).toHaveLength(3);
   });
 });
 
