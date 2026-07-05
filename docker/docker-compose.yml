@@ -11,6 +11,19 @@ include:
   - path: supabase/docker-compose.yml
     env_file: supabase/.env
 
+# Gemeinsames Netzwerk mit dem externen nginx-Reverse-Proxy (eigenes
+# Compose-Projekt auf demselben Docker-Host, nicht Teil dieses Repos). Der
+# Proxy selbst laeuft containerisiert -- Host-Port-Bindungen auf 127.0.0.1
+# (siehe supabase/docker-compose.yml) waeren fuer ihn NICHT erreichbar, ein
+# gemeinsames Docker-Netzwerk mit Zugriff per Containername schon.
+# Muss vorher einmalig existieren, z.B. auf Seiten des Proxy-Projekts oder
+# manuell: `docker network create kartslalom-edge`. Siehe
+# docs/build-und-deployment.md fuer die Proxy-seitige Konfiguration.
+networks:
+  edge:
+    external: true
+    name: ${EDGE_NETWORK_NAME:-kartslalom-edge}
+
 services:
   kartslalom:
     build:
@@ -19,10 +32,31 @@ services:
       args:
         VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
         VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
+    networks:
+      - default
+      - edge
     ports:
-      - "5173:8080"
+      # Nur Loopback: der eigentliche externe Zugriff laeuft ueber das
+      # edge-Netzwerk (nginx erreicht diesen Container per Servicename
+      # "kartslalom:8080"), dieser Host-Port ist nur zum lokalen Debuggen.
+      - "127.0.0.1:5173:8080"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
     # PROD-RISK: VITE_SUPABASE_URL/ANON_KEY werden zur Build-Zeit fest in das
     # Vite-Bundle eingebacken (kein Laufzeit-Env). Ändert sich die Domain oder
     # der Key, reicht ein Container-Restart NICHT — es braucht
     # `docker compose -f docker/docker-compose.yml up -d --build`.
+
+  kong:
+    networks:
+      - default
+      - edge

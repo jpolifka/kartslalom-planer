@@ -10,10 +10,19 @@
 
 name: supabase
 
+# Log-Rotation fuer alle Services: ohne Limit wachsen json-file-Logs
+# unbegrenzt und koennen die Docker-Host-Platte fuellen.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
 
   studio:
     container_name: supabase-studio
+    logging: *default-logging
     image: supabase/studio:2026.06.03-sha-0bca601
     restart: unless-stopped
     healthcheck:
@@ -67,6 +76,7 @@ services:
 
   kong:
     container_name: supabase-kong
+    logging: *default-logging
     image: kong/kong:3.9.1
     restart: unless-stopped
     networks:
@@ -81,9 +91,18 @@ services:
     depends_on:
       studio:
         condition: service_healthy
+    # PROD-RISK: Ohne Bind-Adresse veroeffentlicht Docker Host-Ports standardmaessig
+    # auf 0.0.0.0 (allen Interfaces) -- damit waere Kong je nach Firewall aus dem
+    # LAN/Internet erreichbar. KONG_BIND_ADDR bindet stattdessen auf den Loopback
+    # (nur vom Docker-Host selbst erreichbar, z.B. zum Debuggen mit curl). Der
+    # eigentliche externe Zugriff (nginx-Reverse-Proxy) laeuft NICHT ueber diesen
+    # Host-Port, sondern ueber das gemeinsame "edge"-Docker-Netzwerk (siehe
+    # docker/docker-compose.yml + docs/build-und-deployment.md), da der
+    # Reverse-Proxy selbst containerisiert ist und 127.0.0.1 auf dem Host sonst
+    # nicht erreichen koennte.
     ports:
-      - ${KONG_HTTP_PORT}:8000/tcp
-      - ${KONG_HTTPS_PORT}:8443/tcp
+      - ${KONG_BIND_ADDR:-127.0.0.1}:${KONG_HTTP_PORT}:8000/tcp
+      - ${KONG_BIND_ADDR:-127.0.0.1}:${KONG_HTTPS_PORT}:8443/tcp
     volumes:
       - ./volumes/api/kong.yml:/home/kong/temp.yml:ro,z
       - ./volumes/api/kong-entrypoint.sh:/home/kong/kong-entrypoint.sh:ro,z
@@ -113,6 +132,7 @@ services:
 
   auth:
     container_name: supabase-auth
+    logging: *default-logging
     image: supabase/gotrue:v2.189.0
     restart: unless-stopped
     healthcheck:
@@ -252,6 +272,7 @@ services:
 
   rest:
     container_name: supabase-rest
+    logging: *default-logging
     image: postgrest/postgrest:v14.12
     restart: unless-stopped
     depends_on:
@@ -289,6 +310,7 @@ services:
   realtime:
     # This container name looks inconsistent but is correct because realtime constructs tenant id by parsing the subdomain
     container_name: realtime-dev.supabase-realtime
+    logging: *default-logging
     image: supabase/realtime:v2.102.3
     restart: unless-stopped
     depends_on:
@@ -335,6 +357,7 @@ services:
   # To use S3 backed storage: docker compose -f docker-compose.yml -f docker-compose.s3.yml up
   storage:
     container_name: supabase-storage
+    logging: *default-logging
     image: supabase/storage-api:v1.60.4
     restart: unless-stopped
     depends_on:
@@ -398,6 +421,7 @@ services:
 
   imgproxy:
     container_name: supabase-imgproxy
+    logging: *default-logging
     image: darthsim/imgproxy:v3.30.1
     restart: unless-stopped
     volumes:
@@ -421,6 +445,7 @@ services:
 
   meta:
     container_name: supabase-meta
+    logging: *default-logging
     image: supabase/postgres-meta:v0.96.6
     restart: unless-stopped
     depends_on:
@@ -438,6 +463,7 @@ services:
 
   functions:
     container_name: supabase-edge-functions
+    logging: *default-logging
     image: supabase/edge-runtime:v1.74.0
     restart: unless-stopped
     volumes:
@@ -464,7 +490,21 @@ services:
       SUPABASE_SECRET_KEYS: "{\"default\":\"${SUPABASE_SECRET_KEY:-}\"}"
       SUPABASE_DB_URL: postgresql://postgres:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
       # TODO: Allow configuring VERIFY_JWT per function.
+      # NICHT auf "true" setzen: main/index.ts prueft Bearer-JWTs fuer
+      # account-export/delete-account/send-welcome selbst per Supabase-Auth
+      # (getUser), aber user-lifecycle wird per Cron OHNE JWT aufgerufen und
+      # nutzt stattdessen CRON_SECRET (x-cron-secret-Header). Ein globales
+      # VERIFY_JWT=true wuerde den Cron-Aufruf mit 401 blocken, da es keine
+      # Pro-Function-Konfiguration gibt (siehe TODO oben).
       VERIFY_JWT: "${FUNCTIONS_VERIFY_JWT}"
+      # Werden von main/send-welcome/user-lifecycle fuer Transaktionsmails
+      # (Resend) bzw. den Inaktivitaets-Cron gebraucht -- ohne diese drei
+      # bleiben Welcome-Mails und der Lifecycle-Cron in Produktion inaktiv
+      # (main/index.ts faellt sonst still auf "" zurueck, sendMail() gibt
+      # dann nur `false` zurueck statt zu senden).
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      FROM_EMAIL: ${FROM_EMAIL:-noreply@kart.cheezuscraizt.de}
+      CRON_SECRET: ${CRON_SECRET:-}
     command:
       [
         "start",
@@ -475,6 +515,7 @@ services:
   # Comment out everything below this point if you are using an external Postgres database
   db:
     container_name: supabase-db
+    logging: *default-logging
     image: supabase/postgres:15.8.1.085
     restart: unless-stopped
     volumes:
@@ -537,6 +578,7 @@ services:
   # bewusst ausgeschlossen, dort muss SMTP_* auf echten Mailversand zeigen.
   mailpit:
     container_name: supabase-mailpit
+    logging: *default-logging
     image: axllent/mailpit:v1.21
     restart: unless-stopped
     profiles: ["dev"]
@@ -546,11 +588,17 @@ services:
   # Update the DATABASE_URL if you are using an external Postgres database
   supavisor:
     container_name: supabase-pooler
+    logging: *default-logging
     image: supabase/supavisor:2.9.5
     restart: unless-stopped
+    # PROD-RISK: Wie bei Kong (siehe oben) auf Loopback gebunden -- Postgres soll
+    # in Produktion nicht ueber das Netzwerk erreichbar sein. Kein Service in
+    # diesem Repo braucht den Host-Port (backup.sh/apply-migrations.sh nutzen
+    # `docker exec` direkt in den db-Container). Nur fuer lokalen psql-Zugriff
+    # vom Docker-Host aus gedacht.
     ports:
-      - ${POSTGRES_PORT}:5432
-      - ${POOLER_PROXY_PORT_TRANSACTION}:6543
+      - ${POSTGRES_BIND_ADDR:-127.0.0.1}:${POSTGRES_PORT}:5432
+      - ${POSTGRES_BIND_ADDR:-127.0.0.1}:${POOLER_PROXY_PORT_TRANSACTION}:6543
     volumes:
       - ./volumes/pooler/pooler.exs:/etc/pooler/pooler.exs:ro,z
     healthcheck:

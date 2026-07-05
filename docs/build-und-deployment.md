@@ -97,16 +97,36 @@ Abhängigkeit mehr von Supabase Cloud.
 
 > **Extern zu konfigurieren (nicht Teil dieses Repos):** Der Docker-Host
 > liegt hinter Cloudflare Zero Trust (`cloudflared`-Tunnel) und einem
-> vorhandenen nginx-Reverse-Proxy, die Subdomains trennen. TLS-Terminierung
-> und Routing passieren dort, nicht in diesem Repo — well-known Ports
-> (80/443) sind für die Compose-Services hier nicht verfügbar. Folgende zwei
-> Ziele müssen dort ergänzt werden, bevor die App/API von außen erreichbar
-> sind:
+> vorhandenen nginx-Reverse-Proxy, die Subdomains trennen — beide laufen
+> **selbst containerisiert**, in einem eigenen Compose-Projekt auf demselben
+> Host. TLS-Terminierung und Routing passieren dort, nicht in diesem Repo.
 >
-> | Hostname | Ziel (Docker-Host) |
+> Weil der Proxy containerisiert ist, kann er `127.0.0.1`-Host-Ports dieses
+> Stacks **nicht** erreichen (jeder Container hat sein eigenes Netzwerk-
+> Namespace). Deshalb hängen App und Kong zusätzlich am externen Docker-Netz
+> `${EDGE_NETWORK_NAME:-kartslalom-edge}` (siehe `docker/docker-compose.yml`);
+> darüber kann der Proxy sie per Containername erreichen:
+>
+> | Proxy-Ziel | Erreichbar unter |
 > | --- | --- |
-> | `kart.cheezuscraizt.de` | Port `5173` (App-Container, `kartslalom`) |
-> | `api.kart.cheezuscraizt.de` | Port `8000` (Kong) |
+> | `kart.cheezuscraizt.de` | `http://kartslalom:8080` (im `edge`-Netz) |
+> | `api.kart.cheezuscraizt.de` | `http://kong:8000` (im `edge`-Netz) |
+>
+> Voraussetzungen auf der Proxy-Seite:
+> 1. Netzwerk `kartslalom-edge` muss existieren, bevor dieser Stack startet
+>    (`docker network create kartslalom-edge`, oder das Proxy-Projekt legt es
+>    an und dieser Stack hängt sich als `external: true` ein — beides geht,
+>    Hauptsache es existiert vorher einmalig).
+> 2. Der nginx-Container muss ebenfalls an `kartslalom-edge` angeschlossen
+>    werden (im externen Proxy-Compose-Projekt, `networks: - kartslalom-edge`
+>    mit `external: true` referenziert).
+> 3. `proxy_pass` in der nginx-Config zeigt auf die Containernamen oben, nicht
+>    auf `localhost`/`127.0.0.1`.
+>
+> Ohne das gemeinsame Netzwerk sind App/Kong nur noch vom Docker-Host selbst
+> aus erreichbar (`127.0.0.1:5173` / `127.0.0.1:8000`, siehe unten) — das ist
+> beabsichtigt (P1-Fix: vorher waren diese Ports auf allen Interfaces
+> veröffentlicht).
 >
 > `api.kart.cheezuscraizt.de` ist eine **Übergangslösung**: der Browser
 > spricht damit direkt mit Kong/Supabase (REST/Auth/Realtime/Storage/
@@ -114,6 +134,14 @@ Abhängigkeit mehr von Supabase Cloud.
 > Backend-for-Frontend (BFF) alle Requests entgegennehmen und intern an Kong
 > weiterreichen — dann entfällt diese Subdomain wieder. Das ist ein eigener,
 > größerer Umbau und **nicht** Teil dieses Deployments.
+>
+> **Studio/Dashboard** hängt am selben Kong-Port wie die API (Catch-all-Route
+> in `kong.yml`) und ist damit über `api.kart.cheezuscraizt.de` erreichbar,
+> sobald der Proxy das durchreicht. Das ist eine bewusste Entscheidung: die
+> eigentliche Zugriffskontrolle ist eine Cloudflare-Zero-Trust/Access-Policy
+> auf diesem Hostnamen (extern, nicht Teil dieses Repos), nicht Kongs
+> Basic-Auth allein. Ohne eine solche Access-Policy ist Studio faktisch
+> öffentlich — das sollte auf Cloudflare-Seite bewusst konfiguriert sein.
 
 ### 1. Secrets generieren
 
@@ -121,7 +149,14 @@ Abhängigkeit mehr von Supabase Cloud.
 cd docker/supabase
 cp .env.example .env
 sh utils/generate-keys.sh --update-env   # ersetzt Demo-Keys/Passwörter in .env
+sh preflight-check.sh                    # bricht mit Exit-Code 1 ab, falls doch noch Demo-Werte drin sind
 ```
+
+`preflight-check.sh` sollte vor jedem `docker compose up` in Produktion laufen
+(z. B. als erster Schritt in einem Deploy-Script) — er prüft `.env` gegen die
+bekannten Platzhalter-/Demo-Werte aus `.env.example` (u. a. den öffentlichen
+Supabase-Demo-JWT für `ANON_KEY`/`SERVICE_ROLE_KEY`) und listet alle
+gefundenen Probleme auf einmal auf.
 
 Danach in `docker/supabase/.env` von Hand setzen (siehe Kommentare in
 `.env.example`):
@@ -152,6 +187,14 @@ Rebuild (Schritt 4).
 
 ### 3. Stack starten
 
+Einmalig, bevor der Stack zum ersten Mal hochfährt, das gemeinsame
+Docker-Netz mit dem Reverse-Proxy anlegen (falls das Proxy-Projekt das nicht
+bereits selbst tut):
+
+```bash
+docker network create kartslalom-edge
+```
+
 [`docker/docker-compose.yml`](../docker/docker-compose.yml) bindet den
 Supabase-Stack per `include` ein (ohne `dev`-Profil, Projektname
 `kartslalom-prod`):
@@ -160,13 +203,17 @@ Supabase-Stack per `include` ein (ohne `dev`-Profil, Projektname
 docker compose -f docker/docker-compose.yml up -d --build
 ```
 
-- **App:** Port `5173`
-- **API/Kong:** Port `8000` (Studio/Dashboard ist über denselben Port
-  erreichbar — bewusst öffentlich, kein zusätzlicher Zugriffsschutz über
-  Kongs Basic-Auth hinaus)
-- **Postgres (Supavisor):** Port `${POSTGRES_PORT}` — sollte NICHT über den
-  externen Proxy veröffentlicht werden, nur Kong braucht öffentlichen
-  Zugriff.
+- **App:** nur `127.0.0.1:5173` auf dem Docker-Host (Debug/lokaler Zugriff),
+  extern über `edge`-Netz + Reverse-Proxy erreichbar (s. o.)
+- **API/Kong:** nur `127.0.0.1:8000`/`127.0.0.1:8443` auf dem Docker-Host,
+  extern ebenfalls über das `edge`-Netz. Studio/Dashboard hängt am selben
+  Port (s. o., bewusst so).
+- **Postgres (Supavisor):** nur `127.0.0.1:${POSTGRES_PORT}` — kein Service
+  in diesem Repo braucht den Host-Port, nicht Teil des `edge`-Netzes.
+
+Alle drei Bind-Adressen sind über `KONG_BIND_ADDR` (`docker/supabase/.env`)
+und `POSTGRES_BIND_ADDR` (`docker/supabase/.env`) konfigurierbar, falls doch
+einmal ein anderer Zugriffsweg als über den Reverse-Proxy gebraucht wird.
 
 ### 4. Migrationen
 
