@@ -48,8 +48,17 @@ pnpm-debug.log*
 # TypeScript
 *.tsbuildinfo
 
-# Supabase (lokaler Docker-Stack)
-docker/supabase/volumes/
+# Supabase (lokaler Docker-Stack): nur Laufzeitdaten und Ablenkendes
+# ignorieren, NICHT die statischen Config-Templates (kong.yml, *.sql,
+# pooler.exs) darunter -- die sind secret-frei und werden fuer jeden
+# frischen Checkout gebraucht (siehe docker-compose.yml Bind-Mounts). Ohne
+# sie legt Docker beim Start stillschweigend leere Verzeichnisse an
+# fehlenden Bind-Mount-Zielen an, was Postgres/Kong crashen laesst.
+docker/supabase/volumes/db/data/
+docker/supabase/volumes/storage/
+docker/supabase/volumes/functions/
+docker/supabase/volumes/snippets/
+docker/supabase/volumes/**/.DS_Store
 docker/supabase/.env
 docker/supabase/.env.bak
 
