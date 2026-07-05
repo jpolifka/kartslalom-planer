@@ -225,7 +225,7 @@ export default function FormationEditorPage() {
       navigate(`/formations/${newId}`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
-      if (msg === "PREMIUM_REQUIRED") alert("Eigene Hindernisse erfordern einen Pro-Tarif. Schreib uns: jens@polifka.info");
+      if (msg === "PREMIUM_REQUIRED") alert("Eigene Hindernisse erfordern einen Pro-Tarif. Schreib uns: jens(at)polifka.info");
       else if (msg === "FORMATION_LIMIT_REACHED") alert("Du hast die maximale Anzahl eigener Hindernisse erreicht (100).");
       else alert("Hindernis konnte nicht dupliziert werden.");
     }

@@ -376,7 +376,7 @@ export default function DashboardPage() {
           borderRadius: 10, padding: "10px 12px", fontSize: 13, color: "#92400e", marginBottom: 14,
         }}>
           Eigene Hindernisse erfordern mindestens den <strong>{requiredTier ?? "Pro"}-Tarif</strong>.
-          Schreib uns: <a href="mailto:jens@polifka.info" style={{ color: "inherit" }}>jens@polifka.info</a>
+          Schreib uns: jens(at)polifka.info
         </div>
       )}
 

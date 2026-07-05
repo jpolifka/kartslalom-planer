@@ -22,7 +22,7 @@ export function ImprintContent() {
         Jens Polifka<br />
         In der Maar 31<br />
         56598 Rheinbrohl<br />
-        E-Mail: <a href="mailto:jens@polifka.info" style={link}>jens@polifka.info</a>
+        E-Mail: jens(at)polifka.info
       </HelpSection>
 
       <h3 id="datenschutz" style={{ margin: "26px 0 0", fontSize: 16, fontWeight: 800, color: "#0f172a" }}>
@@ -35,7 +35,7 @@ export function ImprintContent() {
           Jens Polifka<br />
           In der Maar 31<br />
           56598 Rheinbrohl<br />
-          E-Mail: <a href="mailto:jens@polifka.info" style={link}>jens@polifka.info</a>
+          E-Mail: jens(at)polifka.info
         </p>
       </HelpSection>
 
@@ -189,8 +189,7 @@ export function ImprintContent() {
         Dabei werden Ihr Benutzerprofil, alle gespeicherten Streckenpläne sowie Ihre
         Authentifizierungsdaten unwiderruflich und vollständig gelöscht (Hard Delete).
         Eine Wiederherstellung ist nicht möglich. Alternativ können Sie die Löschung
-        per E-Mail an{" "}
-        <a href="mailto:jens@polifka.info" style={link}>jens@polifka.info</a> beantragen.
+        per E-Mail an jens(at)polifka.info beantragen.
         <p style={{ margin: "8px 0" }}>
           <strong>Automatische Deaktivierung bei Inaktivität:</strong> Um Daten nicht
           länger als notwendig vorzuhalten, werden Konten nach längerem Nichtgebrauch
@@ -208,8 +207,8 @@ export function ImprintContent() {
           <li>
             <strong>Nach 180 Tagen</strong> Inaktivität: Konto wird deaktiviert;
             Profil und Streckendaten werden nicht mehr zugänglich gemacht. Eine
-            Reaktivierung ist nicht automatisch möglich — bitte wenden Sie sich an{" "}
-            <a href="mailto:jens@polifka.info" style={link}>jens@polifka.info</a>.
+            Reaktivierung ist nicht automatisch möglich — bitte wenden Sie sich an
+            jens(at)polifka.info.
           </li>
         </ul>
         <p style={{ margin: "6px 0 0" }}>

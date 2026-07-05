@@ -100,7 +100,7 @@ export default function FormationsPage() {
           borderRadius: 10, padding: "12px 16px", fontSize: 13, color: "#92400e", marginBottom: 16,
         }}>
           Eigene Hindernisse erfordern mindestens den <strong>{requiredTier ?? "Pro"}-Tarif</strong>.
-          Schreib uns: <a href="mailto:jens@polifka.info" style={{ color: "inherit" }}>jens@polifka.info</a>
+          Schreib uns: jens(at)polifka.info
         </div>
       )}
 
