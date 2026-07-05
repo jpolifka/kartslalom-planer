@@ -94,6 +94,6 @@ Skalierung) bei Supabase Cloud. Jetzt liegt es vollständig beim Betreiber:
 Der App-Server soll langfristig als Backend-for-Frontend (BFF) alle
 Supabase-Requests entgegennehmen und intern weiterreichen, sodass der
 Browser nicht mehr direkt mit Kong spricht — dann entfällt die aktuell
-öffentlich (über den Reverse-Proxy) geroutete `api.kart.cheezuscraizt.de`
+öffentlich (über den Reverse-Proxy) geroutete `kartapi.cheezuscraizt.de`
 wieder. Das ist ein eigener, größerer Umbau und nicht Teil dieser
 Entscheidung.

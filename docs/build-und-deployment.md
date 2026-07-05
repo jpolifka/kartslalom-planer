@@ -110,7 +110,7 @@ Abhängigkeit mehr von Supabase Cloud.
 > | Proxy-Ziel | Erreichbar unter |
 > | --- | --- |
 > | `kart.cheezuscraizt.de` | `http://kartslalom:8080` (im `edge`-Netz) |
-> | `api.kart.cheezuscraizt.de` | `http://kong:8000` (im `edge`-Netz) |
+> | `kartapi.cheezuscraizt.de` | `http://kong:8000` (im `edge`-Netz) |
 >
 > Ohne das gemeinsame Netzwerk sind App/Kong nur noch vom Docker-Host selbst
 > aus erreichbar (`127.0.0.1:5173` / `127.0.0.1:8000`, siehe unten) — das ist
@@ -162,7 +162,7 @@ Abhängigkeit mehr von Supabase Cloud.
 >
 >    server {
 >        listen 80;
->        server_name api.kart.cheezuscraizt.de;
+>        server_name kartapi.cheezuscraizt.de;
 >
 >        set $upstream_kong kong:8000;
 >        location / {
@@ -191,17 +191,17 @@ Abhängigkeit mehr von Supabase Cloud.
 >    ingress:
 >      - hostname: kart.cheezuscraizt.de
 >        service: http://nginx:80
->      - hostname: api.kart.cheezuscraizt.de
+>      - hostname: kartapi.cheezuscraizt.de
 >        service: http://nginx:80
 >      # ... eure bestehenden Regeln ...
 >      - service: http_status:404
 >    ```
-> 5. Falls für `api.kart.cheezuscraizt.de` bereits eine
+> 5. Falls für `kartapi.cheezuscraizt.de` bereits eine
 >    Cloudflare-Access-Policy geplant ist (siehe Studio-Hinweis unten): die
 >    Policy VOR dem ersten produktiven Start aktivieren, nicht danach —
 >    sonst ist Studio zwischenzeitlich ungeschützt erreichbar.
 >
-> `api.kart.cheezuscraizt.de` ist eine **Übergangslösung**: der Browser
+> `kartapi.cheezuscraizt.de` ist eine **Übergangslösung**: der Browser
 > spricht damit direkt mit Kong/Supabase (REST/Auth/Realtime/Storage/
 > Functions). Langfristig soll der App-Server stattdessen als
 > Backend-for-Frontend (BFF) alle Requests entgegennehmen und intern an Kong
@@ -209,7 +209,7 @@ Abhängigkeit mehr von Supabase Cloud.
 > größerer Umbau und **nicht** Teil dieses Deployments.
 >
 > **Studio/Dashboard** hängt am selben Kong-Port wie die API (Catch-all-Route
-> in `kong.yml`) und ist damit über `api.kart.cheezuscraizt.de` erreichbar,
+> in `kong.yml`) und ist damit über `kartapi.cheezuscraizt.de` erreichbar,
 > sobald der Proxy das durchreicht. Das ist eine bewusste Entscheidung: die
 > eigentliche Zugriffskontrolle ist eine Cloudflare-Zero-Trust/Access-Policy
 > auf diesem Hostnamen (extern, nicht Teil dieses Repos), nicht Kongs
@@ -242,7 +242,7 @@ Danach in `docker/supabase/.env` von Hand setzen (siehe Kommentare in
 - `ENABLE_EMAIL_AUTOCONFIRM=false` (Dev-Default `true` **muss** in Produktion
   aus sein, sonst ist Signup ohne E-Mail-Bestätigung möglich)
 - `SITE_URL=https://kart.cheezuscraizt.de`,
-  `API_EXTERNAL_URL=https://api.kart.cheezuscraizt.de`,
+  `API_EXTERNAL_URL=https://kartapi.cheezuscraizt.de`,
   `ADDITIONAL_REDIRECT_URLS=https://kart.cheezuscraizt.de/auth/callback`
 - `SMTP_HOST=smtp.resend.com`, `SMTP_PORT=465`, `SMTP_USER=resend`,
   `SMTP_PASS=<RESEND_API_KEY>` (gleicher Resend-Account wie für die
@@ -254,7 +254,7 @@ Danach in `docker/supabase/.env` von Hand setzen (siehe Kommentare in
 Root-`.env` (gitignored, auf dem Docker-Host):
 
 ```
-VITE_SUPABASE_URL=https://api.kart.cheezuscraizt.de
+VITE_SUPABASE_URL=https://kartapi.cheezuscraizt.de
 VITE_SUPABASE_ANON_KEY=<ANON_KEY aus docker/supabase/.env>
 ```
 
@@ -354,7 +354,7 @@ Cron/systemd-Timer einplanen, z. B.:
   für Assets unter `/assets/` (Vite versieht sie mit Content-Hash).
 - **Security-Header**: `X-Frame-Options`, `X-Content-Type-Options`,
   `Referrer-Policy`, `Permissions-Policy`, sowie eine CSP mit
-  `connect-src` fest auf `api.kart.cheezuscraizt.de` (REST/Auth/Realtime).
+  `connect-src` fest auf `kartapi.cheezuscraizt.de` (REST/Auth/Realtime).
   Ändert sich die API-Domain, muss diese Zeile manuell angepasst und das
   Image neu gebaut werden (statische Datei, kein Templating).
 
