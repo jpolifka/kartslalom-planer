@@ -133,20 +133,6 @@ export function ImprintContent() {
         </p>
       </HelpSection>
 
-      <HelpSection title="6. Verarbeitung von Streckendaten">
-        <strong>Gast-Modus (ohne Anmeldung):</strong> Die erstellten Streckenpläne
-        werden ausschließlich lokal im Browser gespeichert (localStorage). Es werden
-        keine Streckendaten an den Betreiber übermittelt.
-        <p style={{ margin: "6px 0 0" }}>
-          <strong>Mit Account (angemeldet):</strong> Streckenpläne werden in der
-          Cloud gespeichert (Supabase, siehe Abschnitt 7). Dabei werden die
-          Streckendaten (Formationen, Kartenausschnitt, Einstellungen) sowie
-          Metadaten (Titel, Zeitstempel) an den Server übertragen und dort
-          gespeichert. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO
-          (Vertragserfüllung).
-        </p>
-      </HelpSection>
-
       {/*
         PROD-RISK / Rechtlicher Hinweis: Text unten spiegelt den Umzug von
         Supabase Cloud (Auftragsverarbeiter Supabase Inc., Singapur, Hosting
@@ -157,7 +143,7 @@ export function ImprintContent() {
         eine AV-Vereinbarung mit Cloudflare für den Zero-Trust-Tunnel nötig
         ist) - das hier ist kein Ersatz für eine anwaltliche Prüfung.
       */}
-      <HelpSection title="7. Speicherung von Konto- und Streckendaten (self-hosted)">
+      <HelpSection title="6. Speicherung von Konto- und Streckendaten (self-hosted)">
         Für registrierte Nutzer werden Authentifizierung und Cloud-Speicherung über
         die selbst betriebene Open-Source-Software Supabase bereitgestellt. Es findet
         keine Auftragsverarbeitung durch die Supabase Inc. statt — die Software läuft
@@ -183,7 +169,7 @@ export function ImprintContent() {
         </p>
       </HelpSection>
 
-      <HelpSection title="8. Kontolöschung und Inaktivitätsregel">
+      <HelpSection title="7. Kontolöschung und Inaktivitätsregel">
         <strong>Kontolöschung auf Anfrage (Art. 17 DSGVO):</strong> Über den Bereich
         „Einstellungen" in der Anwendung können Sie Ihr Konto jederzeit selbst löschen.
         Dabei werden Ihr Benutzerprofil, alle gespeicherten Streckenpläne sowie Ihre
@@ -218,7 +204,7 @@ export function ImprintContent() {
         </p>
       </HelpSection>
 
-      <HelpSection title="9. Kontaktaufnahme per E-Mail">
+      <HelpSection title="8. Kontaktaufnahme per E-Mail">
         Wenn Sie per E-Mail Kontakt aufnehmen, werden die von Ihnen übermittelten
         Daten ausschließlich zur Bearbeitung Ihrer Anfrage verwendet.
         <p style={{ margin: "6px 0" }}>
@@ -232,12 +218,12 @@ export function ImprintContent() {
         </p>
       </HelpSection>
 
-      <HelpSection title="10. Ihre Rechte">
+      <HelpSection title="9. Ihre Rechte">
         Sie haben im Rahmen der geltenden gesetzlichen Bestimmungen das Recht auf:
         <ul style={ul}>
           <li>Auskunft über Ihre gespeicherten Daten (Art. 15 DSGVO)</li>
           <li>Berichtigung unrichtiger Daten (Art. 16 DSGVO)</li>
-          <li>Löschung Ihrer Daten (Art. 17 DSGVO) — siehe Abschnitt 8</li>
+          <li>Löschung Ihrer Daten (Art. 17 DSGVO) — siehe Abschnitt 7</li>
           <li>Einschränkung der Verarbeitung (Art. 18 DSGVO)</li>
           <li>Datenübertragbarkeit (Art. 20 DSGVO) — Datenexport in den Einstellungen</li>
           <li>Widerspruch gegen die Verarbeitung (Art. 21 DSGVO)</li>
@@ -246,7 +232,7 @@ export function ImprintContent() {
         Kontaktadresse wenden.
       </HelpSection>
 
-      <HelpSection title="11. Beschwerderecht bei einer Aufsichtsbehörde">
+      <HelpSection title="10. Beschwerderecht bei einer Aufsichtsbehörde">
         Sie haben das Recht, sich bei einer Datenschutzaufsichtsbehörde über die
         Verarbeitung Ihrer personenbezogenen Daten zu beschweren.
         <p style={{ margin: "6px 0 0" }}>
@@ -256,7 +242,7 @@ export function ImprintContent() {
         </p>
       </HelpSection>
 
-      <HelpSection title="12. Änderungen dieser Datenschutzerklärung">
+      <HelpSection title="11. Änderungen dieser Datenschutzerklärung">
         Ich behalte mir vor, diese Datenschutzerklärung anzupassen, sofern dies
         aufgrund technischer oder rechtlicher Änderungen erforderlich wird.
         <p style={{ margin: "10px 0 0", color: "#94a3b8", fontSize: 12 }}>
