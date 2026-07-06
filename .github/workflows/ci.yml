@@ -1,9 +1,21 @@
 name: CI
 
 on:
+  # push nur auf main: Feature-Branches mit offenem PR feuern sonst push UND
+  # pull_request gleichzeitig -- security-smoke (der teure Job) liefe dadurch
+  # bei jedem Commit doppelt. Ueber den PR-Trigger laeuft der Check trotzdem
+  # bei jedem Push auf einen Branch mit offenem PR (Branch-Protection
+  # verlangt ohnehin einen PR vor dem Merge).
   push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
   pull_request:
     branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
   workflow_dispatch:
 
 jobs:
