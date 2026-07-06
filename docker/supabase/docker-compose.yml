@@ -600,6 +600,17 @@ services:
     logging: *default-logging
     image: supabase/supavisor:2.9.5
     restart: unless-stopped
+    # Der Image-Entrypoint (limits.sh, "set -e") bricht sofort ab, wenn
+    # "ulimit -n $RLIMIT_NOFILE" (Default 100000) fehlschlaegt -- ohne
+    # explizites Hard-Limit hier haengt das u.a. vom Host/Runner ab (auf
+    # GitHub-Actions-Runnern typischerweise zu niedrig -> "Operation not
+    # permitted" -> Crash-Loop, Healthcheck erreicht nie einen gesunden
+    # Zustand). Docker setzt das Limit beim Erstellen selbst mit ausreichend
+    # Rechten, unabhaengig vom Host-Default.
+    ulimits:
+      nofile:
+        soft: 100000
+        hard: 100000
     # PROD-RISK: Wie bei Kong (siehe oben) auf Loopback gebunden -- Postgres soll
     # in Produktion nicht ueber das Netzwerk erreichbar sein. Kein Service in
     # diesem Repo braucht den Host-Port (backup.sh/apply-migrations.sh nutzen

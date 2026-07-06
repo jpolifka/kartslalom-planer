@@ -1,9 +1,21 @@
 name: CI
 
 on:
+  # push nur auf main: Feature-Branches mit offenem PR feuern sonst push UND
+  # pull_request gleichzeitig -- security-smoke (der teure Job) liefe dadurch
+  # bei jedem Commit doppelt. Ueber den PR-Trigger laeuft der Check trotzdem
+  # bei jedem Push auf einen Branch mit offenem PR (Branch-Protection
+  # verlangt ohnehin einen PR vor dem Merge).
   push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
   pull_request:
     branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
   workflow_dispatch:
 
 jobs:
@@ -51,10 +63,13 @@ jobs:
         run: (cd docker/supabase && sh preflight-check.sh)
 
       - name: Stack starten
+        # docker-entrypoint-initdb.d/migrate.sh (siehe docker/supabase/docker-compose.yml)
+        # wendet bei jeder frischen Postgres-Initialisierung automatisch alle
+        # Migrationen aus supabase/migrations/ an -- ein separater
+        # "apply-migrations.sh"-Schritt ist hier nicht noetig (und wuerde mit
+        # veralteter LEGACY-Liste sogar fehlschlagen, siehe apply-migrations.sh).
+        # Der Stack ist danach garantiert vollstaendig migriert.
         run: docker compose -f docker/docker-compose.dev.yml up -d --build --wait --wait-timeout 180
-
-      - name: Migrationen anwenden
-        run: (cd docker/supabase && ./apply-migrations.sh)
 
       - name: Security-Smoke-Tests
         run: sh docker/run-security-test-local.sh
@@ -79,16 +94,14 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Compose-Konfiguration validieren
-        run: |
-          docker compose -f docker/docker-compose.yml config -q
-          docker compose -f docker/docker-compose.dev.yml config -q
-
       - name: Ephemeres Supabase-Test-Env erzeugen
         # Frische, zufällige Secrets pro Lauf statt der Demo-Werte aus
         # .env.example -- der Stack ist danach zwar trotzdem nur für diesen
         # Job erreichbar, aber preflight-check.sh (siehe nächster Schritt)
         # prüft damit reale Bedingungen statt eines Sonderfalls.
+        # Muss vor der Compose-Validierung laufen: docker-compose.yml und
+        # docker-compose.dev.yml binden supabase/.env per env_file ein --
+        # ohne diese Datei schlägt "compose config" fehl.
         run: |
           cd docker/supabase
           cp .env.example .env
@@ -98,11 +111,24 @@ jobs:
       - name: Preflight-Check
         run: (cd docker/supabase && sh preflight-check.sh)
 
-      - name: Stack starten
-        run: docker compose -f docker/docker-compose.dev.yml up -d --build --wait --wait-timeout 180
+      - name: Compose-Konfiguration validieren
+        # VITE_SUPABASE_URL/-ANON_KEY sind Build-Args der Prod-Compose-Datei
+        # (kein echter Zugriff nötig, config validiert nur die Struktur).
+        env:
+          VITE_SUPABASE_URL: http://localhost:8000
+          VITE_SUPABASE_ANON_KEY: ci-placeholder
+        run: |
+          docker compose -f docker/docker-compose.yml config -q
+          docker compose -f docker/docker-compose.dev.yml config -q
 
-      - name: Migrationen anwenden
-        run: (cd docker/supabase && ./apply-migrations.sh)
+      - name: Stack starten
+        # docker-entrypoint-initdb.d/migrate.sh (siehe docker/supabase/docker-compose.yml)
+        # wendet bei jeder frischen Postgres-Initialisierung automatisch alle
+        # Migrationen aus supabase/migrations/ an -- ein separater
+        # "apply-migrations.sh"-Schritt ist hier nicht noetig (und wuerde mit
+        # veralteter LEGACY-Liste sogar fehlschlagen, siehe apply-migrations.sh).
+        # Der Stack ist danach garantiert vollstaendig migriert.
+        run: docker compose -f docker/docker-compose.dev.yml up -d --build --wait --wait-timeout 180
 
       - name: Integrationstests
         run: sh docker/run-integration-test-local.sh

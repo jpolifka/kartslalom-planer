@@ -1,3 +1,15 @@
 node_modules
 dist
 .DS_Store
+
+# Supabase-Laufzeitdaten: von Postgres/Storage mit restriktiven Rechten
+# (uid des jeweiligen Containers) direkt auf den Host geschrieben -- der
+# Docker-Build-Context-Sender kann sie oft nicht lesen ("permission denied"),
+# und sie gehoeren ohnehin nicht in ein Image. Siehe .gitignore.
+docker/supabase/volumes/db/data
+docker/supabase/volumes/storage
+docker/supabase/volumes/functions
+docker/supabase/volumes/snippets
+docker/supabase/.env
+docker/supabase/.env.bak
+docker/supabase/backups
