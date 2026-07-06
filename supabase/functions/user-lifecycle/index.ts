@@ -5,7 +5,7 @@
 const SUPABASE_URL     = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const RESEND_API_KEY   = Deno.env.get("RESEND_API_KEY") ?? "";
-const FROM_EMAIL       = Deno.env.get("FROM_EMAIL") ?? "noreply@kart.cheezuscraizt.de";
+const FROM_EMAIL       = Deno.env.get("FROM_EMAIL") ?? "noreply@cheezuscraizt.de";
 const CRON_SECRET      = Deno.env.get("CRON_SECRET") ?? "";
 
 const svc = { "apikey": SERVICE_ROLE_KEY, "Authorization": `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json" };

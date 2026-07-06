@@ -247,7 +247,13 @@ Danach in `docker/supabase/.env` von Hand setzen (siehe Kommentare in
 - `SMTP_HOST=smtp.resend.com`, `SMTP_PORT=465`, `SMTP_USER=resend`,
   `SMTP_PASS=<RESEND_API_KEY>` (gleicher Resend-Account wie für die
   Welcome-/Lifecycle-Mails der Edge Functions), `SMTP_ADMIN_EMAIL`/
-  `SMTP_SENDER_NAME` auf die echte Absenderadresse
+  `SMTP_SENDER_NAME` auf die echte Absenderadresse — **muss zu einer in
+  Resend verifizierten Domain gehören**
+  ([resend.com/domains](https://resend.com/domains)), sonst `550 The
+  <domain> domain is not verified` beim Mailversand. Bei uns ist nur die
+  Apex-Domain verifiziert, nicht die App-Subdomain, daher
+  `noreply@cheezuscraizt.de`, nicht `noreply@kart.cheezuscraizt.de`
+  (gleiche Einschränkung wie bei den Subdomains: nur eine Ebene möglich).
 
 ### 2. App-Build auf die Prod-Domain
 
