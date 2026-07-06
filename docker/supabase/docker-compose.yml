@@ -207,6 +207,13 @@ services:
       # auf das GoTrue-Standardtemplate zurueck (Mailpit faengt die Mail eh ab).
       GOTRUE_MAILER_TEMPLATES_MAGIC_LINK: ${MAILER_TEMPLATE_MAGIC_LINK}
       GOTRUE_MAILER_SUBJECTS_MAGIC_LINK: ${MAILER_SUBJECT_MAGIC_LINK}
+      # signInWithOtp() mit shouldCreateUser (Default true, siehe LoginPage.tsx)
+      # verschickt fuer noch unbekannte E-Mail-Adressen eine "confirmation"-
+      # statt "magiclink"-Mail (GoTrue erstellt den Account dabei implizit).
+      # Aus Nutzersicht ist es derselbe Login-Link -- dieselbe Vorlage/Betreff
+      # wie oben, sonst sehen Erstanmeldende die unangepasste GoTrue-Vorlage.
+      GOTRUE_MAILER_TEMPLATES_CONFIRMATION: ${MAILER_TEMPLATE_MAGIC_LINK}
+      GOTRUE_MAILER_SUBJECTS_CONFIRMATION: ${MAILER_SUBJECT_MAGIC_LINK}
 
       GOTRUE_EXTERNAL_PHONE_ENABLED: ${ENABLE_PHONE_SIGNUP}
       GOTRUE_SMS_AUTOCONFIRM: ${ENABLE_PHONE_AUTOCONFIRM}
