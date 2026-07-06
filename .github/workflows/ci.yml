@@ -51,10 +51,13 @@ jobs:
         run: (cd docker/supabase && sh preflight-check.sh)
 
       - name: Stack starten
+        # docker-entrypoint-initdb.d/migrate.sh (siehe docker/supabase/docker-compose.yml)
+        # wendet bei jeder frischen Postgres-Initialisierung automatisch alle
+        # Migrationen aus supabase/migrations/ an -- ein separater
+        # "apply-migrations.sh"-Schritt ist hier nicht noetig (und wuerde mit
+        # veralteter LEGACY-Liste sogar fehlschlagen, siehe apply-migrations.sh).
+        # Der Stack ist danach garantiert vollstaendig migriert.
         run: docker compose -f docker/docker-compose.dev.yml up -d --build --wait --wait-timeout 180
-
-      - name: Migrationen anwenden
-        run: (cd docker/supabase && ./apply-migrations.sh)
 
       - name: Security-Smoke-Tests
         run: sh docker/run-security-test-local.sh
@@ -107,10 +110,13 @@ jobs:
           docker compose -f docker/docker-compose.dev.yml config -q
 
       - name: Stack starten
+        # docker-entrypoint-initdb.d/migrate.sh (siehe docker/supabase/docker-compose.yml)
+        # wendet bei jeder frischen Postgres-Initialisierung automatisch alle
+        # Migrationen aus supabase/migrations/ an -- ein separater
+        # "apply-migrations.sh"-Schritt ist hier nicht noetig (und wuerde mit
+        # veralteter LEGACY-Liste sogar fehlschlagen, siehe apply-migrations.sh).
+        # Der Stack ist danach garantiert vollstaendig migriert.
         run: docker compose -f docker/docker-compose.dev.yml up -d --build --wait --wait-timeout 180
-
-      - name: Migrationen anwenden
-        run: (cd docker/supabase && ./apply-migrations.sh)
 
       - name: Integrationstests
         run: sh docker/run-integration-test-local.sh
