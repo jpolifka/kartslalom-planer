@@ -79,16 +79,14 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Compose-Konfiguration validieren
-        run: |
-          docker compose -f docker/docker-compose.yml config -q
-          docker compose -f docker/docker-compose.dev.yml config -q
-
       - name: Ephemeres Supabase-Test-Env erzeugen
         # Frische, zufällige Secrets pro Lauf statt der Demo-Werte aus
         # .env.example -- der Stack ist danach zwar trotzdem nur für diesen
         # Job erreichbar, aber preflight-check.sh (siehe nächster Schritt)
         # prüft damit reale Bedingungen statt eines Sonderfalls.
+        # Muss vor der Compose-Validierung laufen: docker-compose.yml und
+        # docker-compose.dev.yml binden supabase/.env per env_file ein --
+        # ohne diese Datei schlägt "compose config" fehl.
         run: |
           cd docker/supabase
           cp .env.example .env
@@ -97,6 +95,16 @@ jobs:
 
       - name: Preflight-Check
         run: (cd docker/supabase && sh preflight-check.sh)
+
+      - name: Compose-Konfiguration validieren
+        # VITE_SUPABASE_URL/-ANON_KEY sind Build-Args der Prod-Compose-Datei
+        # (kein echter Zugriff nötig, config validiert nur die Struktur).
+        env:
+          VITE_SUPABASE_URL: http://localhost:8000
+          VITE_SUPABASE_ANON_KEY: ci-placeholder
+        run: |
+          docker compose -f docker/docker-compose.yml config -q
+          docker compose -f docker/docker-compose.dev.yml config -q
 
       - name: Stack starten
         run: docker compose -f docker/docker-compose.dev.yml up -d --build --wait --wait-timeout 180
