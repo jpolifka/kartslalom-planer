@@ -36,7 +36,7 @@ backend:
 
 ### Voraussetzungen
 
-- Node.js ≥ 18
+- Node.js ≥ 22.12
 - Docker + Docker Compose (für lokalen Supabase-Stack)
 
 ### Setup

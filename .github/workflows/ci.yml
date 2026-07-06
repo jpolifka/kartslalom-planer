@@ -2,7 +2,6 @@ name: CI
 
 on:
   push:
-    branches: [main, webeditor, "phase2/**", "phase3/**"]
   pull_request:
     branches: [main]
 
