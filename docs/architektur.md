@@ -29,17 +29,21 @@ src/
 │   ├── useProfile.ts              Lädt `profiles`-Zeile, synchronisiert in den Auth-Store
 │   ├── useTracks.ts               TanStack-Query-Hooks für Tracks (Liste/Detail/CRUD via RPC)
 │   └── useTier.ts                 UX-Limits je Tarif (kein Enforcement, das passiert serverseitig)
-└── lib/
-    ├── supabase.ts               Supabase-Client (PKCE-Flow)
-    ├── api/tracks.ts             fetchTracks/fetchTrack/createTrack/saveTrack/deleteTrack (RPC-basiert)
-    ├── formationRegistry.ts    Zentrales Register aller Formationen + Dauern
-    ├── formations/*.ts         Geometrie-Definition je Formation (Cone-Layouts)
-    ├── geometry.ts             Hilfsfunktionen für Cone-Koordinaten/Normalisierung
-    ├── geo.ts                  Umrechnung Geokoordinaten ↔ Meter
-    ├── areaSelection.ts        Typ/Hilfsfunktionen für den Kartenausschnitt
-    ├── exportSVG.ts            SVG-Generierung, Download, Druck-als-PDF
-    ├── storage.ts              localStorage-Autosave (Gast-Modus), JSON-Export/Import
-    └── validation/             Regelprüfung (Geometrie + Strecken-Logik)
+├── lib/
+│   ├── supabase.ts               Supabase-Client (PKCE-Flow)
+│   ├── api/tracks.ts             fetchTracks/fetchTrack/createTrack/saveTrack/deleteTrack (RPC-basiert)
+│   ├── formationRegistry.ts    Zentrales Register aller Formationen + Dauern
+│   ├── formations/*.ts         Geometrie-Definition je Formation (Cone-Layouts)
+│   ├── geometry.ts             Hilfsfunktionen für Cone-Koordinaten/Normalisierung
+│   ├── geo.ts                  Umrechnung Geokoordinaten ↔ Meter
+│   ├── areaSelection.ts        Typ/Hilfsfunktionen für den Kartenausschnitt
+│   ├── exportSVG.ts            SVG-Generierung (weiß/transparent), Download, Druck-als-PDF
+│   ├── storage.ts              localStorage-Autosave (Gast-Modus), JSON-Export/Import
+│   └── validation/             Regelprüfung (Geometrie + Strecken-Logik)
+└── features/                    Feature-Slices für neue, klar abgrenzbare Bereiche
+    └── png-export/               Erster Slice dieser Art (api/hooks/types/tests) —
+                                   bestehende Bereiche bleiben bewusst nach Schicht
+                                   organisiert (`lib/`, `hooks/`), siehe export.md
 ```
 
 Detaillierte Beschreibungen der einzelnen Bereiche befinden sich in den
