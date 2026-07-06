@@ -12,6 +12,7 @@ import EditorPage from "./pages/EditorPage";
 import FormationEditorPage from "./pages/FormationEditorPage";
 import FormationsPage from "./pages/FormationsPage";
 import FormationSharePage from "./pages/FormationSharePage";
+import SharedTrackPage from "./pages/SharedTrackPage";
 import ImpressumPage from "./pages/ImpressumPage";
 import SettingsPage from "./pages/SettingsPage";
 import AuthGuard from "./components/auth/AuthGuard";
@@ -37,6 +38,9 @@ export default function AppRouter() {
         {/* Hindernis-Editor: ohne Login nutzbar (localStorage), mit Login Cloud-Save */}
         <Route path="/formations/new" element={<FormationEditorPage />} />
         <Route path="/formations/:id" element={<FormationEditorPage />} />
+
+        {/* Öffentliche Track-Share-Links: kein Login, kein AuthGuard */}
+        <Route path="/share/:token" element={<SharedTrackPage />} />
 
         <Route element={<AuthGuard />}>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />

@@ -4,9 +4,12 @@ Diese SQL-Dateien sind die einzige Quelle fuer das App-Schema
 (`profiles`, `tracks`, `track_versions`, RLS-Policies, SECURITY DEFINER
 Funktionen — Phase 0.5-0.7, siehe `docs/planning/IMPLEMENTATION_PLAN.md`).
 
-- **Lokal (Docker):** `docker/supabase/docker-compose.yml` mountet diese
-  Dateien direkt in den Postgres-Container und fuehrt sie beim ersten Start
-  (leeres `docker/supabase/volumes/db/data/`) automatisch aus.
+- **Lokal (Docker):** `docker/supabase/docker-compose.yml` mountet diesen
+  gesamten Ordner (`../../supabase/migrations:/app-migrations:ro`) in den
+  Postgres-Container; `migrate.sh` fuehrt beim ersten Start (leeres
+  `docker/supabase/volumes/db/data/`) alle `*.sql`-Dateien in Sortier-
+  Reihenfolge aus. Neue Dateien hier werden automatisch erfasst — **kein**
+  zusaetzlicher Mount-Eintrag in `docker-compose.yml` noetig.
 - **Supabase Cloud (Produktion):** Dateien in dieser Reihenfolge im
   SQL-Editor des Supabase-Projekts (Region Frankfurt, `eu-central-1`)
   ausfuehren:
@@ -21,8 +24,7 @@ Funktionen — Phase 0.5-0.7, siehe `docs/planning/IMPLEMENTATION_PLAN.md`).
 ## Neue Migrationen hinzufuegen
 
 Neue Datei mit Timestamp-Praefix `YYYYMMDDHHMMSS_beschreibung.sql` anlegen
-(Reihenfolge = Ausfuehrungsreihenfolge). Fuer den lokalen Docker-Stack
-zusaetzlich einen Mount-Eintrag in `docker/supabase/docker-compose.yml`
-(Service `db`, Abschnitt `volumes`) ergaenzen — Init-Skripte laufen dort
-nur bei leerem Datenverzeichnis (`sh docker/supabase/reset.sh` fuer einen
-Neustart mit leerem Schema).
+(Reihenfolge = Ausfuehrungsreihenfolge). Kein weiterer Schritt fuer den
+lokalen Docker-Stack noetig — Init-Skripte laufen aber nur bei leerem
+Datenverzeichnis (`sh docker/supabase/reset.sh` fuer einen Neustart mit
+leerem Schema und erneutem Ausfuehren aller Migrationen).

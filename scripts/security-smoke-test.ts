@@ -317,6 +317,59 @@ async function main() {
       "User A kann aus Snapshot von User B keinen neuen Track anlegen (not_owner)"
     );
 
+    // 12 — Phase 2: Track-Share-Links
+    // Hinweis: Der einfache Rate-Limit-Zähler in get_track_by_share_token()
+    // (max. 120 Aufrufe/Stunde/Token) wird hier bewusst NICHT durch 121
+    // echte Aufrufe getestet — das würde die Smoke-Suite unnötig verlangsamen.
+    console.log("\n--- 12: Phase 2 – Track-Share-Links ---");
+
+    const { error: freeShareErr } = await clientA.rpc("create_track_share_link", { p_track_id: trackId });
+    assertErr(freeShareErr, "Free-User kann keinen Share-Link erzeugen (share_requires_pro)");
+
+    const { error: foreignShareErr } = await clientB.rpc("create_track_share_link", { p_track_id: trackId });
+    assertErr(foreignShareErr, "Pro-User kann keinen Share-Link auf fremdem Track erzeugen (not_owner)");
+
+    const { data: shareToken, error: shareErr } = await clientB.rpc("create_track_share_link", { p_track_id: proTrackId });
+    assertOk(
+      !shareErr && typeof shareToken === "string" && shareToken.length > 0,
+      "Pro-User kann eigenen Share-Link erzeugen"
+    );
+
+    const { data: sharedRows, error: sharedReadErr } = await anonClient.rpc("get_track_by_share_token", {
+      p_token: shareToken,
+    });
+    const sharedRow = Array.isArray(sharedRows) ? sharedRows[0] : null;
+    assertOk(!sharedReadErr && sharedRow?.id === proTrackId, "Anon kann Strecke mit gültigem Token ohne Login lesen");
+    assertOk(
+      !!sharedRow && !("owner_id" in sharedRow) && !("public_token_hash" in sharedRow),
+      "Antwort enthält keine owner_id und keinen Token-Hash"
+    );
+
+    const { error: garbageTokenErr } = await anonClient.rpc("get_track_by_share_token", {
+      p_token: "garbage-token-does-not-exist",
+    });
+    assertErr(garbageTokenErr, "Ungültiger Token liefert einen Fehler (token_invalid)");
+
+    const { error: revokeErr } = await clientB.rpc("revoke_track_share_link", { p_track_id: proTrackId });
+    assertOk(!revokeErr, "Pro-User kann eigenen Share-Link widerrufen");
+    const { error: revokedReadErr } = await anonClient.rpc("get_track_by_share_token", { p_token: shareToken });
+    assertErr(revokedReadErr, "Widerrufener Token ist sofort ungültig (derselbe Fehler wie bei ungültigem Token)");
+
+    const { data: throwawayTrackId } = await clientB.rpc("create_track", { track_name: `Share Delete Test ${ts}` });
+    const { data: throwawayToken } = await clientB.rpc("create_track_share_link", { p_track_id: throwawayTrackId });
+    await clientB.from("tracks").delete().eq("id", throwawayTrackId);
+    const { error: deletedTrackErr } = await anonClient.rpc("get_track_by_share_token", { p_token: throwawayToken });
+    assertErr(deletedTrackErr, "Gelöschter Track macht seinen Share-Link ungültig");
+
+    const { data: proTrackId2 } = await clientB.rpc("create_track", { track_name: `Share Account-Delete Test ${ts}` });
+    const { data: accountDeleteToken } = await clientB.rpc("create_track_share_link", { p_track_id: proTrackId2 });
+    await admin.from("profiles").update({ is_deleted: true }).eq("id", userB.id);
+    const { error: deletedAccountErr } = await anonClient.rpc("get_track_by_share_token", {
+      p_token: accountDeleteToken,
+    });
+    assertErr(deletedAccountErr, "Soft-gelöschter Account (Owner) macht dessen Share-Link ungültig");
+    await admin.from("profiles").update({ is_deleted: false }).eq("id", userB.id);
+
     console.log(
       `\n=== ${passed} von ${passed + failed} Tests bestanden${failed > 0 ? ` — ${failed} FEHLGESCHLAGEN` : ""} ===\n`
     );

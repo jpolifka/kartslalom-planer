@@ -9,7 +9,7 @@
  */
 
 import { test, expect } from "@playwright/test";
-import { loginWithSession } from "./helpers/auth";
+import { loginWithSession, patchSupabaseUrl } from "./helpers/auth";
 
 // ── 1: Login / Session ─────────────────────────────────────────────────────────
 
@@ -76,4 +76,30 @@ test("Export: SVG-Download aus dem Editor auslösen", async ({ page }) => {
 
   // Dateiname sollte .svg enthalten
   expect(download.suggestedFilename()).toMatch(/\.svg$/i);
+});
+
+// ── 5: Share-Links ────────────────────────────────────────────────────────────
+
+test("Share-Link: Strecke teilen und anonym (ohne Login) öffnen", async ({ page, browser }) => {
+  await loginWithSession(page);
+
+  // Neue Strecke anlegen (Test-User ist per Default "pro", Teilen also aktiv)
+  await page.getByRole("button", { name: /neue strecke/i }).click();
+  await page.waitForURL(/\/editor\/[0-9a-f-]{36}$/, { timeout: 15_000 });
+  await expect(page.getByText("✓")).toBeVisible({ timeout: 10_000 });
+
+  await page.getByRole("button", { name: /teilen/i }).click();
+  await page.getByRole("button", { name: /link erstellen/i }).click();
+
+  const shareUrlInput = page.locator("input[readonly]");
+  await expect(shareUrlInput).toHaveValue(/\/share\/[0-9a-f]+$/, { timeout: 10_000 });
+  const shareUrl = await shareUrlInput.inputValue();
+
+  // Frischer Browser-Kontext ohne injizierte Session — echter anonymer Zugriff
+  const anonContext = await browser.newContext();
+  const anonPage = await anonContext.newPage();
+  await patchSupabaseUrl(anonPage);
+  await anonPage.goto(shareUrl);
+  await expect(anonPage.getByText("Nur-Lese-Ansicht")).toBeVisible({ timeout: 10_000 });
+  await anonContext.close();
 });
