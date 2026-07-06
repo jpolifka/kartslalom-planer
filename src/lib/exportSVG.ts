@@ -7,6 +7,7 @@ import { boundsFromCones, rotateConesAroundOwnCenter } from "./geometry";
 import { lngToGlobalX, latToGlobalY } from "./geo";
 import { areaSelectionToBounds } from "./areaSelection";
 import type { AreaSelection } from "./areaSelection";
+import { mapProviderForSatelliteFlag } from "./mapProviders";
 import type { PlacedFormation, PlacedArrow } from "../types";
 
 const PYLON_SIZE_M = 0.30;
@@ -16,15 +17,11 @@ const TILE_SIZE = 256;
 
 export type PdfMapConfig = { selection: AreaSelection; satellite: boolean; opacity: number };
 
-const TILE_ATTRIBUTION = {
-  satellite: "Esri, Maxar, Earthstar Geographics",
-  street: "© OpenStreetMap contributors",
-};
-
 // Shared tile-grid math: which tiles cover the field, and how to place them
 // in a canvasW x canvasH box (used by both the SVG and the live MapBackground).
 function computeTileLayout(mapConfig: PdfMapConfig, canvasW: number, canvasH: number) {
   const { selection, satellite } = mapConfig;
+  const provider = mapProviderForSatelliteFlag(satellite);
   const θ = (selection.rotationDeg * Math.PI) / 180;
   const cosT = Math.abs(Math.cos(θ));
   const sinT = Math.abs(Math.sin(θ));
@@ -48,9 +45,7 @@ function computeTileLayout(mapConfig: PdfMapConfig, canvasW: number, canvasH: nu
   for (let ty = Math.floor(gy1 / TILE_SIZE); ty <= Math.ceil(gy2 / TILE_SIZE); ty++) {
     for (let tx = Math.floor(gx1 / TILE_SIZE); tx <= Math.ceil(gx2 / TILE_SIZE); tx++) {
       const wrappedTx = ((tx % n) + n) % n;
-      const url = satellite
-        ? `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${ty}/${wrappedTx}`
-        : `https://tile.openstreetmap.org/${zoom}/${wrappedTx}/${ty}.png`;
+      const url = provider.xyzTileUrl!(zoom, wrappedTx, ty);
       tiles.push({
         url,
         x: (tx * TILE_SIZE - gx1) * scaleX,
@@ -67,7 +62,7 @@ function computeTileLayout(mapConfig: PdfMapConfig, canvasW: number, canvasH: nu
     bgH,
     left: (canvasW - bgW) / 2,
     top: (canvasH - bgH) / 2,
-    attribution: satellite ? TILE_ATTRIBUTION.satellite : TILE_ATTRIBUTION.street,
+    attribution: provider.attribution,
   };
 }
 
@@ -273,7 +268,7 @@ export function generateTrackSVG(
   }
 
   if (mapConfig) {
-    const attribution = mapConfig.satellite ? TILE_ATTRIBUTION.satellite : TILE_ATTRIBUTION.street;
+    const attribution = mapProviderForSatelliteFlag(mapConfig.satellite).attribution;
     const fontSize = 7;
     const boxW = attribution.length * 4.2 + 8;
     out.push(

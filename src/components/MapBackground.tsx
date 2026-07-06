@@ -6,6 +6,7 @@ import { useMemo } from "react";
 import { lngToGlobalX, latToGlobalY } from "../lib/geo";
 import { areaSelectionToBounds } from "../lib/areaSelection";
 import type { AreaSelection } from "../lib/areaSelection";
+import { mapProviderForSatelliteFlag } from "../lib/mapProviders";
 
 type Props = {
   selection: AreaSelection;
@@ -38,14 +39,13 @@ export default function MapBackground({ selection, canvasWidthPx, canvasHeightPx
     const scaleX = bgW / (gx2 - gx1);
     const scaleY = bgH / (gy2 - gy1);
     const n = Math.pow(2, zoom);
+    const provider = mapProviderForSatelliteFlag(satellite);
 
     const result = [];
     for (let ty = Math.floor(gy1 / TILE_SIZE); ty <= Math.ceil(gy2 / TILE_SIZE); ty++) {
       for (let tx = Math.floor(gx1 / TILE_SIZE); tx <= Math.ceil(gx2 / TILE_SIZE); tx++) {
         const wrappedTx = ((tx % n) + n) % n;
-        const url = satellite
-          ? `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${ty}/${wrappedTx}`
-          : `https://tile.openstreetmap.org/${zoom}/${wrappedTx}/${ty}.png`;
+        const url = provider.xyzTileUrl!(zoom, wrappedTx, ty);
         result.push({
           key: `${tx}-${ty}`,
           url,
@@ -60,7 +60,7 @@ export default function MapBackground({ selection, canvasWidthPx, canvasHeightPx
     return { tiles: result, bgW, bgH };
   }, [selection, canvasWidthPx, canvasHeightPx, satellite]);
 
-  const attribution = satellite ? "Esri, Maxar, Earthstar Geographics" : "© OpenStreetMap contributors";
+  const attribution = mapProviderForSatelliteFlag(satellite).attribution;
 
   return (
     <div style={{ position: "absolute", inset: 0, opacity, pointerEvents: "none" }}>

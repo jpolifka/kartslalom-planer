@@ -7,6 +7,7 @@ import { ZoomIn, ZoomOut, Check, X, Pentagon, Square, RotateCcw, RotateCw } from
 import { lngToGlobalX, latToGlobalY, globalXToLng, globalYToLat } from "../lib/geo";
 import { polygonToAreaSelection, selectionCorners } from "../lib/areaSelection";
 import type { AreaSelection } from "../lib/areaSelection";
+import { MAP_PROVIDERS } from "../lib/mapProviders";
 
 const VP_W = 900;
 const VP_H = 560;
@@ -351,7 +352,7 @@ export default function MapSelector({
             return (
               <img
                 key={`${tx}-${ty}`}
-                src={`https://tile.openstreetmap.org/${zoom}/${wrappedTx}/${ty}.png`}
+                src={MAP_PROVIDERS.osm.xyzTileUrl!(zoom, wrappedTx, ty)}
                 alt="" draggable={false}
                 style={{
                   position: "absolute",
