@@ -63,9 +63,12 @@ DoD gefordert):
   Der kostenlose Zugriff ist laut Esri-Nutzungsbedingungen nur für
   **"Noncommercial Use"** freigegeben — definiert als: niemand generiert
   Einnahmen oder einen kommerziellen Vorteil aus der Nutzung. Satellitenbild
-  ist in dieser App aber ein bezahltes Pro/Team-Feature, also klar
-  einnahmenrelevant. Das begründet ein reales Lizenzrisiko (eigentlich wäre
-  eine kostenpflichtige ArcGIS-Lizenz nötig), unabhängig von Share-Links.
+  ist im Code zwar ein Pro/Team-Gate, aktuell steckt aber kein monetäres
+  Modell dahinter (kein tatsächlicher Geldfluss, siehe Zahlungsmodell-Doku) —
+  die "Noncommercial Use"-Einstufung passt damit aktuell noch. Relevant wird
+  das erst, sobald für Pro/Team echt bezahlt wird; dann vor einem
+  öffentlichen Rollout neu bewerten (Lizenz einholen, Anbieter wechseln oder
+  Feature aus dem Pro-Gate nehmen).
 - **OpenStreetMap** (`tile.openstreetmap.org`, Straßenkarte): Kommerzielle
   Nutzung der OSM-Daten selbst ist erlaubt (ODbL), aber die Tile-Usage-Policy
   des Demo-Servers ist ausdrücklich nur für Entwicklung/geringes Volumen
