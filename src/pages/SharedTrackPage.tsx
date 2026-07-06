@@ -5,8 +5,7 @@
 import { useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useSharedTrack } from "../features/track-share/hooks/useSharedTrack";
-import { generateTrackSVG, type PdfMapConfig } from "../lib/exportSVG";
-import type { AreaSelection } from "../lib/areaSelection";
+import { generateTrackSVG } from "../lib/exportSVG";
 
 // Rendert das SVG über ein <img data:...>-Element statt via
 // dangerouslySetInnerHTML: generateTrackSVG() interpoliert Freitext
@@ -23,13 +22,11 @@ export default function SharedTrackPage() {
 
   const imgSrc = useMemo(() => {
     if (!data) return null;
-    const mapConfig: PdfMapConfig | null = data.area_sel_json
-      ? { selection: data.area_sel_json as AreaSelection, satellite: data.map_satellite, opacity: data.map_opacity }
-      : null;
+    // Bewusst ohne Kartenhintergrund (kein mapConfig) — siehe
+    // docs/track-share-links.md (Esri/OSM-Nutzungsbedingungen).
     const svg = generateTrackSVG(
       data.manual_width, data.manual_length,
-      data.state_json.items, data.state_json.arrows,
-      mapConfig
+      data.state_json.items, data.state_json.arrows
     );
     return svgToImgSrc(svg);
   }, [data]);

@@ -28,9 +28,8 @@ describe("getSharedTrack", () => {
   it("calls get_track_by_share_token RPC and returns the first row", async () => {
     const row = {
       id: "t1", name: "Meine Strecke",
-      state_json: { items: [], arrows: [] }, area_sel_json: null,
-      manual_width: 18, manual_length: 36,
-      map_satellite: false, map_opacity: 0.5, updated_at: "2026-07-06T00:00:00Z",
+      state_json: { items: [], arrows: [] },
+      manual_width: 18, manual_length: 36, updated_at: "2026-07-06T00:00:00Z",
     };
     mockRpc.mockResolvedValue(ok([row]));
     const result = await getSharedTrack("plaintext-token");

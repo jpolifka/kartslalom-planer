@@ -88,23 +88,25 @@ grant execute on function public.revoke_track_share_link(uuid) to authenticated;
 
 -- ── get_track_by_share_token ──────────────────────────────────────────────────
 -- Öffentlich (anon + authenticated), kein Ownership-Check. Reduzierter
--- Feldsatz ohne owner_id/E-Mail (analog get_library_formations). Ungültiger
--- UND widerrufener Token liefern denselben Fehler ('token_invalid') — kein
--- Unterschied nach außen, der Enumeration begünstigen würde. Ein gelöschter
--- Track (Zeile weg) oder ein soft-gelöschter Account (is_deleted=true, Join
--- unten) machen den Link automatisch ungültig, ohne dass revoke_track_share_link
--- explizit aufgerufen werden müsste.
+-- Feldsatz ohne owner_id/E-Mail (analog get_library_formations). Bewusst OHNE
+-- area_sel_json/map_satellite/map_opacity: der öffentliche Viewer zeigt keinen
+-- Kartenhintergrund (Esri/OSM-Nutzungsbedingungen — Esri World Imagery ist
+-- nur für "Noncommercial Use" freigegeben, Satellitenbild ist aber ein
+-- bezahltes Pro-Feature; siehe docs/track-share-links.md), daher würde
+-- area_sel_json hier nur ungenutzt die genauen Geokoordinaten der Strecke
+-- öffentlich preisgeben. Ungültiger UND widerrufener Token liefern denselben
+-- Fehler ('token_invalid') — kein Unterschied nach außen, der Enumeration
+-- begünstigen würde. Ein gelöschter Track (Zeile weg) oder ein soft-gelöschter
+-- Account (is_deleted=true, Join unten) machen den Link automatisch ungültig,
+-- ohne dass revoke_track_share_link explizit aufgerufen werden müsste.
 
 create or replace function public.get_track_by_share_token(p_token text)
 returns table(
   id            uuid,
   name          text,
   state_json    jsonb,
-  area_sel_json jsonb,
   manual_width  numeric,
   manual_length numeric,
-  map_satellite boolean,
-  map_opacity   numeric,
   updated_at    timestamptz
 )
 language plpgsql security definer set search_path = public as $$
@@ -150,9 +152,7 @@ begin
   end if;
 
   return query
-    select t.id, t.name, t.state_json, t.area_sel_json,
-           t.manual_width, t.manual_length, t.map_satellite, t.map_opacity,
-           t.updated_at
+    select t.id, t.name, t.state_json, t.manual_width, t.manual_length, t.updated_at
       from public.tracks t
      where t.id = v_track_id;
 end;

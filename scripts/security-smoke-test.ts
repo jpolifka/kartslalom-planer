@@ -341,8 +341,11 @@ async function main() {
     const sharedRow = Array.isArray(sharedRows) ? sharedRows[0] : null;
     assertOk(!sharedReadErr && sharedRow?.id === proTrackId, "Anon kann Strecke mit gültigem Token ohne Login lesen");
     assertOk(
-      !!sharedRow && !("owner_id" in sharedRow) && !("public_token_hash" in sharedRow),
-      "Antwort enthält keine owner_id und keinen Token-Hash"
+      !!sharedRow &&
+        !("owner_id" in sharedRow) &&
+        !("public_token_hash" in sharedRow) &&
+        !("area_sel_json" in sharedRow),
+      "Antwort enthält keine owner_id, keinen Token-Hash und keine Geokoordinaten (area_sel_json)"
     );
 
     const { error: garbageTokenErr } = await anonClient.rpc("get_track_by_share_token", {

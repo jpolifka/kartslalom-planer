@@ -5,15 +5,16 @@
 import type { PlacedArrow, PlacedFormation } from "../../types";
 
 // Öffentlich lesbarer Feldsatz von get_track_by_share_token() — bewusst ohne
-// owner_id/E-Mail (analog zu get_library_formations, siehe Migration).
+// owner_id/E-Mail (analog zu get_library_formations, siehe Migration) und
+// ohne area_sel_json/map_satellite/map_opacity: der öffentliche Viewer zeigt
+// keinen Kartenhintergrund (Esri/OSM-Nutzungsbedingungen, siehe
+// docs/track-share-links.md), daher würden die Geokoordinaten der Strecke
+// hier nur ungenutzt öffentlich preisgegeben.
 export type SharedTrackDetail = {
   id: string;
   name: string;
   state_json: { items: PlacedFormation[]; arrows: PlacedArrow[] };
-  area_sel_json: unknown;
   manual_width: number;
   manual_length: number;
-  map_satellite: boolean;
-  map_opacity: number;
   updated_at: string;
 };
