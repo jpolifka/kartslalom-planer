@@ -19,6 +19,7 @@ export type TrackDetail = TrackRow & {
   area_sel_json: unknown;
   map_satellite: boolean;
   map_opacity: number;
+  is_public: boolean;
 };
 
 export type AdminTrackRow = {
@@ -43,7 +44,7 @@ export async function fetchTracks(): Promise<TrackRow[]> {
 }
 
 const TRACK_DETAIL_COLUMNS =
-  "id, name, state_json, area_sel_json, manual_width, manual_length, map_satellite, map_opacity, created_at, updated_at" as const;
+  "id, name, state_json, area_sel_json, manual_width, manual_length, map_satellite, map_opacity, is_public, created_at, updated_at" as const;
 
 export async function fetchTrack(id: string): Promise<TrackDetail | null> {
   const { data, error } = await supabase
@@ -104,6 +105,29 @@ export async function renameTrack(id: string, name: string): Promise<void> {
 export async function deleteTrack(id: string): Promise<void> {
   const { error } = await supabase.from("tracks").delete().eq("id", id);
   if (error) throw error;
+}
+
+// --- Share-Links ---
+// Der Plaintext-Token wird nur bei der Erzeugung einmalig zurückgegeben —
+// gespeichert wird serverseitig ausschließlich dessen Hash.
+
+export async function createTrackShareLink(id: string): Promise<string> {
+  const { data, error } = await supabase.rpc("create_track_share_link", { p_track_id: id });
+  if (error) {
+    if (error.message.includes("share_requires_pro")) throw new Error("SHARE_REQUIRES_PRO");
+    if (error.message.includes("account_deleted"))     throw new Error("ACCOUNT_DELETED");
+    if (error.message.includes("not_owner"))           throw new Error("NOT_OWNER");
+    throw error;
+  }
+  return data as string;
+}
+
+export async function revokeTrackShareLink(id: string): Promise<void> {
+  const { error } = await supabase.rpc("revoke_track_share_link", { p_track_id: id });
+  if (error) {
+    if (error.message.includes("not_owner")) throw new Error("NOT_OWNER");
+    throw error;
+  }
 }
 
 // --- Versionshistorie ---

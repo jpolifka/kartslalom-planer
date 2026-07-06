@@ -14,6 +14,7 @@ src/
 │   ├── AuthCallbackPage.tsx       PKCE-Code-Exchange + localStorage-Migration nach Login
 │   ├── DashboardPage.tsx          Liste der eigenen Strecken, Anlegen/Löschen
 │   ├── SettingsPage.tsx           Account-Infos, Datenexport (JSON), Account löschen
+│   ├── SharedTrackPage.tsx        Öffentliche Nur-Lese-Ansicht (/share/:token, kein AuthGuard)
 │   └── ImpressumPage.tsx          Impressum + Datenschutz als eigenständige Route, Hash-Scroll
 ├── components/
 │   ├── auth/AuthGuard.tsx         Redirect zu /login ohne Session
@@ -41,9 +42,11 @@ src/
 │   ├── storage.ts              localStorage-Autosave (Gast-Modus), JSON-Export/Import
 │   └── validation/             Regelprüfung (Geometrie + Strecken-Logik)
 └── features/                    Feature-Slices für neue, klar abgrenzbare Bereiche
-    └── png-export/               Erster Slice dieser Art (api/hooks/types/tests) —
-                                   bestehende Bereiche bleiben bewusst nach Schicht
-                                   organisiert (`lib/`, `hooks/`), siehe export.md
+    ├── png-export/               Erster Slice dieser Art (api/hooks/types/tests) —
+    │                              bestehende Bereiche bleiben bewusst nach Schicht
+    │                              organisiert (`lib/`, `hooks/`), siehe export.md
+    └── track-share/              Öffentliche Share-Links (api/hooks/components/types/tests),
+                                   siehe docs/track-share-links.md
 ```
 
 Detaillierte Beschreibungen der einzelnen Bereiche befinden sich in den
@@ -61,6 +64,9 @@ Die App ist seit Phase 1 eine Multi-Page-App via `react-router-dom`
   Cloud-Save (`save_track()`-RPC) oder `localStorage` verwendet wird.
 - `/`, `/dashboard`, `/settings` — hinter `AuthGuard` + `AppShell`
   (Header/Navigation, lädt das Profil über `useProfile`).
+- `/share/:token` — öffentlich, **ohne** `AuthGuard`. `SharedTrackPage` lädt
+  die Strecke anonym über `get_track_by_share_token()` (Pro/Team-Feature,
+  siehe [track-share-links.md](track-share-links.md)).
 - `/impressum` — öffentlich, `ImpressumPage` mit Hash-Scroll-Unterstützung.
 - `/datenschutz` — Redirect auf `/impressum#datenschutz`.
 

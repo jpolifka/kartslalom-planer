@@ -17,6 +17,7 @@ import { saveState, loadState, clearSavedState, exportAsFile, parseImportFile, s
 import { useAuthStore } from "../store/authStore";
 import { useTrack, useCreateTrack, useSaveTrack, useRenameTrack, useAdminTrack, useTrackVersionDetail, useRestoreTrackVersion, useCreateTrackFromVersion } from "../hooks/useTracks";
 import SaveAsDialog from "../components/SaveAsDialog";
+import ShareLinkDialog from "../features/track-share/components/ShareLinkDialog";
 import { useTier } from "../hooks/useTier";
 import { useExportPng } from "../features/png-export/hooks/useExportPng";
 import { useCustomFormationList, useLibraryFormations } from "../hooks/useCustomFormations";
@@ -40,8 +41,10 @@ export default function EditorPage() {
   const { session, profile } = useAuthStore();
   const isAdmin = profile?.role === "admin";
   const isCloudMode = !!session;
-  const { canUseSatellite, canExportPng } = useTier();
+  const { canUseSatellite, canShareLinks, canExportPng } = useTier();
   const satelliteLocked = isCloudMode && !canUseSatellite;
+  const shareLocked = isCloudMode && !canShareLinks;
+  const [showShareDialog, setShowShareDialog] = useState(false);
   const pngLocked = isCloudMode && !canExportPng;
   const { exportPng } = useExportPng();
   const isNewTrack = !trackIdParam || trackIdParam === "new";
@@ -615,7 +618,18 @@ export default function EditorPage() {
           onNameBlur={handleNameBlur}
           onNameKeyDown={handleNameKeyDown}
           onShowHelp={() => setShowHelp(true)}
+          shareLocked={shareLocked}
+          onOpenShare={trackId ? () => setShowShareDialog(true) : undefined}
         />
+
+        {trackId && (
+          <ShareLinkDialog
+            isOpen={showShareDialog}
+            trackId={trackId}
+            isPublic={!!effectiveTrackData?.is_public}
+            onClose={() => setShowShareDialog(false)}
+          />
+        )}
 
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "276px 1fr 296px", gap: 14, flex: 1, minHeight: 0, overflow: "hidden" }}>
 

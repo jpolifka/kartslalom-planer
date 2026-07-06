@@ -3,7 +3,7 @@
 // All rights reserved.
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchTracks, fetchTrack, createTrack, saveTrack, renameTrack, deleteTrack, adminListTracks, adminGetTrack, adminDeleteTrack, createTrackVersion, getTrackVersions, restoreTrackVersion, deleteTrackVersion, getTrackVersionDetail, createTrackFromVersion } from "../lib/api/tracks";
+import { fetchTracks, fetchTrack, createTrack, saveTrack, renameTrack, deleteTrack, adminListTracks, adminGetTrack, adminDeleteTrack, createTrackVersion, getTrackVersions, restoreTrackVersion, deleteTrackVersion, getTrackVersionDetail, createTrackFromVersion, createTrackShareLink, revokeTrackShareLink } from "../lib/api/tracks";
 import { useAuthStore } from "../store/authStore";
 
 export function useTrackList() {
@@ -57,6 +57,24 @@ export function useDeleteTrack() {
   return useMutation({
     mutationFn: deleteTrack,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["tracks"] }),
+  });
+}
+
+// --- Share-Links ---
+
+export function useCreateTrackShareLink(trackId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => createTrackShareLink(trackId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["track", trackId] }),
+  });
+}
+
+export function useRevokeTrackShareLink(trackId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => revokeTrackShareLink(trackId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["track", trackId] }),
   });
 }
 
