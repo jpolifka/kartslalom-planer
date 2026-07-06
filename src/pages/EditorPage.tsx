@@ -17,7 +17,9 @@ import { saveState, loadState, clearSavedState, exportAsFile, parseImportFile, s
 import { useAuthStore } from "../store/authStore";
 import { useTrack, useCreateTrack, useSaveTrack, useRenameTrack, useAdminTrack, useTrackVersionDetail, useRestoreTrackVersion, useCreateTrackFromVersion } from "../hooks/useTracks";
 import SaveAsDialog from "../components/SaveAsDialog";
+import ShareLinkDialog from "../features/track-share/components/ShareLinkDialog";
 import { useTier } from "../hooks/useTier";
+import { useExportPng } from "../features/png-export/hooks/useExportPng";
 import { useCustomFormationList, useLibraryFormations } from "../hooks/useCustomFormations";
 import { getFormation } from "../lib/formationRegistry";
 import { trackReducer, INITIAL_TRACK } from "./editor/trackReducer";
@@ -39,8 +41,12 @@ export default function EditorPage() {
   const { session, profile } = useAuthStore();
   const isAdmin = profile?.role === "admin";
   const isCloudMode = !!session;
-  const { canUseSatellite } = useTier();
+  const { canUseSatellite, canShareLinks, canExportPng } = useTier();
   const satelliteLocked = isCloudMode && !canUseSatellite;
+  const shareLocked = isCloudMode && !canShareLinks;
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const pngLocked = isCloudMode && !canExportPng;
+  const { exportPng } = useExportPng();
   const isNewTrack = !trackIdParam || trackIdParam === "new";
   const trackId = isNewTrack ? null : trackIdParam!;
 
@@ -612,7 +618,18 @@ export default function EditorPage() {
           onNameBlur={handleNameBlur}
           onNameKeyDown={handleNameKeyDown}
           onShowHelp={() => setShowHelp(true)}
+          shareLocked={shareLocked}
+          onOpenShare={trackId ? () => setShowShareDialog(true) : undefined}
         />
+
+        {trackId && (
+          <ShareLinkDialog
+            isOpen={showShareDialog}
+            trackId={trackId}
+            isPublic={!!effectiveTrackData?.is_public}
+            onClose={() => setShowShareDialog(false)}
+          />
+        )}
 
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "276px 1fr 296px", gap: 14, flex: 1, minHeight: 0, overflow: "hidden" }}>
 
@@ -670,6 +687,17 @@ export default function EditorPage() {
                   alert(`PDF-Export fehlgeschlagen: ${err instanceof Error ? err.message : "Unbekannter Fehler"}`);
                 });
               }}
+              onExportPngWhite={() => {
+                exportPng(fieldWidth, fieldLength, items, arrows, trackName, "white").catch((err) => {
+                  alert(`PNG-Export fehlgeschlagen: ${err instanceof Error ? err.message : "Unbekannter Fehler"}`);
+                });
+              }}
+              onExportPngTransparent={() => {
+                exportPng(fieldWidth, fieldLength, items, arrows, trackName, "transparent").catch((err) => {
+                  alert(`PNG-Export fehlgeschlagen: ${err instanceof Error ? err.message : "Unbekannter Fehler"}`);
+                });
+              }}
+              pngLocked={pngLocked}
               onExportJSON={handleExport}
               onImportClick={() => fileInputRef.current?.click()}
               onImportChange={handleImport}

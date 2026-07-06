@@ -22,5 +22,6 @@ describe("useTier", () => {
     expect(result.current.canUsePolygonArea).toBe(false);
     expect(result.current.canShareLinks).toBe(false);
     expect(result.current.canUseVersionHistory).toBe(false);
+    expect(result.current.canExportPng).toBe(false);
   });
 });

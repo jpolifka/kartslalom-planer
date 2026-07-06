@@ -19,5 +19,6 @@ export function useTier() {
     canUsePolygonArea:    tier !== "free",
     canShareLinks:        tier !== "free",
     canUseVersionHistory: tier !== "free",
+    canExportPng:         tier !== "free",
   };
 }

@@ -12,7 +12,7 @@ import type { PlacedFormation, PlacedArrow } from "../types";
 
 const PYLON_SIZE_M = 0.30;
 const PYLON_MIN_PX = 6;
-const SVG_WIDTH = 900;
+export const SVG_WIDTH = 900;
 const TILE_SIZE = 256;
 
 export type PdfMapConfig = { selection: AreaSelection; satellite: boolean; opacity: number };
@@ -109,7 +109,8 @@ export function generateTrackSVG(
   fieldLength: number,
   items: PlacedFormation[],
   arrows: PlacedArrow[],
-  mapConfig?: PdfMapConfig | null
+  mapConfig?: PdfMapConfig | null,
+  background: "white" | "transparent" = "white"
 ): string {
   const scale = SVG_WIDTH / fieldWidth;
   const svgH = fieldLength * scale;
@@ -128,7 +129,7 @@ export function generateTrackSVG(
     // Satellite/street tiles as the base layer; grid, border and formations are drawn on top.
     out.push(`<defs><clipPath id="mapClip"><rect width="${SVG_WIDTH}" height="${fmt(svgH)}"/></clipPath></defs>`);
     out.push(buildTileSvg(mapConfig, SVG_WIDTH, svgH));
-  } else {
+  } else if (background !== "transparent") {
     out.push(`<rect width="${SVG_WIDTH}" height="${fmt(svgH)}" fill="white"/>`);
   }
 

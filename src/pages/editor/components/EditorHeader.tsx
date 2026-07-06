@@ -3,7 +3,7 @@
 // All rights reserved.
 
 import React from "react";
-import { HelpCircle, Pencil } from "lucide-react";
+import { HelpCircle, Pencil, Share2 } from "lucide-react";
 import { iconBtnLabel } from "../editorStyles";
 
 type Props = {
@@ -18,13 +18,15 @@ type Props = {
   onNameBlur: () => void;
   onNameKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   onShowHelp: () => void;
+  shareLocked?: boolean;
+  onOpenShare?: () => void;
 };
 
 export default function EditorHeader({
   isMobile, isCloudMode, trackId,
   trackName, nameFocused, nameReadOnly,
   onSetTrackName, onNameFocus, onNameBlur, onNameKeyDown,
-  onShowHelp,
+  onShowHelp, shareLocked, onOpenShare,
 }: Props) {
   if (!isCloudMode || !trackId) {
     // Gast-Modus: nur Hilfe-Button
@@ -77,6 +79,16 @@ export default function EditorHeader({
             aria-label="Streckenname"
           />
         </div>
+      )}
+      {onOpenShare && !nameReadOnly && (
+        <button
+          onClick={onOpenShare}
+          disabled={shareLocked}
+          style={{ ...iconBtnLabel, color: shareLocked ? "#94a3b8" : "#374151", cursor: shareLocked ? "default" : "pointer" }}
+          title={shareLocked ? "Strecke teilen erfordert mindestens den Pro-Tarif" : "Strecke teilen"}
+        >
+          <Share2 size={14} />{!isMobile && <span>Teilen{shareLocked && " (Pro)"}</span>}
+        </button>
       )}
       <button onClick={onShowHelp} style={{ ...iconBtnLabel, color: "var(--c-primary)", borderColor: "var(--c-primary-border)" }} title="Hilfe öffnen">
         <HelpCircle size={14} />{!isMobile && <span>Hilfe</span>}

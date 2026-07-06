@@ -1006,6 +1006,16 @@ lifecycle_emails:
 
 ### 2.3 Share-Links — Rate Limiting + Token-Widerruf (Planungsstand 2026-07-03)
 
+> **Überholt (2026-07-06):** Umgesetzt wurde eine bewusst einfachere Variante
+> als unten skizziert — 1 aktiver Link pro Strecke über die bereits
+> bestehenden `tracks.is_public`/`public_token_hash`-Spalten statt einer
+> eigenen `share_tokens`-Tabelle, kein Ablaufdatum per Default, SHA-256 statt
+> bcrypt (Hash-Kosten irrelevant, da 256-Bit-Zufallstoken keine Brute-Force-
+> Angriffsfläche bieten). Details siehe
+> [`docs/track-share-links.md`](../track-share-links.md) und Migration
+> `supabase/migrations/20260706000001_track_share_links.sql`. Dieser Abschnitt
+> bleibt als historischer Entscheidungsrahmen erhalten.
+
 > **Vor der Implementierung öffentlicher Share-Links** müssen Rate Limiting und
 > Token-Widerruf vollständig entschieden und implementiert sein. Dieses Kapitel
 > dokumentiert den Entscheidungsrahmen — noch nicht implementiert.

@@ -13,7 +13,7 @@ vi.mock("../supabase", () => ({
   supabase: { rpc: mockRpc, from: mockFrom },
 }));
 
-import { saveTrack, fetchTracks, fetchTrack, createTrack, renameTrack, deleteTrack, createTrackFromVersion } from "./tracks";
+import { saveTrack, fetchTracks, fetchTrack, createTrack, renameTrack, deleteTrack, createTrackFromVersion, createTrackShareLink, revokeTrackShareLink } from "./tracks";
 
 const minimalState = {
   items: [],
@@ -163,6 +163,42 @@ describe("renameTrack", () => {
   it("maps invalid_name error", async () => {
     mockRpc.mockResolvedValue(err("invalid_name"));
     await expect(renameTrack("t", "X")).rejects.toThrow("INVALID_NAME");
+  });
+});
+
+describe("createTrackShareLink", () => {
+  it("calls create_track_share_link RPC and returns the plaintext token", async () => {
+    mockRpc.mockResolvedValue(ok("plaintext-token"));
+    const token = await createTrackShareLink("t1");
+    expect(mockRpc).toHaveBeenCalledWith("create_track_share_link", { p_track_id: "t1" });
+    expect(token).toBe("plaintext-token");
+  });
+
+  it("maps share_requires_pro error", async () => {
+    mockRpc.mockResolvedValue(err("share_requires_pro"));
+    await expect(createTrackShareLink("t1")).rejects.toThrow("SHARE_REQUIRES_PRO");
+  });
+
+  it("maps not_owner error", async () => {
+    mockRpc.mockResolvedValue(err("not_owner"));
+    await expect(createTrackShareLink("t1")).rejects.toThrow("NOT_OWNER");
+  });
+
+  it("maps account_deleted error", async () => {
+    mockRpc.mockResolvedValue(err("account_deleted"));
+    await expect(createTrackShareLink("t1")).rejects.toThrow("ACCOUNT_DELETED");
+  });
+});
+
+describe("revokeTrackShareLink", () => {
+  it("calls revoke_track_share_link RPC", async () => {
+    await revokeTrackShareLink("t1");
+    expect(mockRpc).toHaveBeenCalledWith("revoke_track_share_link", { p_track_id: "t1" });
+  });
+
+  it("maps not_owner error", async () => {
+    mockRpc.mockResolvedValue(err("not_owner"));
+    await expect(revokeTrackShareLink("t1")).rejects.toThrow("NOT_OWNER");
   });
 });
 

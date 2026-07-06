@@ -1,5 +1,36 @@
 # Changelog
 
+## 2.5.0
+
+### Added
+- **PNG-Export** (Pro): Streckenplan als PNG mit weißem oder transparentem
+  Hintergrund exportierbar, direkt im Download-Menü des Editors. Erster
+  Feature-Slice unter `src/features/png-export/`.
+- **Öffentliche Track-Share-Links** (Pro/Team): widerrufbare, anmeldungsfreie
+  Nur-Lese-Links auf eine Strecke (`/share/:token`). 1 aktiver Link pro
+  Strecke, kein Ablaufdatum per Default, jederzeit widerrufbar — neues
+  Erzeugen ersetzt den alten Link. Details in `docs/track-share-links.md`.
+
+### Security
+- Neue RPCs `create_track_share_link`/`revoke_track_share_link`/
+  `get_track_by_share_token`: Ownership-, Account- und Tier-Prüfung für die
+  Erzeugung, reduzierter öffentlicher Feldsatz ohne Eigentümerdaten/
+  Geokoordinaten, einfacher Rate-Limit-Zähler pro Token.
+- Öffentlicher Share-Viewer zeigt bewusst keinen Kartenhintergrund (Esri-
+  Nutzungsbedingungen erlauben kostenlosen Zugriff nur für "Noncommercial
+  Use"; aktuell unkritisch, da kein monetäres Modell aktiv ist, aber vor
+  echter Bezahlung neu zu bewerten — siehe `docs/track-share-links.md`) und
+  rendert das SVG über ein `<img data:>`-Element statt
+  `dangerouslySetInnerHTML`, um Stored-XSS über Custom-Formation-Labels für
+  anonyme Besucher auszuschließen.
+
+### Fixed
+- Lokale Dev-Umgebung: `docker/supabase/.env.example` zeigte noch auf die
+  SMTP-Werte des ursprünglichen Supabase-Templates (`supabase-mail`:2500,
+  inbucket) statt auf den tatsächlich verwendeten Mailpit-Dienst
+  (`supabase-mailpit`:1025) — frische Setups bekamen dadurch einen
+  kaputten Login (500 bei OTP-Anfrage, Mail-Zustellung schlägt fehl).
+
 ## 2.2.1
 
 ### Fixed
