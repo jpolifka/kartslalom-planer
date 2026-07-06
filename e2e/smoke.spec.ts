@@ -78,6 +78,27 @@ test("Export: SVG-Download aus dem Editor auslösen", async ({ page }) => {
   expect(download.suggestedFilename()).toMatch(/\.svg$/i);
 });
 
+test("Export: PNG-Download aus dem Editor auslösen", async ({ page }) => {
+  await loginWithSession(page);
+
+  // Neue Strecke anlegen (frischer Zustand für sauberen Export-Test)
+  await page.getByRole("button", { name: /neue strecke/i }).click();
+  await page.waitForURL(/\/editor\/[0-9a-f-]{36}$/, { timeout: 15_000 });
+
+  await expect(page.getByRole("button", { name: /download/i })).toBeVisible({ timeout: 10_000 });
+
+  // Test-User ist per Default "pro" (siehe Zahlungsmodell), PNG-Option ist also aktiv.
+  const [download] = await Promise.all([
+    page.waitForEvent("download", { timeout: 10_000 }),
+    (async () => {
+      await page.getByRole("button", { name: /download/i }).click();
+      await page.getByRole("button", { name: "PNG (weiß)" }).click();
+    })(),
+  ]);
+
+  expect(download.suggestedFilename()).toMatch(/\.png$/i);
+});
+
 // ── 5: Share-Links ────────────────────────────────────────────────────────────
 
 test("Share-Link: Strecke teilen und anonym (ohne Login) öffnen", async ({ page, browser }) => {

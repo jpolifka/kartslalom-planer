@@ -28,6 +28,9 @@ type Props = {
   saveStatus: "idle" | "pending" | "saved";
   onExportSVG: () => void;
   onExportPDF: () => void;
+  onExportPngWhite: () => void;
+  onExportPngTransparent: () => void;
+  pngLocked: boolean;
   onExportJSON: () => void;
   onImportClick: () => void;
   onImportChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -35,9 +38,15 @@ type Props = {
   onReset: () => void;
 };
 
-function DownloadDropdown({ onExportSVG, onExportPDF, onExportJSON, onImportClick, onImportChange, fileInputRef }: {
+function DownloadDropdown({
+  onExportSVG, onExportPDF, onExportPngWhite, onExportPngTransparent, pngLocked,
+  onExportJSON, onImportClick, onImportChange, fileInputRef,
+}: {
   onExportSVG: () => void;
   onExportPDF: () => void;
+  onExportPngWhite: () => void;
+  onExportPngTransparent: () => void;
+  pngLocked: boolean;
   onExportJSON: () => void;
   onImportClick: () => void;
   onImportChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -55,7 +64,11 @@ function DownloadDropdown({ onExportSVG, onExportPDF, onExportJSON, onImportClic
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, [open]);
 
-  function pick(fn: () => void) { fn(); setOpen(false); }
+  function pick(fn: () => void, locked?: boolean) {
+    if (locked) return;
+    fn();
+    setOpen(false);
+  }
 
   return (
     <div ref={ref} style={{ position: "relative" }}>
@@ -77,16 +90,20 @@ function DownloadDropdown({ onExportSVG, onExportPDF, onExportJSON, onImportClic
           {[
             { label: "Als SVG", fn: () => pick(onExportSVG) },
             { label: "Als PDF", fn: () => pick(onExportPDF) },
+            { label: "Als PNG (weiß)", fn: () => pick(onExportPngWhite, pngLocked), locked: pngLocked },
+            { label: "Als PNG (transparent)", fn: () => pick(onExportPngTransparent, pngLocked), locked: pngLocked },
             { label: "Als JSON", fn: () => pick(onExportJSON) },
-          ].map(({ label, fn }) => (
-            <button key={label} onClick={fn} style={{
+          ].map(({ label, fn, locked }) => (
+            <button key={label} onClick={fn} disabled={locked} style={{
               display: "block", width: "100%", textAlign: "left", padding: "9px 14px",
-              fontSize: 13, border: "none", background: "none", cursor: "pointer", color: "#374151",
+              fontSize: 13, border: "none", background: "none",
+              cursor: locked ? "default" : "pointer", color: locked ? "#94a3b8" : "#374151",
             }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "#f1f5f9")}
+              onMouseEnter={(e) => { if (!locked) e.currentTarget.style.background = "#f1f5f9"; }}
               onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
             >
               {label}
+              {locked && <span style={{ fontSize: 11, color: "#94a3b8", marginLeft: 6 }}>Pro</span>}
             </button>
           ))}
           <div style={{ borderTop: "1px solid #f1f5f9" }} />
@@ -119,7 +136,8 @@ export default function Toolbar({
   areaSel, onOpenMapSelector,
   errorCount, warnCount, hasItems,
   saveStatus,
-  onExportSVG, onExportPDF, onExportJSON, onImportClick, onImportChange, fileInputRef,
+  onExportSVG, onExportPDF, onExportPngWhite, onExportPngTransparent, pngLocked,
+  onExportJSON, onImportClick, onImportChange, fileInputRef,
   onReset,
 }: Props) {
   return (
@@ -203,6 +221,9 @@ export default function Toolbar({
       <DownloadDropdown
         onExportSVG={onExportSVG}
         onExportPDF={onExportPDF}
+        onExportPngWhite={onExportPngWhite}
+        onExportPngTransparent={onExportPngTransparent}
+        pngLocked={pngLocked}
         onExportJSON={onExportJSON}
         onImportClick={onImportClick}
         onImportChange={onImportChange}
