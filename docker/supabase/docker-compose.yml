@@ -181,7 +181,7 @@ services:
       GOTRUE_EXTERNAL_EMAIL_ENABLED: ${ENABLE_EMAIL_SIGNUP}
       GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED: ${ENABLE_ANONYMOUS_USERS}
       GOTRUE_MAILER_AUTOCONFIRM: ${ENABLE_EMAIL_AUTOCONFIRM}
-      GOTRUE_OTP_LENGTH: "8"
+      GOTRUE_MAILER_OTP_LENGTH: "8"
 
       # Uncomment to bypass nonce check in ID Token flow. Commonly set to true when using Google Sign In on mobile.
       # GOTRUE_EXTERNAL_SKIP_NONCE_CHECK: "true"
@@ -198,6 +198,15 @@ services:
       GOTRUE_MAILER_URLPATHS_CONFIRMATION: ${MAILER_URLPATHS_CONFIRMATION}
       GOTRUE_MAILER_URLPATHS_RECOVERY: ${MAILER_URLPATHS_RECOVERY}
       GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: ${MAILER_URLPATHS_EMAIL_CHANGE}
+
+      # Custom Magic-Link-Template: GoTrue holt sich HTML per HTTP-GET, kein
+      # file://-Support. Zeigt in Prod auf die kartslalom-App (liefert die
+      # Datei per nginx statisch aus /email-templates/, siehe public/), im
+      # selben Compose-Projekt ueber den Servicenamen erreichbar -- kein
+      # zusaetzlicher Stack noetig. Leer/unset in lokaler Dev-.env faellt
+      # auf das GoTrue-Standardtemplate zurueck (Mailpit faengt die Mail eh ab).
+      GOTRUE_MAILER_TEMPLATES_MAGIC_LINK: ${MAILER_TEMPLATE_MAGIC_LINK}
+      GOTRUE_MAILER_SUBJECTS_MAGIC_LINK: ${MAILER_SUBJECT_MAGIC_LINK}
 
       GOTRUE_EXTERNAL_PHONE_ENABLED: ${ENABLE_PHONE_SIGNUP}
       GOTRUE_SMS_AUTOCONFIRM: ${ENABLE_PHONE_AUTOCONFIRM}
