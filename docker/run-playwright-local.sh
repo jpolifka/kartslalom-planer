@@ -39,6 +39,7 @@ docker build \
 
 docker run --rm \
   --network kartslalom_default \
+  --add-host=host.docker.internal:host-gateway \
   -e SUPABASE_URL=http://kong:8000 \
   -e SUPABASE_ANON_KEY="$ANON_KEY" \
   -e SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \

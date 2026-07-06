@@ -4,6 +4,7 @@ on:
   push:
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -29,26 +30,96 @@ jobs:
           VITE_SUPABASE_URL: https://placeholder.supabase.co
           VITE_SUPABASE_ANON_KEY: placeholder
 
+  # Läuft bei jedem Push/PR automatisch, ohne externe Secrets: der Stack wird
+  # ephemer im Runner aufgesetzt (dieselben Docker-Skripte wie lokal) und nach
+  # dem Job wieder verworfen. Kein dauerhaftes Test-Supabase-Projekt nötig.
   security-smoke:
     runs-on: ubuntu-latest
     needs: build
-    # Läuft nur wenn CI_SUPABASE_URL als Secret gesetzt ist (nicht bei Fork-PRs)
-    if: vars.ENABLE_SECURITY_SMOKE == 'true'
 
     steps:
       - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 22
-          cache: npm
+      - name: Ephemeres Supabase-Test-Env erzeugen
+        run: |
+          cd docker/supabase
+          cp .env.example .env
+          sh utils/generate-keys.sh --update-env
+          sed -i "s|^CRON_SECRET=.*$|CRON_SECRET=$(openssl rand -hex 16)|" .env
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Preflight-Check
+        run: (cd docker/supabase && sh preflight-check.sh)
 
-      - name: Security smoke tests
-        run: npm run test:security
-        env:
-          SUPABASE_URL: ${{ secrets.CI_SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.CI_SUPABASE_ANON_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.CI_SUPABASE_SERVICE_ROLE_KEY }}
+      - name: Stack starten
+        run: docker compose -f docker/docker-compose.dev.yml up -d --build --wait --wait-timeout 180
+
+      - name: Migrationen anwenden
+        run: (cd docker/supabase && ./apply-migrations.sh)
+
+      - name: Security-Smoke-Tests
+        run: sh docker/run-security-test-local.sh
+
+      - name: Stack-Logs bei Fehlschlag
+        if: failure()
+        run: docker compose -f docker/docker-compose.dev.yml logs --tail=200
+
+      - name: Stack stoppen
+        if: always()
+        run: docker compose -f docker/docker-compose.dev.yml down -v
+
+  # Manueller Release-Testlauf: startet den kompletten self-hosted
+  # Supabase-Stack ephemer im Runner (dieselben Docker-Skripte wie für die
+  # lokale Entwicklung) und fährt Integration, Security-Smoke und E2E
+  # dagegen. Braucht dafür keine externen Secrets/Test-Instanz -- der Stack
+  # existiert nur für die Dauer dieses Jobs und wird danach verworfen.
+  full-test:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Compose-Konfiguration validieren
+        run: |
+          docker compose -f docker/docker-compose.yml config -q
+          docker compose -f docker/docker-compose.dev.yml config -q
+
+      - name: Ephemeres Supabase-Test-Env erzeugen
+        # Frische, zufällige Secrets pro Lauf statt der Demo-Werte aus
+        # .env.example -- der Stack ist danach zwar trotzdem nur für diesen
+        # Job erreichbar, aber preflight-check.sh (siehe nächster Schritt)
+        # prüft damit reale Bedingungen statt eines Sonderfalls.
+        run: |
+          cd docker/supabase
+          cp .env.example .env
+          sh utils/generate-keys.sh --update-env
+          sed -i "s|^CRON_SECRET=.*$|CRON_SECRET=$(openssl rand -hex 16)|" .env
+
+      - name: Preflight-Check
+        run: (cd docker/supabase && sh preflight-check.sh)
+
+      - name: Stack starten
+        run: docker compose -f docker/docker-compose.dev.yml up -d --build --wait --wait-timeout 180
+
+      - name: Migrationen anwenden
+        run: (cd docker/supabase && ./apply-migrations.sh)
+
+      - name: Integrationstests
+        run: sh docker/run-integration-test-local.sh
+
+      - name: Security-Smoke-Tests
+        run: sh docker/run-security-test-local.sh
+
+      - name: Playwright E2E
+        run: sh docker/run-playwright-local.sh
+
+      - name: npm audit
+        run: docker exec kartslalom-kartslalom-dev-1 npm audit --audit-level=high
+
+      - name: Stack-Logs bei Fehlschlag
+        if: failure()
+        run: docker compose -f docker/docker-compose.dev.yml logs --tail=200
+
+      - name: Stack stoppen
+        if: always()
+        run: docker compose -f docker/docker-compose.dev.yml down -v
