@@ -42,7 +42,7 @@ services:
       - "127.0.0.1:5173:8080"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/ >/dev/null || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/ >/dev/null || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -51,6 +51,10 @@ services:
       options:
         max-size: "10m"
         max-file: "5"
+    # PROD-RISK: VITE_SUPABASE_URL/ANON_KEY werden zur Build-Zeit fest in das
+    # Vite-Bundle eingebacken (kein Laufzeit-Env). Ändert sich die Domain oder
+    # der Key, reicht ein Container-Restart NICHT — es braucht
+    # `docker compose -f docker/docker-compose.yml up -d --build`.
 
   kong:
     networks:
