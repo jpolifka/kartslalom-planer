@@ -103,6 +103,20 @@ describe("generateTrackSVG mit customSnapshot", () => {
   });
 });
 
+// PNG-Export nutzt generateTrackSVG() mit background="transparent" wieder,
+// statt einer eigenen Rendering-Pipeline.
+describe("generateTrackSVG mit background-Parameter", () => {
+  it("zeichnet standardmäßig einen weißen Hintergrund", () => {
+    const svg = generateTrackSVG(18, 36, [customItem()], []);
+    expect(svg).toContain('fill="white"');
+  });
+
+  it("lässt bei background=\"transparent\" kein weißes Hintergrundrechteck einfügen", () => {
+    const svg = generateTrackSVG(18, 36, [customItem()], [], null, "transparent");
+    expect(svg).not.toContain('fill="white"');
+  });
+});
+
 // H5: PDF-Smoke-Test — Custom-Snapshot überlebt PDF-Erzeugung
 describe("exportPDF mit customSnapshot (Smoke-Test)", () => {
   it("wirft keinen Fehler bei gelöschter Quellformation (nur Snapshot)", async () => {

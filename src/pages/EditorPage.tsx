@@ -18,6 +18,7 @@ import { useAuthStore } from "../store/authStore";
 import { useTrack, useCreateTrack, useSaveTrack, useRenameTrack, useAdminTrack, useTrackVersionDetail, useRestoreTrackVersion, useCreateTrackFromVersion } from "../hooks/useTracks";
 import SaveAsDialog from "../components/SaveAsDialog";
 import { useTier } from "../hooks/useTier";
+import { useExportPng } from "../features/png-export/hooks/useExportPng";
 import { useCustomFormationList, useLibraryFormations } from "../hooks/useCustomFormations";
 import { getFormation } from "../lib/formationRegistry";
 import { trackReducer, INITIAL_TRACK } from "./editor/trackReducer";
@@ -39,8 +40,10 @@ export default function EditorPage() {
   const { session, profile } = useAuthStore();
   const isAdmin = profile?.role === "admin";
   const isCloudMode = !!session;
-  const { canUseSatellite } = useTier();
+  const { canUseSatellite, canExportPng } = useTier();
   const satelliteLocked = isCloudMode && !canUseSatellite;
+  const pngLocked = isCloudMode && !canExportPng;
+  const { exportPng } = useExportPng();
   const isNewTrack = !trackIdParam || trackIdParam === "new";
   const trackId = isNewTrack ? null : trackIdParam!;
 
@@ -670,6 +673,17 @@ export default function EditorPage() {
                   alert(`PDF-Export fehlgeschlagen: ${err instanceof Error ? err.message : "Unbekannter Fehler"}`);
                 });
               }}
+              onExportPngWhite={() => {
+                exportPng(fieldWidth, fieldLength, items, arrows, trackName, "white").catch((err) => {
+                  alert(`PNG-Export fehlgeschlagen: ${err instanceof Error ? err.message : "Unbekannter Fehler"}`);
+                });
+              }}
+              onExportPngTransparent={() => {
+                exportPng(fieldWidth, fieldLength, items, arrows, trackName, "transparent").catch((err) => {
+                  alert(`PNG-Export fehlgeschlagen: ${err instanceof Error ? err.message : "Unbekannter Fehler"}`);
+                });
+              }}
+              pngLocked={pngLocked}
               onExportJSON={handleExport}
               onImportClick={() => fileInputRef.current?.click()}
               onImportChange={handleImport}
