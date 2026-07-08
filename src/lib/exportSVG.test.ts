@@ -2,8 +2,8 @@
 // Copyright (c) Jens Polifka
 // All rights reserved.
 
-import { describe, it, expect, vi } from "vitest";
-import { generateTrackSVG, exportPDF } from "./exportSVG";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { generateTrackSVG, exportPDF, resolveWmsExportImage } from "./exportSVG";
 
 // PDF-Mocks: jsPDF und svg2pdf.js brauchen keine echten Browser-APIs
 vi.mock("jspdf", () => {
@@ -21,7 +21,15 @@ vi.mock("jspdf", () => {
   return { jsPDF: MockJsPDF };
 });
 vi.mock("svg2pdf.js", () => ({ default: () => undefined }));
+
+const { mockGetSession } = vi.hoisted(() => ({ mockGetSession: vi.fn() }));
+vi.mock("./supabase", () => ({
+  supabase: { auth: { getSession: mockGetSession } },
+  functionsUrl: (name: string) => `https://fn.test/functions/v1/${name}`,
+}));
+
 import type { PlacedFormation } from "../types";
+import type { PdfMapConfig } from "./exportSVG";
 
 const snap = {
   cones: [
@@ -176,5 +184,108 @@ describe("exportPDF mit customSnapshot (Smoke-Test)", () => {
     await expect(
       exportPDF(18, 36, [itemWithoutSnapshot], [], null, "test.pdf")
     ).resolves.not.toThrow();
+  });
+});
+
+describe("resolveWmsExportImage", () => {
+  const wmsMapConfig: PdfMapConfig = {
+    selection: { centerLat: 49.9929, centerLng: 8.2473, widthM: 40, heightM: 40, rotationDeg: 0 },
+    providerId: "rlp_dop20",
+    opacity: 0.5,
+  };
+  const mockFetch = vi.fn();
+
+  beforeEach(() => {
+    mockGetSession.mockReset();
+    mockFetch.mockReset();
+    vi.stubGlobal("fetch", mockFetch);
+    // jsdom kennt readAsDataURL nicht mit echten Bytes — Ergebnis reicht hier als Marker.
+    vi.stubGlobal(
+      "FileReader",
+      class {
+        onload: (() => void) | null = null;
+        result = "data:image/jpeg;base64,Zm9v";
+        readAsDataURL() {
+          this.onload?.();
+        }
+      }
+    );
+  });
+
+  it("liefert null für xyz-Provider (osm) ohne WMS-Auflösung", async () => {
+    const result = await resolveWmsExportImage(
+      { ...wmsMapConfig, providerId: "osm" },
+      18,
+      36
+    );
+    expect(result).toBeNull();
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("Gast-Modus (keine Session): holt das Bild direkt vom WMS-Dienst und liefert eine data:-URI", async () => {
+    mockGetSession.mockResolvedValue({ data: { session: null } });
+    mockFetch.mockResolvedValue(
+      new Response(new Uint8Array([1, 2, 3]), { status: 200, headers: { "content-type": "image/jpeg" } })
+    );
+
+    const result = await resolveWmsExportImage(wmsMapConfig, 18, 36);
+
+    expect(result).toBe("data:image/jpeg;base64,Zm9v");
+    // Kein Proxy-Aufruf, direkter Fetch gegen die WMS-GetMap-URL
+    const calledUrl = mockFetch.mock.calls[0][0] as string;
+    expect(calledUrl).toContain("geo4.service24.rlp.de/wms/rp_dop20.fcgi");
+  });
+
+  it("Gast-Modus: fällt bei fehlgeschlagenem direktem Fetch auf die rohe Bild-URL zurück", async () => {
+    mockGetSession.mockResolvedValue({ data: { session: null } });
+    mockFetch.mockRejectedValue(new TypeError("Failed to fetch"));
+
+    const result = await resolveWmsExportImage(wmsMapConfig, 18, 36);
+
+    expect(result).toContain("geo4.service24.rlp.de/wms/rp_dop20.fcgi");
+  });
+
+  it("Gast-Modus: fällt bei Nicht-200-Antwort auf die rohe Bild-URL zurück", async () => {
+    mockGetSession.mockResolvedValue({ data: { session: null } });
+    mockFetch.mockResolvedValue(new Response("", { status: 500 }));
+
+    const result = await resolveWmsExportImage(wmsMapConfig, 18, 36);
+
+    expect(result).toContain("geo4.service24.rlp.de/wms/rp_dop20.fcgi");
+  });
+
+  it("Gast-Modus: fällt bei ungültigem Content-Type (kein image/*) auf die rohe Bild-URL zurück", async () => {
+    mockGetSession.mockResolvedValue({ data: { session: null } });
+    mockFetch.mockResolvedValue(
+      new Response("<ServiceExceptionReport/>", { status: 200, headers: { "content-type": "text/xml" } })
+    );
+
+    const result = await resolveWmsExportImage(wmsMapConfig, 18, 36);
+
+    expect(result).toContain("geo4.service24.rlp.de/wms/rp_dop20.fcgi");
+  });
+
+  it("Gast-Modus: fällt bei zu großer Antwort auf die rohe Bild-URL zurück", async () => {
+    mockGetSession.mockResolvedValue({ data: { session: null } });
+    const oversized = new Uint8Array(16 * 1024 * 1024);
+    mockFetch.mockResolvedValue(
+      new Response(oversized, { status: 200, headers: { "content-type": "image/jpeg" } })
+    );
+
+    const result = await resolveWmsExportImage(wmsMapConfig, 18, 36);
+
+    expect(result).toContain("geo4.service24.rlp.de/wms/rp_dop20.fcgi");
+  });
+
+  it("mit aktiver Session: löst das Bild über den map-background-image-Proxy auf", async () => {
+    mockGetSession.mockResolvedValue({ data: { session: { access_token: "tok-123" } } });
+    mockFetch.mockResolvedValue(new Response(new Uint8Array([1, 2, 3]), { status: 200 }));
+
+    const result = await resolveWmsExportImage(wmsMapConfig, 18, 36);
+
+    expect(result).toBe("data:image/jpeg;base64,Zm9v");
+    const [calledUrl, calledInit] = mockFetch.mock.calls[0] as [string, RequestInit];
+    expect(calledUrl).toBe("https://fn.test/functions/v1/map-background-image");
+    expect((calledInit.headers as Record<string, string>).Authorization).toBe("Bearer tok-123");
   });
 });

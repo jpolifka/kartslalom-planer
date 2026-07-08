@@ -56,7 +56,7 @@ describe("RLS isolation (Tracks)", () => {
       p_area_sel:   null,
       p_width:      18,
       p_length:     36,
-      p_satellite:  false,
+      p_map_provider_id: "osm",
       p_opacity:    0.5,
     });
     assertRpcError(error, "not_owner", "B save auf Track A");
@@ -81,6 +81,20 @@ describe("RLS isolation (Tracks)", () => {
 
 describe("Versions-RPCs — Anon-Zugriff verweigert (permission denied)", () => {
   const dummyId = "00000000-0000-0000-0000-000000000000";
+
+  it("save_track ist für Anon nicht ausführbar", async () => {
+    const { error } = await anon.rpc("save_track", {
+      p_track_id: dummyId,
+      p_state_json: { items: [], arrows: [] },
+      p_area_sel: null,
+      p_width: 18,
+      p_length: 36,
+      p_map_provider_id: "osm",
+      p_opacity: 0.5,
+    });
+    expect(error).not.toBeNull();
+    expect(error!.message.toLowerCase()).toContain("permission denied");
+  });
 
   it("create_track_version ist für Anon nicht ausführbar", async () => {
     const { error } = await anon.rpc("create_track_version", { p_track_id: dummyId });

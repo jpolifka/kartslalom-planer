@@ -75,7 +75,7 @@ describe("Track lifecycle", () => {
       p_area_sel:   null,
       p_width:      18,
       p_length:     36,
-      p_satellite:  false,
+      p_map_provider_id: "osm",
       p_opacity:    0.5,
     });
     assertNoError(error, "save_track");
@@ -93,7 +93,7 @@ describe("Track lifecycle", () => {
     expect(data!.manual_length).toBe(36);
   });
 
-  it("save_track schlägt fehl mit satellite_requires_pro für Free-User", async () => {
+  it("save_track schlägt fehl mit map_provider_requires_pro für Free-User", async () => {
     // Explizit free setzen — Schema-Default ist vorübergehend 'pro' (Übergangspolitik vor Rollout)
     const { error: tierErr } = await admin.from("profiles").update({ tier: "free" }).eq("id", userId);
     assertNoError(tierErr, "tier auf free setzen");
@@ -104,13 +104,13 @@ describe("Track lifecycle", () => {
       p_area_sel:   null,
       p_width:      18,
       p_length:     36,
-      p_satellite:  true,
+      p_map_provider_id: "rlp_dop20",
       p_opacity:    0.5,
     });
-    assertRpcError(error, "satellite_requires_pro", "save_track satellite free");
+    assertRpcError(error, "map_provider_requires_pro", "save_track premium provider free");
   });
 
-  it("save_track erlaubt satellite für Pro-User", async () => {
+  it("save_track erlaubt Premium-Provider für Pro-User", async () => {
     const { error: tierErr } = await admin.from("profiles").update({ tier: "pro" }).eq("id", userId);
     assertNoError(tierErr, "tier auf pro setzen");
 
@@ -120,10 +120,10 @@ describe("Track lifecycle", () => {
       p_area_sel:   null,
       p_width:      18,
       p_length:     36,
-      p_satellite:  true,
+      p_map_provider_id: "rlp_dop20",
       p_opacity:    0.5,
     });
-    assertNoError(error, "save_track satellite pro");
+    assertNoError(error, "save_track premium provider pro");
 
     // Zurück auf free — create_track-Limit-Test braucht free-Tier
     await admin.from("profiles").update({ tier: "free" }).eq("id", userId);
@@ -197,7 +197,7 @@ describe("customSnapshot DB-Persistenz", () => {
       p_area_sel:   null,
       p_width:      18,
       p_length:     36,
-      p_satellite:  false,
+      p_map_provider_id: "osm",
       p_opacity:    0.5,
     });
     assertNoError(error, "save_track mit customSnapshot");
@@ -235,7 +235,7 @@ describe("customSnapshot DB-Persistenz", () => {
       p_area_sel:   null,
       p_width:      20,
       p_length:     40,
-      p_satellite:  false,
+      p_map_provider_id: "osm",
       p_opacity:    0.8,
     });
 

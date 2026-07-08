@@ -15,10 +15,10 @@ export function useTier() {
     tier,
     isLoggedIn: !!profile,
     trackLimit: LIMITS[tier],
-    canUseSatellite:      tier !== "free",
-    canUsePolygonArea:    tier !== "free",
-    canShareLinks:        tier !== "free",
-    canUseVersionHistory: tier !== "free",
-    canExportPng:         tier !== "free",
+    canUsePremiumMapProviders: tier !== "free",
+    canUsePolygonArea:         tier !== "free",
+    canShareLinks:             tier !== "free",
+    canUseVersionHistory:      tier !== "free",
+    canExportPng:              tier !== "free",
   };
 }

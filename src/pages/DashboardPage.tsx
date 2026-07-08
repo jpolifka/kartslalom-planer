@@ -41,7 +41,7 @@ function TrackVersionPanel({ trackId, trackName }: { trackId: string; trackName:
       await restoreVersionMutation.mutateAsync(versionId);
       navigate(`/editor/${trackId}`);
     } catch (err) {
-      if (err instanceof Error && err.message === "SATELLITE_REQUIRES_PRO") {
+      if (err instanceof Error && err.message === "MAP_PROVIDER_REQUIRES_PRO") {
         alert("Dieser Snapshot enthält einen Luftbild-Kartenhintergrund, der den Pro-Tarif erfordert.");
         return;
       }
@@ -66,7 +66,7 @@ function TrackVersionPanel({ trackId, trackName }: { trackId: string; trackName:
         setSaveAsError("Du hast die maximale Anzahl an Strecken für deinen Tarif erreicht.");
         return;
       }
-      if (err instanceof Error && err.message === "SATELLITE_REQUIRES_PRO") {
+      if (err instanceof Error && err.message === "MAP_PROVIDER_REQUIRES_PRO") {
         setSaveAsError("Dieser Snapshot enthält einen Luftbild-Kartenhintergrund, der den Pro-Tarif erfordert.");
         return;
       }

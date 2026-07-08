@@ -142,7 +142,9 @@ describe("map-background-image", () => {
   it("liefert das Bild mit korrektem Content-Type für gültige Pro-Anfrage", async () => {
     mockAuthAndProfile("pro");
     const fakeImageBytes = new Uint8Array([1, 2, 3, 4]);
-    mockFetch.mockResolvedValueOnce(new Response(fakeImageBytes, { status: 200 }));
+    mockFetch.mockResolvedValueOnce(
+      new Response(fakeImageBytes, { status: 200, headers: { "content-type": "image/jpeg" } })
+    );
 
     const res = await handler(authedReq({ providerId: "rlp_dop20", bbox: INSIDE_BBOX, width: 600, height: 580 }));
 
@@ -161,7 +163,9 @@ describe("map-background-image", () => {
 
   it("liefert Team-Tarif ebenfalls ein Bild (nicht nur Pro)", async () => {
     mockAuthAndProfile("team");
-    mockFetch.mockResolvedValueOnce(new Response(new Uint8Array([9]), { status: 200 }));
+    mockFetch.mockResolvedValueOnce(
+      new Response(new Uint8Array([9]), { status: 200, headers: { "content-type": "image/jpeg" } })
+    );
     const res = await handler(authedReq({ providerId: "rlp_dop20", bbox: INSIDE_BBOX, width: 100, height: 100 }));
     expect(res.status).toBe(200);
   });
@@ -172,5 +176,51 @@ describe("map-background-image", () => {
     const res = await handler(authedReq({ providerId: "rlp_dop20", bbox: INSIDE_BBOX, width: 100, height: 100 }));
     expect(res.status).toBe(502);
     expect((await res.json()).error).toBe("upstream_error");
+  });
+
+  it("returns 504 upstream_timeout wenn der WMS-Dienst nicht rechtzeitig antwortet", async () => {
+    vi.useFakeTimers();
+    try {
+      mockAuthAndProfile("pro");
+      mockFetch.mockImplementationOnce((_url: string, init?: { signal?: AbortSignal }) => {
+        return new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => {
+            const err = new Error("aborted");
+            err.name = "AbortError";
+            reject(err);
+          });
+        });
+      });
+      const resPromise = handler(authedReq({ providerId: "rlp_dop20", bbox: INSIDE_BBOX, width: 100, height: 100 }));
+      await vi.advanceTimersByTimeAsync(10_000);
+      const res = await resPromise;
+      expect(res.status).toBe(504);
+      expect((await res.json()).error).toBe("upstream_timeout");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("returns 502 invalid_upstream_response bei Nicht-Bild-Content-Type trotz HTTP 200", async () => {
+    mockAuthAndProfile("pro");
+    mockFetch.mockResolvedValueOnce(
+      new Response("<ServiceExceptionReport/>", { status: 200, headers: { "content-type": "text/xml" } })
+    );
+    const res = await handler(authedReq({ providerId: "rlp_dop20", bbox: INSIDE_BBOX, width: 100, height: 100 }));
+    expect(res.status).toBe(502);
+    expect((await res.json()).error).toBe("invalid_upstream_response");
+  });
+
+  it("returns 502 upstream_response_too_large wenn Content-Length das Limit überschreitet", async () => {
+    mockAuthAndProfile("pro");
+    mockFetch.mockResolvedValueOnce(
+      new Response(new Uint8Array([1]), {
+        status: 200,
+        headers: { "content-type": "image/jpeg", "content-length": String(20 * 1024 * 1024) },
+      })
+    );
+    const res = await handler(authedReq({ providerId: "rlp_dop20", bbox: INSIDE_BBOX, width: 100, height: 100 }));
+    expect(res.status).toBe(502);
+    expect((await res.json()).error).toBe("upstream_response_too_large");
   });
 });

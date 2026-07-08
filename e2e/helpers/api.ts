@@ -26,7 +26,7 @@ export async function saveTrackArea(
   credentials: E2ECredentials,
   trackId: string,
   area: TestAreaSelection,
-  satellite: boolean
+  mapProviderId: "osm" | "rlp_dop20"
 ): Promise<void> {
   const url = process.env.SUPABASE_URL;
   const anonKey = process.env.SUPABASE_ANON_KEY;
@@ -50,7 +50,7 @@ export async function saveTrackArea(
     p_area_sel: area,
     p_width: 18,
     p_length: 36,
-    p_satellite: satellite,
+    p_map_provider_id: mapProviderId,
     p_opacity: 0.7,
   });
   if (error) throw new Error(`save_track RPC fehlgeschlagen: ${error.message}`);

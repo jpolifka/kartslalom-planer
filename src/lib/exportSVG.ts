@@ -14,6 +14,8 @@ import type { PlacedFormation, PlacedArrow } from "../types";
 const PYLON_SIZE_M = 0.30;
 const PYLON_MIN_PX = 6;
 export const SVG_WIDTH = 900;
+const GUEST_FETCH_TIMEOUT_MS = 10_000;
+const GUEST_MAX_IMAGE_BYTES = 15 * 1024 * 1024;
 
 export type PdfMapConfig = {
   selection: AreaSelection;
@@ -26,14 +28,27 @@ export type PdfMapConfig = {
   wmsImageDataUri?: string;
 };
 
-// Löst für einen WMS-Provider (z. B. RLP-DOP20) das Bild vorab über den
-// map-background-image-Edge-Function-Proxy auf (JWT/Tier/BBOX-geprüft,
-// siehe supabase/functions/map-background-image) und liefert es als
-// data:-URI zurück — der Export bettet dann kein von der Live-Erreichbarkeit
-// des WMS-Diensts abhängiges <image href> mehr ein. Für "xyz"-Provider (OSM)
-// oder ohne aktive Session (Gast-Modus, kein Proxy-Aufruf möglich) wird null
-// zurückgegeben; buildTileSvg fällt dann auf die direkte WMS-URL zurück
-// (identisch zum bisherigen Verhalten).
+// Löst für einen WMS-Provider (z. B. RLP-DOP20) das Bild vorab auf und
+// liefert es als data:-URI zurück — der Export bettet dann kein von der
+// Live-Erreichbarkeit des WMS-Diensts abhängiges <image href> mehr ein. Für
+// "xyz"-Provider (OSM) wird null zurückgegeben; buildTileSvg fällt dann auf
+// die direkte Tile-URL zurück (identisch zum bisherigen Verhalten).
+//
+// Mit aktiver Session läuft die Auflösung über den map-background-image-
+// Edge-Function-Proxy (JWT/Tier/BBOX-geprüft, siehe
+// supabase/functions/map-background-image). Ohne Session (Gast-Modus, kein
+// Proxy-Aufruf möglich, da der Proxy Auth verlangt) holt der Browser das Bild
+// direkt vom RLP-WMS-Dienst — der Dienst sendet
+// `Access-Control-Allow-Origin: *`, ein direkter Fetch ist also möglich (per
+// curl gegen den echten Dienst verifiziert, 2026-07-08).
+//
+// Best-Effort, kein Garant: Schlägt der direkte Fetch fehl (Timeout,
+// Netzwerkfehler, ungültiger Content-Type, zu große Antwort, CORS-Änderung
+// beim Anbieter), fällt der Export auf die rohe Bild-URL zurück statt ganz zu
+// scheitern. Das eingebettete SVG ist dann NICHT garantiert self-contained
+// und kann eine externe WMS-Referenz enthalten, die von der Live-
+// Erreichbarkeit des Diensts abhängt — bewusste Produktentscheidung
+// (Best-Effort-Einbettung statt Export-Abbruch für Gäste).
 export async function resolveWmsExportImage(
   mapConfig: PdfMapConfig,
   fieldWidth: number,
@@ -51,7 +66,23 @@ export async function resolveWmsExportImage(
   if (layout.kind !== "wms") return null;
 
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return layout.imageUrl;
+  if (!session) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), GUEST_FETCH_TIMEOUT_MS);
+    try {
+      const directRes = await fetch(layout.imageUrl, { signal: controller.signal });
+      if (!directRes.ok) return layout.imageUrl;
+      const contentType = directRes.headers.get("content-type") ?? "";
+      if (!contentType.startsWith("image/")) return layout.imageUrl;
+      const blob = await directRes.blob();
+      if (blob.size > GUEST_MAX_IMAGE_BYTES) return layout.imageUrl;
+      return await blobToDataUri(blob);
+    } catch {
+      return layout.imageUrl;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
 
   const res = await fetch(functionsUrl("map-background-image"), {
     method: "POST",

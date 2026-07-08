@@ -34,7 +34,7 @@ Migration: `supabase/migrations/20260706000001_track_share_links.sql`.
 - `get_track_by_share_token(p_token text) returns table(...)` — `anon` +
   `authenticated`, kein Ownership-Check. Reduzierter Feldsatz (analog
   `get_library_formations()`): keine `owner_id`, keine E-Mail, **und bewusst
-  kein `area_sel_json`/`map_satellite`/`map_opacity`** (siehe Abschnitt
+  kein `area_sel_json`/`map_provider_id`/`map_opacity`** (siehe Abschnitt
   "Kartenhintergrund" unten — der Viewer zeigt ohnehin keinen Kartenhintergrund,
   `area_sel_json` würde also nur ungenutzt die genauen Geokoordinaten der
   Strecke öffentlich preisgeben). Ungültiger und widerrufener Token liefern

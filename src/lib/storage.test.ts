@@ -14,7 +14,7 @@ const baseState = {
   arrows: [],
   manualWidth: 20,
   manualLength: 40,
-  mapSatellite: false,
+  mapProviderId: "osm" as const,
   mapOpacity: 1,
   areaSel: null,
 };
@@ -43,6 +43,28 @@ describe("saveState / loadState", () => {
   it("returns null on corrupt JSON", () => {
     localStorage.setItem(STORAGE_KEY, "not-json{{{");
     expect(loadState()).toBeNull();
+  });
+
+  it("normalisiert alte Saves mit Boolean mapSatellite zu mapProviderId (osm)", () => {
+    const { mapProviderId: _omit, ...legacyBase } = baseState;
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ ...legacyBase, mapSatellite: false, version: CURRENT_VERSION })
+    );
+    const loaded = loadState();
+    expect(loaded).not.toBeNull();
+    expect(loaded!.mapProviderId).toBe("osm");
+    expect((loaded as unknown as Record<string, unknown>).mapSatellite).toBeUndefined();
+  });
+
+  it("normalisiert alte Saves mit Boolean mapSatellite=true zu mapProviderId (rlp_dop20)", () => {
+    const { mapProviderId: _omit, ...legacyBase } = baseState;
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ ...legacyBase, mapSatellite: true, version: CURRENT_VERSION })
+    );
+    const loaded = loadState();
+    expect(loaded!.mapProviderId).toBe("rlp_dop20");
   });
 });
 
@@ -89,6 +111,13 @@ describe("parseImportFile", () => {
 
   it("throws when input is not an object", () => {
     expect(() => parseImportFile(JSON.stringify(null))).toThrow("Ungültiges Dateiformat");
+  });
+
+  it("normalisiert eine alte Export-Datei mit Boolean mapSatellite zu mapProviderId", () => {
+    const { mapProviderId: _omit, ...legacyBase } = baseState;
+    const legacyExport = JSON.stringify({ ...legacyBase, mapSatellite: true, version: CURRENT_VERSION });
+    const result = parseImportFile(legacyExport);
+    expect(result.mapProviderId).toBe("rlp_dop20");
   });
 
   it("custom formation with valid snapshot passes through unchanged", () => {
@@ -182,7 +211,7 @@ describe("customSnapshot Export-Import-Roundtrip", () => {
     arrows: [],
     manualWidth: 18,
     manualLength: 36,
-    mapSatellite: false,
+    mapProviderId: "osm" as const,
     mapOpacity: 0.5,
     areaSel: null,
   };

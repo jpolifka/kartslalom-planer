@@ -44,7 +44,7 @@ export async function handler(req: Request): Promise<Response> {
   const profiles = await profileRes.json();
 
   const tracksRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/tracks?owner_id=eq.${uid}&select=id,name,description,state_json,area_sel_json,manual_width,manual_length,map_satellite,map_opacity,created_at,updated_at&order=created_at`,
+    `${SUPABASE_URL}/rest/v1/tracks?owner_id=eq.${uid}&select=id,name,description,state_json,area_sel_json,manual_width,manual_length,map_provider_id,map_opacity,created_at,updated_at&order=created_at`,
     { headers: serviceHeaders() },
   );
   const tracks = await tracksRes.json();

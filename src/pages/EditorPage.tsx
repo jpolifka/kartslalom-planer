@@ -13,6 +13,7 @@ import { runValidation } from "../lib/validation";
 import { generateTrackSVG, downloadSVG, exportPDF, resolveWmsExportImage } from "../lib/exportSVG";
 import type { PdfMapConfig } from "../lib/exportSVG";
 import type { AreaSelection } from "../lib/areaSelection";
+import { areaSelectionToBounds } from "../lib/areaSelection";
 import type { DirectionMode, FormationKey, PlacedArrow, PlacedFormation } from "../types";
 import { saveState, loadState, clearSavedState, exportAsFile, parseImportFile, sanitizeItems } from "../lib/storage";
 import { useAuthStore } from "../store/authStore";
@@ -21,7 +22,7 @@ import SaveAsDialog from "../components/SaveAsDialog";
 import ShareLinkDialog from "../features/track-share/components/ShareLinkDialog";
 import { useTier } from "../hooks/useTier";
 import { useExportPng } from "../features/png-export/hooks/useExportPng";
-import { MAP_PROVIDERS, mapProviderIdForSatelliteFlag, providerCoversPoint } from "../lib/mapProviders";
+import { MAP_PROVIDERS, providerCoversBounds } from "../lib/mapProviders";
 import type { MapProviderId } from "../lib/mapProviders";
 import { useCustomFormationList, useLibraryFormations } from "../hooks/useCustomFormations";
 import { getFormation } from "../lib/formationRegistry";
@@ -44,8 +45,8 @@ export default function EditorPage() {
   const { session, profile } = useAuthStore();
   const isAdmin = profile?.role === "admin";
   const isCloudMode = !!session;
-  const { canUseSatellite, canShareLinks, canExportPng } = useTier();
-  const satelliteLocked = isCloudMode && !canUseSatellite;
+  const { canUsePremiumMapProviders, canShareLinks, canExportPng } = useTier();
+  const premiumMapProviderLocked = isCloudMode && !canUsePremiumMapProviders;
   const shareLocked = isCloudMode && !canShareLinks;
   const [showShareDialog, setShowShareDialog] = useState(false);
   const pngLocked = isCloudMode && !canExportPng;
@@ -80,13 +81,11 @@ export default function EditorPage() {
   const [manualLength, setManualLength] = useState(() => _initialSaved?.manualLength ?? 36);
   const [manualWidthInput, setManualWidthInput] = useState(() => String(_initialSaved?.manualWidth ?? 18));
   const [manualLengthInput, setManualLengthInput] = useState(() => String(_initialSaved?.manualLength ?? 36));
-  // Gast-Modus speichert weiterhin nur ein Boolean (siehe SavedState in
-  // storage.ts, bewusst nicht migriert um bestehende localStorage-Saves
-  // nicht ungültig zu machen) — mapProviderIdForSatelliteFlag übersetzt das
-  // in die neue Provider-ID. true → "rlp_dop20" (nicht mehr "esri").
+  // storage.ts normalisiert alte Boolean-Saves (mapSatellite) beim Laden
+  // transparent auf mapProviderId — hier direkt lesbar.
   const [mapProviderId, setMapProviderId] = useState<MapProviderId>(() =>
     _initialSaved
-      ? mapProviderIdForSatelliteFlag(_initialSaved.mapSatellite)
+      ? _initialSaved.mapProviderId
       : (isCloudMode ? "osm" : "rlp_dop20")
   );
   const [mapOpacity, setMapOpacity] = useState(() => _initialSaved?.mapOpacity ?? 0.5);
@@ -97,10 +96,13 @@ export default function EditorPage() {
   // Provider mit begrenzter Abdeckung (RLP-DOP20): außerhalb Rheinland-Pfalz
   // wird nur für das Rendering (nicht die gespeicherte Auswahl!) auf OSM
   // zurückgefallen — wer zurück nach RLP navigiert, sieht wieder Luftbild,
-  // ohne die Auswahl neu treffen zu müssen.
-  const rlpCoversSelection = !areaSel || providerCoversPoint(MAP_PROVIDERS.rlp_dop20, areaSel.centerLat, areaSel.centerLng);
+  // ohne die Auswahl neu treffen zu müssen. Geprüft wird die volle (rotierte)
+  // Envelope, nicht nur der Mittelpunkt — dieselbe Envelope geht später als
+  // WMS-BBox an den Export-Proxy, der ebenfalls die volle BBox verlangt.
+  const areaBounds = areaSel ? areaSelectionToBounds(areaSel) : null;
+  const rlpCoversSelection = !areaBounds || providerCoversBounds(MAP_PROVIDERS.rlp_dop20, areaBounds);
   const effectiveMapProviderId: MapProviderId =
-    areaSel && !providerCoversPoint(MAP_PROVIDERS[mapProviderId], areaSel.centerLat, areaSel.centerLng)
+    areaBounds && !providerCoversBounds(MAP_PROVIDERS[mapProviderId], areaBounds)
       ? "osm"
       : mapProviderId;
   const mapConfig: MapConfig | null = areaSel
@@ -245,7 +247,7 @@ export default function EditorPage() {
     setManualLength(d.manual_length);
     setManualWidthInput(String(d.manual_width));
     setManualLengthInput(String(d.manual_length));
-    setMapProviderId((d.map_provider_id as MapProviderId | undefined) ?? mapProviderIdForSatelliteFlag(d.map_satellite));
+    setMapProviderId(d.map_provider_id as MapProviderId);
     setMapOpacity(d.map_opacity);
     setTrackName(d.name);
     setCloudLoaded(true);
@@ -268,7 +270,6 @@ export default function EditorPage() {
     if (v.manual_width != null) { setManualWidth(v.manual_width); setManualWidthInput(String(v.manual_width)); }
     if (v.manual_length != null) { setManualLength(v.manual_length); setManualLengthInput(String(v.manual_length)); }
     if (v.map_provider_id) setMapProviderId(v.map_provider_id as MapProviderId);
-    else if (v.map_satellite != null) setMapProviderId(mapProviderIdForSatelliteFlag(v.map_satellite));
     if (v.map_opacity != null) setMapOpacity(v.map_opacity);
     setCloudLoaded(true);
   }, [previewVersionId, versionDetailQuery.data]);
@@ -282,15 +283,14 @@ export default function EditorPage() {
     if (savedFadeRef.current) clearTimeout(savedFadeRef.current);
     setSaveStatus("pending");
     saveTimerRef.current = setTimeout(async () => {
-      const mapSatellite = mapProviderId !== "osm";
       if (isCloudMode && trackId) {
         try {
           await saveTrackMutation.mutateAsync({
             id: trackId,
-            state: { items, arrows, manualWidth, manualLength, mapSatellite, mapOpacity, areaSel },
+            state: { items, arrows, manualWidth, manualLength, mapProviderId, mapOpacity, areaSel },
           });
         } catch (err) {
-          if (err instanceof Error && err.message === "SATELLITE_REQUIRES_PRO") {
+          if (err instanceof Error && err.message === "MAP_PROVIDER_REQUIRES_PRO") {
             setMapProviderId("osm");
             alert("Luftbilder sind ab dem Pro-Tarif verfügbar.");
           }
@@ -298,7 +298,7 @@ export default function EditorPage() {
           return;
         }
       } else {
-        saveState({ items, arrows, manualWidth, manualLength, mapSatellite, mapOpacity, areaSel });
+        saveState({ items, arrows, manualWidth, manualLength, mapProviderId, mapOpacity, areaSel });
       }
       setSaveStatus("saved");
       savedFadeRef.current = setTimeout(() => setSaveStatus("idle"), 2000);
@@ -392,7 +392,7 @@ export default function EditorPage() {
   }
 
   function handleExport() {
-    exportAsFile({ name: trackName, items, arrows, manualWidth, manualLength, mapSatellite: mapProviderId !== "osm", mapOpacity, areaSel });
+    exportAsFile({ name: trackName, items, arrows, manualWidth, manualLength, mapProviderId, mapOpacity, areaSel });
   }
 
   // Für SVG/PDF-Export: bei einem WMS-Provider (RLP-DOP20) das Bild vorab
@@ -419,7 +419,7 @@ export default function EditorPage() {
         setManualLength(saved.manualLength);
         setManualWidthInput(String(saved.manualWidth));
         setManualLengthInput(String(saved.manualLength));
-        setMapProviderId(mapProviderIdForSatelliteFlag(saved.mapSatellite));
+        setMapProviderId(saved.mapProviderId);
         setMapOpacity(saved.mapOpacity);
         setSelectedIds(new Set());
         setSelectedArrowId(null);
@@ -569,8 +569,8 @@ export default function EditorPage() {
                   // frisch restaurierte Track-Stand sauber in den Editor geladen wird.
                   window.location.assign(`/editor/${trackId}`);
                 } catch (err) {
-                  if (err instanceof Error && err.message === "SATELLITE_REQUIRES_PRO") {
-                    alert("Dieser Snapshot enthält Satellitenbilder, die den Pro-Tarif erfordern.");
+                  if (err instanceof Error && err.message === "MAP_PROVIDER_REQUIRES_PRO") {
+                    alert("Dieser Snapshot enthält Luftbilder, die den Pro-Tarif erfordern.");
                   } else {
                     alert("Wiederherstellen fehlgeschlagen.");
                   }
@@ -625,8 +625,8 @@ export default function EditorPage() {
                   setSaveAsError("Du hast die maximale Anzahl an Strecken für deinen Tarif erreicht.");
                   return;
                 }
-                if (err instanceof Error && err.message === "SATELLITE_REQUIRES_PRO") {
-                  setSaveAsError("Dieser Snapshot enthält Satellitenbilder, die den Pro-Tarif erfordern.");
+                if (err instanceof Error && err.message === "MAP_PROVIDER_REQUIRES_PRO") {
+                  setSaveAsError("Dieser Snapshot enthält Luftbilder, die den Pro-Tarif erfordern.");
                   return;
                 }
                 if (err instanceof Error && err.message === "INVALID_NAME") {
@@ -676,7 +676,7 @@ export default function EditorPage() {
             onClearArea={() => setAreaSel(null)}
             mapProviderId={mapProviderId}
             onSetMapProviderId={setMapProviderId}
-            premiumProviderLocked={satelliteLocked}
+            premiumProviderLocked={premiumMapProviderLocked}
             rlpCoversSelection={rlpCoversSelection}
             mapOpacity={mapOpacity}
             onSetMapOpacity={setMapOpacity}

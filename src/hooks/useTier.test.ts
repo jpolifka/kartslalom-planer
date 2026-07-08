@@ -18,7 +18,7 @@ describe("useTier", () => {
     expect(result.current.tier).toBe("free");
     expect(result.current.trackLimit).toBe(3);
     expect(result.current.isLoggedIn).toBe(false);
-    expect(result.current.canUseSatellite).toBe(false);
+    expect(result.current.canUsePremiumMapProviders).toBe(false);
     expect(result.current.canUsePolygonArea).toBe(false);
     expect(result.current.canShareLinks).toBe(false);
     expect(result.current.canUseVersionHistory).toBe(false);
