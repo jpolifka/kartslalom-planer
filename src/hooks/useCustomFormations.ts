@@ -31,8 +31,8 @@ import {
 export function useCustomFormationList() {
   const { session } = useAuthStore();
   return useQuery({
-    queryKey: ["custom_formations"],
-    queryFn: fetchCustomFormations,
+    queryKey: ["custom_formations", session?.user.id],
+    queryFn: () => fetchCustomFormations(session!.user.id),
     enabled: !!session,
     staleTime: 0, // immer frisch laden wenn Fenster/Tab fokussiert wird
   });
