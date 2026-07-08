@@ -20,6 +20,8 @@ import SaveAsDialog from "../components/SaveAsDialog";
 import ShareLinkDialog from "../features/track-share/components/ShareLinkDialog";
 import { useTier } from "../hooks/useTier";
 import { useExportPng } from "../features/png-export/hooks/useExportPng";
+import { MAP_PROVIDERS, mapProviderIdForSatelliteFlag, providerCoversPoint } from "../lib/mapProviders";
+import type { MapProviderId } from "../lib/mapProviders";
 import { useCustomFormationList, useLibraryFormations } from "../hooks/useCustomFormations";
 import { getFormation } from "../lib/formationRegistry";
 import { trackReducer, INITIAL_TRACK } from "./editor/trackReducer";
@@ -77,13 +79,31 @@ export default function EditorPage() {
   const [manualLength, setManualLength] = useState(() => _initialSaved?.manualLength ?? 36);
   const [manualWidthInput, setManualWidthInput] = useState(() => String(_initialSaved?.manualWidth ?? 18));
   const [manualLengthInput, setManualLengthInput] = useState(() => String(_initialSaved?.manualLength ?? 36));
-  const [mapSatellite, setMapSatellite] = useState(() => _initialSaved?.mapSatellite ?? (isCloudMode ? false : true));
+  // Gast-Modus speichert weiterhin nur ein Boolean (siehe SavedState in
+  // storage.ts, bewusst nicht migriert um bestehende localStorage-Saves
+  // nicht ungültig zu machen) — mapProviderIdForSatelliteFlag übersetzt das
+  // in die neue Provider-ID. true → "rlp_dop20" (nicht mehr "esri").
+  const [mapProviderId, setMapProviderId] = useState<MapProviderId>(() =>
+    _initialSaved
+      ? mapProviderIdForSatelliteFlag(_initialSaved.mapSatellite)
+      : (isCloudMode ? "osm" : "rlp_dop20")
+  );
   const [mapOpacity, setMapOpacity] = useState(() => _initialSaved?.mapOpacity ?? 0.5);
 
   const fieldWidth = areaSel ? areaSel.widthM : manualWidth;
   const fieldLength = areaSel ? areaSel.heightM : manualLength;
+
+  // Provider mit begrenzter Abdeckung (RLP-DOP20): außerhalb Rheinland-Pfalz
+  // wird nur für das Rendering (nicht die gespeicherte Auswahl!) auf OSM
+  // zurückgefallen — wer zurück nach RLP navigiert, sieht wieder Luftbild,
+  // ohne die Auswahl neu treffen zu müssen.
+  const rlpCoversSelection = !areaSel || providerCoversPoint(MAP_PROVIDERS.rlp_dop20, areaSel.centerLat, areaSel.centerLng);
+  const effectiveMapProviderId: MapProviderId =
+    areaSel && !providerCoversPoint(MAP_PROVIDERS[mapProviderId], areaSel.centerLat, areaSel.centerLng)
+      ? "osm"
+      : mapProviderId;
   const mapConfig: MapConfig | null = areaSel
-    ? { selection: areaSel, satellite: mapSatellite, opacity: mapOpacity }
+    ? { selection: areaSel, providerId: effectiveMapProviderId, opacity: mapOpacity }
     : null;
 
   // Track + history
@@ -224,7 +244,7 @@ export default function EditorPage() {
     setManualLength(d.manual_length);
     setManualWidthInput(String(d.manual_width));
     setManualLengthInput(String(d.manual_length));
-    setMapSatellite(d.map_satellite);
+    setMapProviderId((d.map_provider_id as MapProviderId | undefined) ?? mapProviderIdForSatelliteFlag(d.map_satellite));
     setMapOpacity(d.map_opacity);
     setTrackName(d.name);
     setCloudLoaded(true);
@@ -246,7 +266,8 @@ export default function EditorPage() {
     if (v.area_sel_json) setAreaSel(v.area_sel_json as AreaSelection);
     if (v.manual_width != null) { setManualWidth(v.manual_width); setManualWidthInput(String(v.manual_width)); }
     if (v.manual_length != null) { setManualLength(v.manual_length); setManualLengthInput(String(v.manual_length)); }
-    if (v.map_satellite != null) setMapSatellite(v.map_satellite);
+    if (v.map_provider_id) setMapProviderId(v.map_provider_id as MapProviderId);
+    else if (v.map_satellite != null) setMapProviderId(mapProviderIdForSatelliteFlag(v.map_satellite));
     if (v.map_opacity != null) setMapOpacity(v.map_opacity);
     setCloudLoaded(true);
   }, [previewVersionId, versionDetailQuery.data]);
@@ -260,6 +281,7 @@ export default function EditorPage() {
     if (savedFadeRef.current) clearTimeout(savedFadeRef.current);
     setSaveStatus("pending");
     saveTimerRef.current = setTimeout(async () => {
+      const mapSatellite = mapProviderId !== "osm";
       if (isCloudMode && trackId) {
         try {
           await saveTrackMutation.mutateAsync({
@@ -268,8 +290,8 @@ export default function EditorPage() {
           });
         } catch (err) {
           if (err instanceof Error && err.message === "SATELLITE_REQUIRES_PRO") {
-            setMapSatellite(false);
-            alert("Satellitenbilder sind ab dem Pro-Tarif verfügbar.");
+            setMapProviderId("osm");
+            alert("Luftbilder sind ab dem Pro-Tarif verfügbar.");
           }
           setSaveStatus("idle");
           return;
@@ -280,7 +302,7 @@ export default function EditorPage() {
       setSaveStatus("saved");
       savedFadeRef.current = setTimeout(() => setSaveStatus("idle"), 2000);
     }, 1000);
-  }, [items, arrows, manualWidth, manualLength, mapSatellite, mapOpacity, areaSel, cloudLoaded]);
+  }, [items, arrows, manualWidth, manualLength, mapProviderId, mapOpacity, areaSel, cloudLoaded]);
 
   // Formation actions
   function addFormation(key: FormationKey, rotationDeg = 0) {
@@ -369,7 +391,7 @@ export default function EditorPage() {
   }
 
   function handleExport() {
-    exportAsFile({ name: trackName, items, arrows, manualWidth, manualLength, mapSatellite, mapOpacity, areaSel });
+    exportAsFile({ name: trackName, items, arrows, manualWidth, manualLength, mapSatellite: mapProviderId !== "osm", mapOpacity, areaSel });
   }
 
   function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
@@ -385,7 +407,7 @@ export default function EditorPage() {
         setManualLength(saved.manualLength);
         setManualWidthInput(String(saved.manualWidth));
         setManualLengthInput(String(saved.manualLength));
-        setMapSatellite(saved.mapSatellite);
+        setMapProviderId(mapProviderIdForSatelliteFlag(saved.mapSatellite));
         setMapOpacity(saved.mapOpacity);
         setSelectedIds(new Set());
         setSelectedArrowId(null);
@@ -640,9 +662,10 @@ export default function EditorPage() {
             areaSel={areaSel}
             onOpenMapSelector={() => setShowMapSelector(true)}
             onClearArea={() => setAreaSel(null)}
-            mapSatellite={mapSatellite}
-            onSetMapSatellite={setMapSatellite}
-            satelliteLocked={satelliteLocked}
+            mapProviderId={mapProviderId}
+            onSetMapProviderId={setMapProviderId}
+            premiumProviderLocked={satelliteLocked}
+            rlpCoversSelection={rlpCoversSelection}
             mapOpacity={mapOpacity}
             onSetMapOpacity={setMapOpacity}
             manualWidthInput={manualWidthInput}

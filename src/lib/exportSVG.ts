@@ -4,83 +4,45 @@
 
 import { resolveFormation } from "./formationRegistry";
 import { boundsFromCones, rotateConesAroundOwnCenter } from "./geometry";
-import { lngToGlobalX, latToGlobalY } from "./geo";
-import { areaSelectionToBounds } from "./areaSelection";
+import { computeMapRenderLayout } from "./mapRender";
+import { MAP_PROVIDERS } from "./mapProviders";
 import type { AreaSelection } from "./areaSelection";
-import { mapProviderForSatelliteFlag } from "./mapProviders";
+import type { MapProviderId } from "./mapProviders";
 import type { PlacedFormation, PlacedArrow } from "../types";
 
 const PYLON_SIZE_M = 0.30;
 const PYLON_MIN_PX = 6;
 export const SVG_WIDTH = 900;
-const TILE_SIZE = 256;
 
-export type PdfMapConfig = { selection: AreaSelection; satellite: boolean; opacity: number };
+export type PdfMapConfig = { selection: AreaSelection; providerId: MapProviderId; opacity: number };
 
-// Shared tile-grid math: which tiles cover the field, and how to place them
-// in a canvasW x canvasH box (used by both the SVG and the live MapBackground).
-function computeTileLayout(mapConfig: PdfMapConfig, canvasW: number, canvasH: number) {
-  const { selection, satellite } = mapConfig;
-  const provider = mapProviderForSatelliteFlag(satellite);
-  const θ = (selection.rotationDeg * Math.PI) / 180;
-  const cosT = Math.abs(Math.cos(θ));
-  const sinT = Math.abs(Math.sin(θ));
-  const bgW = canvasW * cosT + canvasH * sinT;
-  const bgH = canvasW * sinT + canvasH * cosT;
-
-  const bounds = areaSelectionToBounds(selection);
-  const lngSpan = Math.abs(bounds.lng2 - bounds.lng1);
-  const zoom = Math.min(19, Math.max(1, Math.round(Math.log2((bgW * 360) / (TILE_SIZE * lngSpan)))));
-
-  const gx1 = lngToGlobalX(bounds.lng1, zoom);
-  const gy1 = latToGlobalY(bounds.lat1, zoom);
-  const gx2 = lngToGlobalX(bounds.lng2, zoom);
-  const gy2 = latToGlobalY(bounds.lat2, zoom);
-
-  const scaleX = bgW / (gx2 - gx1);
-  const scaleY = bgH / (gy2 - gy1);
-  const n = Math.pow(2, zoom);
-
-  const tiles: { url: string; x: number; y: number; w: number; h: number }[] = [];
-  for (let ty = Math.floor(gy1 / TILE_SIZE); ty <= Math.ceil(gy2 / TILE_SIZE); ty++) {
-    for (let tx = Math.floor(gx1 / TILE_SIZE); tx <= Math.ceil(gx2 / TILE_SIZE); tx++) {
-      const wrappedTx = ((tx % n) + n) % n;
-      const url = provider.xyzTileUrl!(zoom, wrappedTx, ty);
-      tiles.push({
-        url,
-        x: (tx * TILE_SIZE - gx1) * scaleX,
-        y: (ty * TILE_SIZE - gy1) * scaleY,
-        w: TILE_SIZE * scaleX,
-        h: TILE_SIZE * scaleY,
-      });
-    }
-  }
-
-  return {
-    tiles,
-    bgW,
-    bgH,
-    left: (canvasW - bgW) / 2,
-    top: (canvasH - bgH) / 2,
-    attribution: provider.attribution,
-  };
-}
-
-// Renders the satellite/street tiles as SVG <image> elements, clipped to the
-// field box and rotated to match the selected area. Used both for the
-// standalone SVG export and as the base layer for the vector PDF export.
+// Rendert den Kartenhintergrund als SVG <image>-Element(e), geclippt auf die
+// Feldbox und passend zum ausgewählten Bereich rotiert. Genutzt sowohl für
+// den eigenständigen SVG-Export als auch als Basis-Layer für den PDF-Export.
+// Layout-Geometrie (Kachel-Grid vs. WMS-Einzelbild) kommt aus mapRender.ts,
+// das sich der Editor (MapBackground.tsx) genauso bedient.
 function buildTileSvg(mapConfig: PdfMapConfig, canvasW: number, canvasH: number): string {
-  const { tiles, bgW, bgH, left, top } = computeTileLayout(mapConfig, canvasW, canvasH);
-
-  const imgs = tiles.map(
-    (t) =>
-      `<image href="${t.url}" crossorigin="anonymous" x="${t.x.toFixed(1)}" y="${t.y.toFixed(1)}"` +
-      ` width="${t.w.toFixed(1)}" height="${t.h.toFixed(1)}" preserveAspectRatio="none"/>`
+  const layout = computeMapRenderLayout(
+    { selection: mapConfig.selection, providerId: mapConfig.providerId, opacity: mapConfig.opacity },
+    canvasW,
+    canvasH
   );
+
+  const imgs =
+    layout.kind === "xyz"
+      ? layout.tiles.map(
+          (t) =>
+            `<image href="${t.url}" crossorigin="anonymous" x="${t.x.toFixed(1)}" y="${t.y.toFixed(1)}"` +
+            ` width="${t.w.toFixed(1)}" height="${t.h.toFixed(1)}" preserveAspectRatio="none"/>`
+        )
+      : [
+          `<image href="${layout.imageUrl}" crossorigin="anonymous" x="0" y="0"` +
+            ` width="${layout.bgW.toFixed(1)}" height="${layout.bgH.toFixed(1)}" preserveAspectRatio="none"/>`,
+        ];
 
   return (
     `<g opacity="${mapConfig.opacity}" clip-path="url(#mapClip)">` +
-    `<g transform="translate(${left.toFixed(1)},${top.toFixed(1)}) rotate(${-mapConfig.selection.rotationDeg},${(bgW / 2).toFixed(1)},${(bgH / 2).toFixed(1)})">` +
+    `<g transform="translate(${layout.left.toFixed(1)},${layout.top.toFixed(1)}) rotate(${-mapConfig.selection.rotationDeg},${(layout.bgW / 2).toFixed(1)},${(layout.bgH / 2).toFixed(1)})">` +
     imgs.join("") +
     `</g></g>`
   );
@@ -126,7 +88,7 @@ export function generateTrackSVG(
   );
 
   if (mapConfig) {
-    // Satellite/street tiles as the base layer; grid, border and formations are drawn on top.
+    // Kartenhintergrund als Basis-Layer; Gitter, Rand und Formationen liegen darüber.
     out.push(`<defs><clipPath id="mapClip"><rect width="${SVG_WIDTH}" height="${fmt(svgH)}"/></clipPath></defs>`);
     out.push(buildTileSvg(mapConfig, SVG_WIDTH, svgH));
   } else if (background !== "transparent") {
@@ -269,7 +231,7 @@ export function generateTrackSVG(
   }
 
   if (mapConfig) {
-    const attribution = mapProviderForSatelliteFlag(mapConfig.satellite).attribution;
+    const attribution = MAP_PROVIDERS[mapConfig.providerId].attribution;
     const fontSize = 7;
     const boxW = attribution.length * 4.2 + 8;
     out.push(
@@ -294,7 +256,7 @@ export function downloadSVG(svg: string, filename = "kartslalom.svg") {
   URL.revokeObjectURL(url);
 }
 
-// Renders the track (and, if given, the satellite/street background) as a
+// Renders the track (and, if given, the map background) as a
 // vector PDF and triggers a direct file download via jsPDF — no browser
 // print dialog involved.
 export async function exportPDF(

@@ -22,12 +22,13 @@ export default function HelpContent() {
 
       <HelpSection title="1. Streckenbereich festlegen">
         Wähle entweder über <strong>„Bereich auf Karte wählen"</strong> einen
-        rechteckigen Ausschnitt auf der (Satelliten-)Karte aus — du kannst ihn dort
+        rechteckigen Ausschnitt auf der Karte aus — du kannst ihn dort
         verschieben, in der Größe anpassen und drehen — oder gib links unter
         „Streckenbereich" Breite und Länge in Metern manuell ein (Mindestgröße 8 m).
         Über das Kartensymbol in der Werkzeugleiste kannst du den Ausschnitt jederzeit
-        neu wählen, die Sichtbarkeit als Satellitenbild umschalten und seine
-        Transparenz anpassen.
+        neu wählen. Links unter „Kartenhintergrund" wechselst du zwischen
+        Straßenkarte und Luftbild (Rheinland-Pfalz, Pro-Tarif) und passt die
+        Transparenz an.
       </HelpSection>
 
       <HelpSection title="2. Formationen platzieren">

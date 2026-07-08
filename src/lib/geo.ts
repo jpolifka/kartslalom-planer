@@ -26,6 +26,18 @@ export function globalYToLat(y: number, zoom: number): number {
   return (Math.atan(Math.sinh(n)) * 180) / Math.PI;
 }
 
+// EPSG:3857 (Web Mercator, Meter) — für WMS-GetMap-BBOX-Parameter (RLP-DOP20).
+// Standardformeln, R = WGS84-Ellipsoid-Radius wie von Web-Mercator angenommen.
+const WEB_MERCATOR_R = 6378137;
+
+export function lngToMercatorX(lng: number): number {
+  return (lng * Math.PI * WEB_MERCATOR_R) / 180;
+}
+
+export function latToMercatorY(lat: number): number {
+  return Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) * WEB_MERCATOR_R;
+}
+
 export function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371000;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;

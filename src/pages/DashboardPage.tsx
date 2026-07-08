@@ -42,7 +42,7 @@ function TrackVersionPanel({ trackId, trackName }: { trackId: string; trackName:
       navigate(`/editor/${trackId}`);
     } catch (err) {
       if (err instanceof Error && err.message === "SATELLITE_REQUIRES_PRO") {
-        alert("Dieser Snapshot enthält Satellitenbilder, die den Pro-Tarif erfordern.");
+        alert("Dieser Snapshot enthält einen Luftbild-Kartenhintergrund, der den Pro-Tarif erfordert.");
         return;
       }
       alert("Wiederherstellen fehlgeschlagen.");
@@ -67,7 +67,7 @@ function TrackVersionPanel({ trackId, trackName }: { trackId: string; trackName:
         return;
       }
       if (err instanceof Error && err.message === "SATELLITE_REQUIRES_PRO") {
-        setSaveAsError("Dieser Snapshot enthält Satellitenbilder, die den Pro-Tarif erfordern.");
+        setSaveAsError("Dieser Snapshot enthält einen Luftbild-Kartenhintergrund, der den Pro-Tarif erfordert.");
         return;
       }
       if (err instanceof Error && err.message === "INVALID_NAME") {

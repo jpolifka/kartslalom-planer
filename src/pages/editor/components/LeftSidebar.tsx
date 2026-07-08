@@ -2,10 +2,12 @@
 // Copyright (c) Jens Polifka
 // All rights reserved.
 
-import { Map, Trash2, Satellite } from "lucide-react";
+import { Map, Trash2, Image as ImageIcon } from "lucide-react";
 import { getFormation } from "../../../lib/formationRegistry";
 import type { AreaSelection } from "../../../lib/areaSelection";
 import type { FormationKey } from "../../../types";
+import { MAP_PROVIDERS } from "../../../lib/mapProviders";
+import type { MapProviderId } from "../../../lib/mapProviders";
 import { FORMATION_GROUPS } from "../editorConstants";
 import { card, outlineBtn, numInput, mobileDrawerStyle } from "../editorStyles";
 import DrawerHeader from "./DrawerHeader";
@@ -22,9 +24,10 @@ type Props = {
   onOpenMapSelector: () => void;
   onClearArea: () => void;
   // map controls (only when areaSel set)
-  mapSatellite: boolean;
-  onSetMapSatellite: (v: boolean) => void;
-  satelliteLocked: boolean;
+  mapProviderId: MapProviderId;
+  onSetMapProviderId: (id: MapProviderId) => void;
+  premiumProviderLocked: boolean;
+  rlpCoversSelection: boolean;
   mapOpacity: number;
   onSetMapOpacity: (v: number) => void;
   // manual dimensions (only when areaSel null)
@@ -48,7 +51,7 @@ type Props = {
 export default function LeftSidebar({
   isMobile, mobileOpen, onClose,
   areaSel, onOpenMapSelector, onClearArea,
-  mapSatellite, onSetMapSatellite, satelliteLocked,
+  mapProviderId, onSetMapProviderId, premiumProviderLocked, rlpCoversSelection,
   mapOpacity, onSetMapOpacity,
   manualWidthInput, manualLengthInput,
   onManualWidthChange, onManualLengthChange,
@@ -91,11 +94,35 @@ export default function LeftSidebar({
               <Trash2 size={13} /> Entfernen
             </button>
             <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 10, display: "grid", gap: 8 }}>
-              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: satelliteLocked ? "default" : "pointer", opacity: satelliteLocked ? 0.55 : 1 }}>
-                <input type="checkbox" checked={mapSatellite} onChange={(e) => onSetMapSatellite(e.target.checked)} disabled={satelliteLocked} />
-                <Satellite size={13} /> Satellitenbild
-                {satelliteLocked && <span style={{ fontSize: 11, color: "#94a3b8", marginLeft: 2 }}>Pro</span>}
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "#94a3b8" }}>
+                Kartenhintergrund
+              </div>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer" }}>
+                <input type="radio" name="mapProvider" checked={mapProviderId === "osm"} onChange={() => onSetMapProviderId("osm")} />
+                {MAP_PROVIDERS.osm.label}
               </label>
+              {(() => {
+                const rlpLocked = premiumProviderLocked || !rlpCoversSelection;
+                return (
+                  <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: rlpLocked ? "default" : "pointer", opacity: rlpLocked ? 0.55 : 1 }}>
+                    <input
+                      type="radio"
+                      name="mapProvider"
+                      checked={mapProviderId === "rlp_dop20"}
+                      onChange={() => onSetMapProviderId("rlp_dop20")}
+                      disabled={rlpLocked}
+                    />
+                    <ImageIcon size={13} /> {MAP_PROVIDERS.rlp_dop20.label}
+                    {premiumProviderLocked && <span style={{ fontSize: 11, color: "#94a3b8", marginLeft: 2 }}>Pro</span>}
+                  </label>
+                );
+              })()}
+              {!rlpCoversSelection && !premiumProviderLocked && (
+                <div style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.4 }}>
+                  Luftbild derzeit nur in Rheinland-Pfalz verfügbar.
+                  {mapProviderId === "rlp_dop20" && " Für diesen Standort wird stattdessen die Straßenkarte angezeigt."}
+                </div>
+              )}
               <label style={{ fontSize: 13 }}>
                 Transparenz: {Math.round(mapOpacity * 100)} %
                 <input type="range" min="0.1" max="1" step="0.05" value={mapOpacity}
