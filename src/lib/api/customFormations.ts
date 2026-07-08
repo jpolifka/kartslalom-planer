@@ -105,10 +105,14 @@ export async function deleteCustomFormation(id: string): Promise<void> {
   if (error) throw mapError(error.message);
 }
 
-export async function fetchCustomFormations(): Promise<CustomFormationRow[]> {
+export async function fetchCustomFormations(ownerId: string): Promise<CustomFormationRow[]> {
+  // Owner-Filter explizit setzen: die RLS-Policy erlaubt zusätzlich das Lesen
+  // geteilter und Library-Formationen (is_library=true) — ohne diesen Filter
+  // würden fremde Library-Einträge in "Meine Hindernisse" auftauchen.
   const { data, error } = await supabase
     .from("custom_formations")
     .select(FORMATION_PUBLIC_COLUMNS)
+    .eq("owner_id", ownerId)
     .order("updated_at", { ascending: false });
   if (error) throw error;
   return data as CustomFormationRow[];

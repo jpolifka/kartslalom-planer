@@ -95,8 +95,12 @@ export default function FormationEditorPage() {
   const isAdminForeignFormation = needAdminFetch && !!adminFormation;
 
   const { data: permission, isLoading: permissionLoading } = useFormationPermission(isEdit ? id : undefined);
+  // get_my_formation_permission kennt nur Owner/Share-Beziehungen, keine Library-Mitgliedschaft.
+  // Explizit in die Bibliothek aufgenommene Formationen (is_library=true) sind daher für alle
+  // eingeloggten Nutzer ohne Owner/Share-Eintrag zusätzlich als "view" zugänglich.
+  const isLibraryFormation = !!effectiveFormation?.is_library;
   // Admin darf fremde Formationen vollständig bearbeiten (via admin_update_custom_formation)
-  const effectivePermission = (isAdmin && permission === null) ? "edit" : permission;
+  const effectivePermission = (isAdmin && permission === null) ? "edit" : (permission ?? (isLibraryFormation ? "view" : null));
   const isReadOnly = isEdit && effectivePermission === "view";
   const isSharedEdit = isEdit && effectivePermission === "edit" && !isAdminForeignFormation;
 
@@ -362,7 +366,7 @@ export default function FormationEditorPage() {
   if (isEdit && (cloudLoading || permissionLoading || (needAdminFetch && adminLoading))) {
     return <div style={{ padding: 40, color: "#6b7280" }}>Lädt Hindernis…</div>;
   }
-  if (isEdit && !permissionLoading && !isAdmin && permission === null) {
+  if (isEdit && !permissionLoading && !isAdmin && permission === null && !isLibraryFormation) {
     return <div style={{ padding: 40, color: "#ef4444" }}>Kein Zugriff auf dieses Hindernis.</div>;
   }
 
