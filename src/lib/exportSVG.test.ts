@@ -224,7 +224,9 @@ describe("resolveWmsExportImage", () => {
 
   it("Gast-Modus (keine Session): holt das Bild direkt vom WMS-Dienst und liefert eine data:-URI", async () => {
     mockGetSession.mockResolvedValue({ data: { session: null } });
-    mockFetch.mockResolvedValue(new Response(new Uint8Array([1, 2, 3]), { status: 200 }));
+    mockFetch.mockResolvedValue(
+      new Response(new Uint8Array([1, 2, 3]), { status: 200, headers: { "content-type": "image/jpeg" } })
+    );
 
     const result = await resolveWmsExportImage(wmsMapConfig, 18, 36);
 
@@ -246,6 +248,29 @@ describe("resolveWmsExportImage", () => {
   it("Gast-Modus: fällt bei Nicht-200-Antwort auf die rohe Bild-URL zurück", async () => {
     mockGetSession.mockResolvedValue({ data: { session: null } });
     mockFetch.mockResolvedValue(new Response("", { status: 500 }));
+
+    const result = await resolveWmsExportImage(wmsMapConfig, 18, 36);
+
+    expect(result).toContain("geo4.service24.rlp.de/wms/rp_dop20.fcgi");
+  });
+
+  it("Gast-Modus: fällt bei ungültigem Content-Type (kein image/*) auf die rohe Bild-URL zurück", async () => {
+    mockGetSession.mockResolvedValue({ data: { session: null } });
+    mockFetch.mockResolvedValue(
+      new Response("<ServiceExceptionReport/>", { status: 200, headers: { "content-type": "text/xml" } })
+    );
+
+    const result = await resolveWmsExportImage(wmsMapConfig, 18, 36);
+
+    expect(result).toContain("geo4.service24.rlp.de/wms/rp_dop20.fcgi");
+  });
+
+  it("Gast-Modus: fällt bei zu großer Antwort auf die rohe Bild-URL zurück", async () => {
+    mockGetSession.mockResolvedValue({ data: { session: null } });
+    const oversized = new Uint8Array(16 * 1024 * 1024);
+    mockFetch.mockResolvedValue(
+      new Response(oversized, { status: 200, headers: { "content-type": "image/jpeg" } })
+    );
 
     const result = await resolveWmsExportImage(wmsMapConfig, 18, 36);
 

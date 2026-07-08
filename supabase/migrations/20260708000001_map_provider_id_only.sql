@@ -19,8 +19,13 @@ alter table public.track_versions
 
 -- ── 2. save_track: p_satellite → p_map_provider_id ──────────────────────────
 -- Parametername ändert sich → DROP+CREATE nötig (CREATE OR REPLACE erlaubt
--- keine Umbenennung von Parametern). save_track hat keine gesonderte
--- REVOKE/GRANT-Härtung wie die Versions-RPCs, daher unproblematisch.
+-- keine Umbenennung von Parametern). DROP+CREATE vergibt EXECUTE wieder an
+-- PUBLIC (wie bei get_track_version_detail weiter unten) — REVOKE/GRANT
+-- daher explizit wie beim Versions-RPC-Muster aus
+-- 20260703000006_version_rpc_permissions.sql. Funktional unkritisch (anon
+-- hat kein auth.uid(), scheitert also ohnehin an der Ownership-Prüfung),
+-- aber Least-Privilege konsequent durchziehen statt PUBLIC/anon implizit
+-- Zugriff zu lassen.
 
 drop function if exists public.save_track(uuid, jsonb, jsonb, numeric, numeric, boolean, numeric);
 
@@ -72,6 +77,7 @@ begin
 end;
 $$;
 
+revoke execute on function public.save_track(uuid, jsonb, jsonb, numeric, numeric, text, numeric) from public, anon;
 grant execute on function public.save_track(uuid, jsonb, jsonb, numeric, numeric, text, numeric) to authenticated;
 
 -- ── 3. create_track_version: map_satellite aus Insert/Select entfernen ─────

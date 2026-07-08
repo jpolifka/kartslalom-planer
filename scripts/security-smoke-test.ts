@@ -128,6 +128,9 @@ async function main() {
     console.log("  Setup: Sessionen holen …\n");
     const clientA = await loginAsUser(emailA);
     const clientB = await loginAsUser(emailB);
+    const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
 
     // 1 — Track anlegen
     console.log("--- 1: Track anlegen ---");
@@ -258,6 +261,24 @@ async function main() {
       "map_provider_id='osm' nach save_track() korrekt gespeichert"
     );
 
+    // 7c — save_track() darf nicht für PUBLIC/anon ausführbar sein
+    // (Least-Privilege — DROP+CREATE in der map_provider_id-Migration
+    // vergibt EXECUTE sonst implizit wieder an PUBLIC, siehe REVOKE dort)
+    console.log("\n--- 7c: save_track() ist für anon gesperrt (Least-Privilege) ---");
+    const { error: anonSaveErr } = await anonClient.rpc("save_track", {
+      p_track_id: proTrackId,
+      p_state_json: { items: [], arrows: [] },
+      p_area_sel: null,
+      p_width: 18,
+      p_length: 36,
+      p_map_provider_id: "osm",
+      p_opacity: 0.5,
+    });
+    assertErr(
+      anonSaveErr,
+      "Anon-User kann save_track() nicht aufrufen (kein EXECUTE-Recht)"
+    );
+
     // 8 — H0: Custom-Formation anlegen, RLS Fremdzugriff
     console.log("\n--- 8: H0 – Custom-Formation RLS (Fremdzugriff) ---");
     const { data: formationId, error: formationErr } = await clientA.rpc(
@@ -310,9 +331,6 @@ async function main() {
     assertOk(!libInsertErr && libRow?.id, "Admin kann Library-Formation direkt anlegen");
     if (libRow?.id) formationIds.push(libRow.id);
 
-    const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
     const { data: anonRead } = await anonClient
       .from("custom_formations")
       .select("id")

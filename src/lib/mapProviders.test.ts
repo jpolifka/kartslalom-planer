@@ -5,7 +5,7 @@
 import { describe, it, expect } from "vitest";
 import {
   MAP_PROVIDERS,
-  mapProviderIdForSatelliteFlag,
+  mapProviderIdFromLegacySatelliteFlag,
   providerCoversBounds,
   buildWmsGetMapUrl,
 } from "./mapProviders";
@@ -18,12 +18,12 @@ describe("mapProviders", () => {
     );
   });
 
-  it("mapProviderIdForSatelliteFlag(false) liefert osm", () => {
-    expect(mapProviderIdForSatelliteFlag(false)).toBe("osm");
+  it("mapProviderIdFromLegacySatelliteFlag(false) liefert osm", () => {
+    expect(mapProviderIdFromLegacySatelliteFlag(false)).toBe("osm");
   });
 
-  it("mapProviderIdForSatelliteFlag(true) liefert rlp_dop20", () => {
-    expect(mapProviderIdForSatelliteFlag(true)).toBe("rlp_dop20");
+  it("mapProviderIdFromLegacySatelliteFlag(true) liefert rlp_dop20", () => {
+    expect(mapProviderIdFromLegacySatelliteFlag(true)).toBe("rlp_dop20");
   });
 
   it("osm ist für alle Tarife nutzbar, rlp_dop20 erfordert Pro", () => {

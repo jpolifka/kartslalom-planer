@@ -111,9 +111,12 @@ export function buildWmsGetMapUrl(
   return `${wms.baseUrl}?${params.toString()}`;
 }
 
-// Bildet das bisherige boolesche map_satellite auf eine Provider-ID ab —
-// Brücke für Alt-Zustände (Gast-Modus-localStorage speichert weiterhin nur
-// ein Boolean, siehe src/lib/storage.ts). true → "rlp_dop20".
-export function mapProviderIdForSatelliteFlag(satellite: boolean): MapProviderId {
+// Reine Legacy-Migrationshilfe: bildet das VOR der Boolean→Provider-ID-
+// Migration (Kartenanbieter-Abstraktion, Commit 7) genutzte boolesche
+// map_satellite auf eine Provider-ID ab. Neue Zustände speichern
+// mapProviderId direkt — nur src/lib/storage.ts nutzt dies noch, um alte
+// localStorage-Saves/Export-Dateien mit {mapSatellite: boolean} beim Laden
+// transparent zu normalisieren. true → "rlp_dop20".
+export function mapProviderIdFromLegacySatelliteFlag(satellite: boolean): MapProviderId {
   return satellite ? "rlp_dop20" : "osm";
 }

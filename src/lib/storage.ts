@@ -4,7 +4,7 @@
 
 import type { AreaSelection } from "./areaSelection";
 import type { PlacedArrow, PlacedFormation } from "../types";
-import { mapProviderIdForSatelliteFlag } from "./mapProviders";
+import { mapProviderIdFromLegacySatelliteFlag } from "./mapProviders";
 import type { MapProviderId } from "./mapProviders";
 
 const STORAGE_KEY = "kartslalom_autosave";
@@ -43,7 +43,7 @@ type LegacySavedStateV1 = Omit<SavedState, "mapProviderId"> & { mapSatellite: bo
 function normalizeSavedState(raw: SavedState | LegacySavedStateV1): SavedState {
   if ("mapProviderId" in raw && raw.mapProviderId) return raw;
   const { mapSatellite, ...rest } = raw as LegacySavedStateV1;
-  return { ...rest, mapProviderId: mapProviderIdForSatelliteFlag(mapSatellite) };
+  return { ...rest, mapProviderId: mapProviderIdFromLegacySatelliteFlag(mapSatellite) };
 }
 
 export function saveState(state: Omit<SavedState, "version">): void {

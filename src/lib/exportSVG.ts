@@ -14,6 +14,8 @@ import type { PlacedFormation, PlacedArrow } from "../types";
 const PYLON_SIZE_M = 0.30;
 const PYLON_MIN_PX = 6;
 export const SVG_WIDTH = 900;
+const GUEST_FETCH_TIMEOUT_MS = 10_000;
+const GUEST_MAX_IMAGE_BYTES = 15 * 1024 * 1024;
 
 export type PdfMapConfig = {
   selection: AreaSelection;
@@ -38,10 +40,15 @@ export type PdfMapConfig = {
 // Proxy-Aufruf möglich, da der Proxy Auth verlangt) holt der Browser das Bild
 // direkt vom RLP-WMS-Dienst — der Dienst sendet
 // `Access-Control-Allow-Origin: *`, ein direkter Fetch ist also möglich (per
-// curl gegen den echten Dienst verifiziert, 2026-07-08). Schlägt der direkte
-// Fetch fehl (Netzwerk, CORS-Änderung beim Anbieter), fällt der Export auf
-// die rohe Bild-URL zurück statt zu scheitern — identisch zum Verhalten vor
-// dieser Änderung.
+// curl gegen den echten Dienst verifiziert, 2026-07-08).
+//
+// Best-Effort, kein Garant: Schlägt der direkte Fetch fehl (Timeout,
+// Netzwerkfehler, ungültiger Content-Type, zu große Antwort, CORS-Änderung
+// beim Anbieter), fällt der Export auf die rohe Bild-URL zurück statt ganz zu
+// scheitern. Das eingebettete SVG ist dann NICHT garantiert self-contained
+// und kann eine externe WMS-Referenz enthalten, die von der Live-
+// Erreichbarkeit des Diensts abhängt — bewusste Produktentscheidung
+// (Best-Effort-Einbettung statt Export-Abbruch für Gäste).
 export async function resolveWmsExportImage(
   mapConfig: PdfMapConfig,
   fieldWidth: number,
@@ -60,12 +67,20 @@ export async function resolveWmsExportImage(
 
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), GUEST_FETCH_TIMEOUT_MS);
     try {
-      const directRes = await fetch(layout.imageUrl);
+      const directRes = await fetch(layout.imageUrl, { signal: controller.signal });
       if (!directRes.ok) return layout.imageUrl;
-      return await blobToDataUri(await directRes.blob());
+      const contentType = directRes.headers.get("content-type") ?? "";
+      if (!contentType.startsWith("image/")) return layout.imageUrl;
+      const blob = await directRes.blob();
+      if (blob.size > GUEST_MAX_IMAGE_BYTES) return layout.imageUrl;
+      return await blobToDataUri(blob);
     } catch {
       return layout.imageUrl;
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
