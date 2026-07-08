@@ -233,13 +233,117 @@ async function handleUserLifecycle(req: Request): Promise<Response> {
   return json({ ok: true, stats })
 }
 
+// ── map-background-image: kontrollierter WMS-Export-Proxy ──────────────────
+// Duplikat der Logik aus supabase/functions/map-background-image/index.ts
+// (gleiche Konvention wie die übrigen Handler hier — kein Modul-Import über
+// Funktionsgrenzen hinweg im lokalen Docker-Dispatcher).
+
+const MBI_MAX_WIDTH = 3000
+const MBI_MAX_HEIGHT = 3000
+const MBI_MAX_PIXELS = 6_000_000
+const MBI_WEB_MERCATOR_R = 6378137
+
+type MbiWmsProvider = {
+  baseUrl: string
+  layers: string
+  format: string
+  version: '1.1.1' | '1.3.0'
+  coverage: { west: number; south: number; east: number; north: number }
+}
+
+const MBI_PROVIDERS: Record<string, MbiWmsProvider> = {
+  rlp_dop20: {
+    baseUrl: 'https://geo4.service24.rlp.de/wms/rp_dop20.fcgi',
+    layers: 'rp_dop20',
+    format: 'image/jpeg',
+    version: '1.1.1',
+    coverage: { west: 6.037773, south: 48.897996, east: 8.617703, north: 51.000893 },
+  },
+}
+
+function mbiMercatorXToLng(x: number): number {
+  return (x / MBI_WEB_MERCATOR_R) * (180 / Math.PI)
+}
+
+function mbiMercatorYToLat(y: number): number {
+  return (2 * Math.atan(Math.exp(y / MBI_WEB_MERCATOR_R)) - Math.PI / 2) * (180 / Math.PI)
+}
+
+async function handleMapBackgroundImage(req: Request): Promise<Response> {
+  if (req.method === 'OPTIONS') return new Response(null, { headers: cors })
+  if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405)
+
+  const bearer = req.headers.get('authorization')
+  if (!bearer) return json({ error: 'unauthorized' }, 401)
+  const user = await getUser(bearer)
+  if (!user) return json({ error: 'invalid_token' }, 401)
+
+  const profileRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${user.id}&select=tier,is_deleted`, { headers: svcHeaders() })
+  const profiles = await profileRes.json()
+  const profile = Array.isArray(profiles) ? profiles[0] : null
+  if (!profile || profile.is_deleted) return json({ error: 'account_deleted' }, 401)
+  if (profile.tier === 'free') return json({ error: 'premium_required' }, 403)
+
+  let body: { providerId?: string; bbox?: unknown; width?: number; height?: number }
+  try {
+    body = await req.json()
+  } catch {
+    return json({ error: 'invalid_body' }, 400)
+  }
+
+  const provider = body.providerId ? MBI_PROVIDERS[body.providerId] : undefined
+  if (!provider) return json({ error: 'unknown_provider' }, 400)
+
+  const bbox = body.bbox
+  if (!Array.isArray(bbox) || bbox.length !== 4 || !bbox.every((n) => typeof n === 'number' && Number.isFinite(n))) {
+    return json({ error: 'invalid_bbox' }, 400)
+  }
+  const [minx, miny, maxx, maxy] = bbox as [number, number, number, number]
+  if (minx >= maxx || miny >= maxy) return json({ error: 'invalid_bbox' }, 400)
+
+  const west = mbiMercatorXToLng(minx)
+  const east = mbiMercatorXToLng(maxx)
+  const south = mbiMercatorYToLat(miny)
+  const north = mbiMercatorYToLat(maxy)
+  const c = provider.coverage
+  if (!(west >= c.west && east <= c.east && south >= c.south && north <= c.north)) {
+    return json({ error: 'bbox_outside_coverage' }, 400)
+  }
+
+  const width = body.width
+  const height = body.height
+  if (
+    typeof width !== 'number' || typeof height !== 'number' ||
+    !Number.isFinite(width) || !Number.isFinite(height) ||
+    width <= 0 || height <= 0 ||
+    width > MBI_MAX_WIDTH || height > MBI_MAX_HEIGHT ||
+    width * height > MBI_MAX_PIXELS
+  ) {
+    return json({ error: 'invalid_dimensions' }, 400)
+  }
+
+  const params = new URLSearchParams({
+    SERVICE: 'WMS', REQUEST: 'GetMap', VERSION: provider.version, LAYERS: provider.layers,
+    STYLES: '', FORMAT: provider.format, SRS: 'EPSG:3857',
+    BBOX: bbox.map((n) => (n as number).toFixed(2)).join(','),
+    WIDTH: String(Math.round(width)), HEIGHT: String(Math.round(height)),
+  })
+
+  const wmsRes = await fetch(`${provider.baseUrl}?${params.toString()}`)
+  if (!wmsRes.ok) return json({ error: 'upstream_error' }, 502)
+
+  const imageBuffer = await wmsRes.arrayBuffer()
+  return new Response(imageBuffer, { status: 200, headers: { ...cors, 'Content-Type': provider.format } })
+}
+
 // ── Router ───────────────────────────────────────────────────────────────────
 
 const HANDLERS: Record<string, (req: Request) => Promise<Response>> = {
-  'account-export':  handleAccountExport,
-  'delete-account':  handleDeleteAccount,
-  'send-welcome':    handleSendWelcome,
-  'user-lifecycle':  handleUserLifecycle,
+  'account-export':       handleAccountExport,
+  'delete-account':       handleDeleteAccount,
+  'send-welcome':         handleSendWelcome,
+  'user-lifecycle':       handleUserLifecycle,
+  'map-background-image': handleMapBackgroundImage,
 }
 
 Deno.serve(async (req: Request) => {

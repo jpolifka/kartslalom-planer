@@ -10,7 +10,8 @@ import type { MapConfig } from "../components/TrackCanvas";
 import MapSelector from "../components/MapSelector";
 import { getEffectiveDuration } from "../lib/formationRegistry";
 import { runValidation } from "../lib/validation";
-import { generateTrackSVG, downloadSVG, exportPDF } from "../lib/exportSVG";
+import { generateTrackSVG, downloadSVG, exportPDF, resolveWmsExportImage } from "../lib/exportSVG";
+import type { PdfMapConfig } from "../lib/exportSVG";
 import type { AreaSelection } from "../lib/areaSelection";
 import type { DirectionMode, FormationKey, PlacedArrow, PlacedFormation } from "../types";
 import { saveState, loadState, clearSavedState, exportAsFile, parseImportFile, sanitizeItems } from "../lib/storage";
@@ -394,6 +395,17 @@ export default function EditorPage() {
     exportAsFile({ name: trackName, items, arrows, manualWidth, manualLength, mapSatellite: mapProviderId !== "osm", mapOpacity, areaSel });
   }
 
+  // Für SVG/PDF-Export: bei einem WMS-Provider (RLP-DOP20) das Bild vorab
+  // über den map-background-image-Proxy auflösen (JWT/Tier/BBOX-geprüft),
+  // damit der Export nicht von der Live-Erreichbarkeit des WMS-Diensts
+  // abhängt. Nutzt effectiveMapProviderId (Coverage-Fallback), nicht die rohe
+  // Auswahl — außerhalb RLP wird ohnehin Straßenkarte exportiert.
+  async function buildExportMapConfig(): Promise<PdfMapConfig | null> {
+    if (!mapConfig) return null;
+    const wmsImageDataUri = await resolveWmsExportImage(mapConfig, fieldWidth, fieldLength);
+    return wmsImageDataUri ? { ...mapConfig, wmsImageDataUri } : mapConfig;
+  }
+
   function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -704,11 +716,18 @@ export default function EditorPage() {
               warnCount={warnCount}
               hasItems={items.length > 0}
               saveStatus={saveStatus}
-              onExportSVG={() => downloadSVG(generateTrackSVG(fieldWidth, fieldLength, items, arrows, mapConfig))}
+              onExportSVG={() => {
+                buildExportMapConfig().then(
+                  (cfg) => downloadSVG(generateTrackSVG(fieldWidth, fieldLength, items, arrows, cfg)),
+                  (err) => alert(`SVG-Export fehlgeschlagen: ${err instanceof Error ? err.message : "Unbekannter Fehler"}`)
+                );
+              }}
               onExportPDF={() => {
-                exportPDF(fieldWidth, fieldLength, items, arrows, mapConfig).catch((err) => {
-                  alert(`PDF-Export fehlgeschlagen: ${err instanceof Error ? err.message : "Unbekannter Fehler"}`);
-                });
+                buildExportMapConfig()
+                  .then((cfg) => exportPDF(fieldWidth, fieldLength, items, arrows, cfg))
+                  .catch((err) => {
+                    alert(`PDF-Export fehlgeschlagen: ${err instanceof Error ? err.message : "Unbekannter Fehler"}`);
+                  });
               }}
               onExportPngWhite={() => {
                 exportPng(fieldWidth, fieldLength, items, arrows, trackName, "white").catch((err) => {

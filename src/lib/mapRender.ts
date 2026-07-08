@@ -27,7 +27,22 @@ export type XyzTile = { url: string; x: number; y: number; w: number; h: number 
 
 export type MapRenderLayout =
   | { kind: "xyz"; tiles: XyzTile[]; bgW: number; bgH: number; left: number; top: number; attribution: string }
-  | { kind: "wms"; imageUrl: string; bgW: number; bgH: number; left: number; top: number; attribution: string };
+  | {
+      kind: "wms";
+      imageUrl: string;
+      // Rohdaten der GetMap-Anfrage, zusätzlich zur fertigen imageUrl: der
+      // Export-Pfad (exportSVG.ts) ruft damit den map-background-image-
+      // Edge-Function-Proxy auf, statt den WMS-Dienst direkt vom Client
+      // anzusprechen (siehe docs/track-share-links.md-Nachbardokument zum
+      // Export bzw. Commit 4 der Kartenanbieter-Abstraktion).
+      providerId: MapProviderId;
+      bbox: [number, number, number, number];
+      bgW: number;
+      bgH: number;
+      left: number;
+      top: number;
+      attribution: string;
+    };
 
 // Oversize-Box: Damit nach dem CSS-rotate() der Kartengruppe die Ecken des
 // (unrotierten) Feld-Canvas weiterhin abgedeckt sind, wird eine größere,
@@ -63,7 +78,7 @@ export function computeMapRenderLayout(
       latToMercatorY(bounds.lat1),
     ];
     const imageUrl = buildWmsGetMapUrl(provider.wms, bbox, bgW, bgH);
-    return { kind: "wms", imageUrl, bgW, bgH, left, top, attribution: provider.attribution };
+    return { kind: "wms", imageUrl, providerId: provider.id, bbox, bgW, bgH, left, top, attribution: provider.attribution };
   }
 
   // "xyz": unveränderte Kachel-Grid-Logik aus der ursprünglichen

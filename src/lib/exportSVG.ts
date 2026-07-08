@@ -6,6 +6,7 @@ import { resolveFormation } from "./formationRegistry";
 import { boundsFromCones, rotateConesAroundOwnCenter } from "./geometry";
 import { computeMapRenderLayout } from "./mapRender";
 import { MAP_PROVIDERS } from "./mapProviders";
+import { supabase, functionsUrl } from "./supabase";
 import type { AreaSelection } from "./areaSelection";
 import type { MapProviderId } from "./mapProviders";
 import type { PlacedFormation, PlacedArrow } from "../types";
@@ -14,7 +15,62 @@ const PYLON_SIZE_M = 0.30;
 const PYLON_MIN_PX = 6;
 export const SVG_WIDTH = 900;
 
-export type PdfMapConfig = { selection: AreaSelection; providerId: MapProviderId; opacity: number };
+export type PdfMapConfig = {
+  selection: AreaSelection;
+  providerId: MapProviderId;
+  opacity: number;
+  // Vorab (async, siehe resolveWmsExportImage) aufgelöste Bilddaten für
+  // WMS-Provider — als data:-URI, damit der Export nicht von der
+  // Live-Erreichbarkeit des WMS-Diensts abhängt. Wenn nicht gesetzt, wird
+  // (Gast-Modus ohne Session) direkt auf die WMS-URL zurückgefallen.
+  wmsImageDataUri?: string;
+};
+
+// Löst für einen WMS-Provider (z. B. RLP-DOP20) das Bild vorab über den
+// map-background-image-Edge-Function-Proxy auf (JWT/Tier/BBOX-geprüft,
+// siehe supabase/functions/map-background-image) und liefert es als
+// data:-URI zurück — der Export bettet dann kein von der Live-Erreichbarkeit
+// des WMS-Diensts abhängiges <image href> mehr ein. Für "xyz"-Provider
+// (OSM/Esri) oder ohne aktive Session (Gast-Modus, kein Proxy-Aufruf
+// möglich) wird null zurückgegeben; buildTileSvg fällt dann auf die direkte
+// WMS-URL zurück (identisch zum bisherigen Verhalten).
+export async function resolveWmsExportImage(
+  mapConfig: PdfMapConfig,
+  fieldWidth: number,
+  fieldLength: number
+): Promise<string | null> {
+  const provider = MAP_PROVIDERS[mapConfig.providerId];
+  if (provider.kind !== "wms") return null;
+
+  const svgH = fieldLength * (SVG_WIDTH / fieldWidth);
+  const layout = computeMapRenderLayout(
+    { selection: mapConfig.selection, providerId: mapConfig.providerId, opacity: mapConfig.opacity },
+    SVG_WIDTH,
+    svgH
+  );
+  if (layout.kind !== "wms") return null;
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return layout.imageUrl;
+
+  const res = await fetch(functionsUrl("map-background-image"), {
+    method: "POST",
+    headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ providerId: layout.providerId, bbox: layout.bbox, width: layout.bgW, height: layout.bgH }),
+  });
+  if (!res.ok) throw new Error(`Kartenhintergrund-Export fehlgeschlagen (${res.status})`);
+  const blob = await res.blob();
+  return await blobToDataUri(blob);
+}
+
+function blobToDataUri(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("Kartenhintergrund konnte nicht gelesen werden."));
+    reader.readAsDataURL(blob);
+  });
+}
 
 // Rendert den Kartenhintergrund als SVG <image>-Element(e), geclippt auf die
 // Feldbox und passend zum ausgewählten Bereich rotiert. Genutzt sowohl für
@@ -36,7 +92,7 @@ function buildTileSvg(mapConfig: PdfMapConfig, canvasW: number, canvasH: number)
             ` width="${t.w.toFixed(1)}" height="${t.h.toFixed(1)}" preserveAspectRatio="none"/>`
         )
       : [
-          `<image href="${layout.imageUrl}" crossorigin="anonymous" x="0" y="0"` +
+          `<image href="${mapConfig.wmsImageDataUri ?? layout.imageUrl}" crossorigin="anonymous" x="0" y="0"` +
             ` width="${layout.bgW.toFixed(1)}" height="${layout.bgH.toFixed(1)}" preserveAspectRatio="none"/>`,
         ];
 
