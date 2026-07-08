@@ -75,16 +75,24 @@ DoD gefordert):
   gedacht — für produktive öffentliche Nutzung wird ein kommerzieller
   Anbieter oder Self-Hosting empfohlen.
 
-**Entscheidung (2026-07-06):** Der öffentliche Share-Viewer (`/share/:token`)
-zeigt generell **keinen Kartenhintergrund**, unabhängig davon, ob die Strecke
-selbst mit Satellitenbild/Straßenkarte gespeichert wurde. Das reduziert die
-gerade durch Share-Links neu hinzugekommene öffentliche Esri-Exposition,
-ohne das Satellitenbild-Feature selbst (Editor, PDF/SVG-Export für
-eingeloggte Nutzer) anzutasten — das bleibt ein bewusst offener,
-eigenständiger Punkt (Esri-Lizenz klären oder Anbieter wechseln, siehe
-Roadmap-Notizen, kein Teil dieser Änderung). OSM-Tile-Anbieterwechsel/
-Self-Hosting ist im Betriebs-Block (Backup/Monitoring) der Roadmap
-eingeplant, nicht Teil dieses Features.
+**Update (2026-07-08):** Esri World Imagery wurde vollständig durch den
+amtlichen RLP-DOP20-WMS-Dienst (GeoBasis-DE/LVermGeoRP, dl-de/by-2-0) ersetzt
+— siehe `src/lib/mapProviders.ts`. Damit ist der oben offen gelassene
+Esri-Lizenzpunkt erledigt; die RLP-DOP20-Nutzungsbedingungen (dl-de/by-2-0)
+erlauben kommerzielle Nutzung inkl. öffentlicher Weiterverbreitung, solange
+die Quelle genannt wird (Attribution im Provider-Eintrag hinterlegt). Die
+OSM-Tile-Usage-Policy-Frage (Demo-Server, Betriebs-Block der Roadmap) bleibt
+unverändert offen.
+
+**Entscheidung (2026-07-06, weiterhin gültig):** Der öffentliche Share-Viewer
+(`/share/:token`) zeigt generell **keinen Kartenhintergrund**, unabhängig
+davon, ob die Strecke selbst mit Luftbild/Straßenkarte gespeichert wurde. Das
+war ursprünglich zur Reduktion der öffentlichen Esri-Exposition gedacht;
+bleibt aber auch nach dem RLP-DOP20-Wechsel bestehen (kein zusätzlicher
+Nutzen, öffentliche Geokoordinaten unnötig preiszugeben — siehe
+`SharedTrackDetail` in `src/features/track-share/types.ts`). OSM-Tile-
+Anbieterwechsel/Self-Hosting ist im Betriebs-Block (Backup/Monitoring) der
+Roadmap eingeplant, nicht Teil dieses Features.
 
 ## Frontend
 
@@ -110,6 +118,4 @@ eingeplant, nicht Teil dieses Features.
 
 - Mehrere gleichzeitig aktive Links pro Strecke.
 - Ablaufdatum/Gültigkeitsdauer.
-- Esri-Lizenzfrage für das Satellitenbild-Feature generell (Editor/Export für
-  eingeloggte Nutzer) — bleibt ein offener Punkt, siehe Roadmap-Notizen.
 - OSM-Tile-Anbieterwechsel/Self-Hosting — Betriebs-Block der Roadmap.

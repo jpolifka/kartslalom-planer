@@ -23,7 +23,7 @@ export default function SharedTrackPage() {
   const imgSrc = useMemo(() => {
     if (!data) return null;
     // Bewusst ohne Kartenhintergrund (kein mapConfig) — siehe
-    // docs/track-share-links.md (Esri/OSM-Nutzungsbedingungen).
+    // docs/track-share-links.md (Kartenanbieter-Nutzungsbedingungen).
     const svg = generateTrackSVG(
       data.manual_width, data.manual_length,
       data.state_json.items, data.state_json.arrows

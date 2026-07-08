@@ -17,23 +17,16 @@ describe("mapProviders", () => {
     );
   });
 
-  it("Esri-Tile-URL entspricht dem ArcGIS-Schema zoom/y/x (vertauscht)", () => {
-    expect(MAP_PROVIDERS.esri.xyzTileUrl!(12, 34, 56)).toBe(
-      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/12/56/34"
-    );
-  });
-
   it("mapProviderIdForSatelliteFlag(false) liefert osm", () => {
     expect(mapProviderIdForSatelliteFlag(false)).toBe("osm");
   });
 
-  it("mapProviderIdForSatelliteFlag(true) liefert rlp_dop20 (nicht esri)", () => {
+  it("mapProviderIdForSatelliteFlag(true) liefert rlp_dop20", () => {
     expect(mapProviderIdForSatelliteFlag(true)).toBe("rlp_dop20");
   });
 
-  it("osm ist für alle Tarife nutzbar, esri/rlp_dop20 erfordern Pro", () => {
+  it("osm ist für alle Tarife nutzbar, rlp_dop20 erfordert Pro", () => {
     expect(MAP_PROVIDERS.osm.requiresPro).toBe(false);
-    expect(MAP_PROVIDERS.esri.requiresPro).toBe(true);
     expect(MAP_PROVIDERS.rlp_dop20.requiresPro).toBe(true);
   });
 

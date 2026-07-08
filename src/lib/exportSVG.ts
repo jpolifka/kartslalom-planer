@@ -30,10 +30,10 @@ export type PdfMapConfig = {
 // map-background-image-Edge-Function-Proxy auf (JWT/Tier/BBOX-geprüft,
 // siehe supabase/functions/map-background-image) und liefert es als
 // data:-URI zurück — der Export bettet dann kein von der Live-Erreichbarkeit
-// des WMS-Diensts abhängiges <image href> mehr ein. Für "xyz"-Provider
-// (OSM/Esri) oder ohne aktive Session (Gast-Modus, kein Proxy-Aufruf
-// möglich) wird null zurückgegeben; buildTileSvg fällt dann auf die direkte
-// WMS-URL zurück (identisch zum bisherigen Verhalten).
+// des WMS-Diensts abhängiges <image href> mehr ein. Für "xyz"-Provider (OSM)
+// oder ohne aktive Session (Gast-Modus, kein Proxy-Aufruf möglich) wird null
+// zurückgegeben; buildTileSvg fällt dann auf die direkte WMS-URL zurück
+// (identisch zum bisherigen Verhalten).
 export async function resolveWmsExportImage(
   mapConfig: PdfMapConfig,
   fieldWidth: number,

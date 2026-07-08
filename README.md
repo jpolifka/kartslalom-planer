@@ -20,7 +20,7 @@ frontend:
   state:         Zustand (Auth/UI), React Query (Server-State)
   validation:    Zod
   icons:         lucide-react
-  karten:        OpenStreetMap- & Esri-Satellite-Tiles
+  karten:        OpenStreetMap-Kacheln & RLP-DOP20-Luftbild (WMS, Rheinland-Pfalz)
   deployment:    Docker (Multi-Stage-Build) + nginx
 
 backend:

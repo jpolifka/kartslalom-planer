@@ -42,12 +42,13 @@ ein Offscreen-`<canvas>` zu einem PNG:
 - UI: `Toolbar.tsx` → Download-Dropdown, zwei Einträge ("Als PNG (weiß)" /
   "Als PNG (transparent)").
 
-**Kartenhintergrund bewusst ausgeschlossen**: OSM-/Esri-Tile-Server liefern
-keine verlässlichen CORS-Header, wodurch das Canvas nach dem Zeichnen der
-Tiles "tainted" wäre und `canvas.toBlob()` fehlschlagen bzw. einen
-SecurityError werfen kann. PNG-Export zeigt daher nur Strecke/Pylonen, ohne
-Kartenraster — für SVG/PDF ist das kein Problem, da dort `<image>`-Referenzen
-statt gerasterter Pixel verwendet werden.
+**Kartenhintergrund bewusst ausgeschlossen**: Die Kartenanbieter (OSM-Tiles,
+RLP-DOP20-WMS) liefern keine verlässlichen CORS-Header, wodurch das Canvas
+nach dem Zeichnen der Tiles/des WMS-Bilds "tainted" wäre und
+`canvas.toBlob()` fehlschlagen bzw. einen SecurityError werfen kann.
+PNG-Export zeigt daher nur Strecke/Pylonen, ohne Kartenraster — für SVG/PDF
+ist das kein Problem, da dort `<image>`-Referenzen statt gerasterter Pixel
+verwendet werden.
 
 **Tier-Gating**: PNG-Export ist ein Pro-Feature (`useTier().canExportPng`,
 analog zu Satellitenbild/Share-Links/Versionshistorie). Die Prüfung ist rein

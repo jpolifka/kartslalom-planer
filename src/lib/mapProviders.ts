@@ -2,18 +2,17 @@
 // Copyright (c) Jens Polifka
 // All rights reserved.
 
-// Zentrale Registry für Kartenhintergrund-Anbieter. Ersetzt die bisher in
-// MapBackground.tsx und exportSVG.ts duplizierten Esri/OSM-URL-Ternaries.
-// "xyz" = Kachel-Pyramide (OSM + Esri, beide über {z}/{x}/{y}-URLs
-// adressierbar); "wms" = Einzelbild pro Anfrage (RLP-DOP20 — Anfrage liefert
-// ein einzelnes Bild für eine BBox statt einer Kachel-Pyramide).
+// Zentrale Registry für Kartenhintergrund-Anbieter. Ersetzt die vormals in
+// MapBackground.tsx und exportSVG.ts duplizierten URL-Ternaries.
+// "xyz" = Kachel-Pyramide (OSM, über {z}/{x}/{y}-URLs adressierbar);
+// "wms" = Einzelbild pro Anfrage (RLP-DOP20 — Anfrage liefert ein einzelnes
+// Bild für eine BBox statt einer Kachel-Pyramide).
 //
-// Esri bleibt vorerst in der Registry (Regressionsschutz für die bestehenden
-// Tests), wird aber ab hier von keinem Render-Pfad mehr ausgewählt —
-// map_satellite=true bildet ab jetzt auf "rlp_dop20" ab, nicht mehr "esri"
-// (siehe mapProviderIdForSatelliteFlag). Endgültige Entfernung in Commit 5.
+// Esri World Imagery wurde entfernt (Lizenzrisiko bei öffentlicher/
+// kommerzieller Nutzung, siehe project_esri_osm_licensing-Notiz) und durch
+// den amtlichen RLP-DOP20-Dienst ersetzt.
 
-export type MapProviderId = "osm" | "esri" | "rlp_dop20";
+export type MapProviderId = "osm" | "rlp_dop20";
 
 export type GeographicBounds = { west: number; south: number; east: number; north: number };
 
@@ -46,17 +45,6 @@ export const MAP_PROVIDERS: Record<MapProviderId, MapProvider> = {
     requiresPro: false,
     attribution: "© OpenStreetMap contributors",
     xyzTileUrl: (zoom, x, y) => `https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`,
-  },
-  esri: {
-    id: "esri",
-    label: "Satellitenbild",
-    kind: "xyz",
-    requiresPro: true,
-    attribution: "Esri, Maxar, Earthstar Geographics",
-    // ArcGIS-REST-Tile-Adressierung ist zoom/y/x (nicht zoom/x/y wie bei OSM) —
-    // x/y hier bewusst vertauscht in den Template-String übernommen.
-    xyzTileUrl: (zoom, x, y) =>
-      `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${y}/${x}`,
   },
   rlp_dop20: {
     id: "rlp_dop20",
@@ -112,8 +100,7 @@ export function buildWmsGetMapUrl(
 
 // Bildet das bisherige boolesche map_satellite auf eine Provider-ID ab —
 // Brücke für Alt-Zustände (Gast-Modus-localStorage speichert weiterhin nur
-// ein Boolean, siehe src/lib/storage.ts). true → "rlp_dop20", NIE "esri"
-// (Esri wird von keinem Render-Pfad mehr ausgewählt, siehe Kommentar oben).
+// ein Boolean, siehe src/lib/storage.ts). true → "rlp_dop20".
 export function mapProviderIdForSatelliteFlag(satellite: boolean): MapProviderId {
   return satellite ? "rlp_dop20" : "osm";
 }
