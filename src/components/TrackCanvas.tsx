@@ -9,10 +9,11 @@ import { boundsFromCones, rotateConesAroundOwnCenter } from "../lib/geometry";
 import { resolveFormation } from "../lib/formationRegistry";
 import MapBackground from "./MapBackground";
 import type { AreaSelection } from "../lib/areaSelection";
+import type { MapProviderId } from "../lib/mapProviders";
 
 export type MapConfig = {
   selection: AreaSelection;
-  satellite: boolean;
+  providerId: MapProviderId;
   opacity: number;
 };
 
@@ -399,7 +400,7 @@ export default function TrackCanvas(props: TrackCanvasProps) {
               selection={mapConfig.selection}
               canvasWidthPx={CANVAS_WIDTH}
               canvasHeightPx={canvasHeight}
-              satellite={mapConfig.satellite}
+              providerId={mapConfig.providerId}
               opacity={mapConfig.opacity}
             />
           )}

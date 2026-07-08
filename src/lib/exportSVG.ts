@@ -4,88 +4,101 @@
 
 import { resolveFormation } from "./formationRegistry";
 import { boundsFromCones, rotateConesAroundOwnCenter } from "./geometry";
-import { lngToGlobalX, latToGlobalY } from "./geo";
-import { areaSelectionToBounds } from "./areaSelection";
+import { computeMapRenderLayout } from "./mapRender";
+import { MAP_PROVIDERS } from "./mapProviders";
+import { supabase, functionsUrl } from "./supabase";
 import type { AreaSelection } from "./areaSelection";
+import type { MapProviderId } from "./mapProviders";
 import type { PlacedFormation, PlacedArrow } from "../types";
 
 const PYLON_SIZE_M = 0.30;
 const PYLON_MIN_PX = 6;
 export const SVG_WIDTH = 900;
-const TILE_SIZE = 256;
 
-export type PdfMapConfig = { selection: AreaSelection; satellite: boolean; opacity: number };
-
-const TILE_ATTRIBUTION = {
-  satellite: "Esri, Maxar, Earthstar Geographics",
-  street: "© OpenStreetMap contributors",
+export type PdfMapConfig = {
+  selection: AreaSelection;
+  providerId: MapProviderId;
+  opacity: number;
+  // Vorab (async, siehe resolveWmsExportImage) aufgelöste Bilddaten für
+  // WMS-Provider — als data:-URI, damit der Export nicht von der
+  // Live-Erreichbarkeit des WMS-Diensts abhängt. Wenn nicht gesetzt, wird
+  // (Gast-Modus ohne Session) direkt auf die WMS-URL zurückgefallen.
+  wmsImageDataUri?: string;
 };
 
-// Shared tile-grid math: which tiles cover the field, and how to place them
-// in a canvasW x canvasH box (used by both the SVG and the live MapBackground).
-function computeTileLayout(mapConfig: PdfMapConfig, canvasW: number, canvasH: number) {
-  const { selection, satellite } = mapConfig;
-  const θ = (selection.rotationDeg * Math.PI) / 180;
-  const cosT = Math.abs(Math.cos(θ));
-  const sinT = Math.abs(Math.sin(θ));
-  const bgW = canvasW * cosT + canvasH * sinT;
-  const bgH = canvasW * sinT + canvasH * cosT;
+// Löst für einen WMS-Provider (z. B. RLP-DOP20) das Bild vorab über den
+// map-background-image-Edge-Function-Proxy auf (JWT/Tier/BBOX-geprüft,
+// siehe supabase/functions/map-background-image) und liefert es als
+// data:-URI zurück — der Export bettet dann kein von der Live-Erreichbarkeit
+// des WMS-Diensts abhängiges <image href> mehr ein. Für "xyz"-Provider (OSM)
+// oder ohne aktive Session (Gast-Modus, kein Proxy-Aufruf möglich) wird null
+// zurückgegeben; buildTileSvg fällt dann auf die direkte WMS-URL zurück
+// (identisch zum bisherigen Verhalten).
+export async function resolveWmsExportImage(
+  mapConfig: PdfMapConfig,
+  fieldWidth: number,
+  fieldLength: number
+): Promise<string | null> {
+  const provider = MAP_PROVIDERS[mapConfig.providerId];
+  if (provider.kind !== "wms") return null;
 
-  const bounds = areaSelectionToBounds(selection);
-  const lngSpan = Math.abs(bounds.lng2 - bounds.lng1);
-  const zoom = Math.min(19, Math.max(1, Math.round(Math.log2((bgW * 360) / (TILE_SIZE * lngSpan)))));
+  const svgH = fieldLength * (SVG_WIDTH / fieldWidth);
+  const layout = computeMapRenderLayout(
+    { selection: mapConfig.selection, providerId: mapConfig.providerId, opacity: mapConfig.opacity },
+    SVG_WIDTH,
+    svgH
+  );
+  if (layout.kind !== "wms") return null;
 
-  const gx1 = lngToGlobalX(bounds.lng1, zoom);
-  const gy1 = latToGlobalY(bounds.lat1, zoom);
-  const gx2 = lngToGlobalX(bounds.lng2, zoom);
-  const gy2 = latToGlobalY(bounds.lat2, zoom);
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return layout.imageUrl;
 
-  const scaleX = bgW / (gx2 - gx1);
-  const scaleY = bgH / (gy2 - gy1);
-  const n = Math.pow(2, zoom);
-
-  const tiles: { url: string; x: number; y: number; w: number; h: number }[] = [];
-  for (let ty = Math.floor(gy1 / TILE_SIZE); ty <= Math.ceil(gy2 / TILE_SIZE); ty++) {
-    for (let tx = Math.floor(gx1 / TILE_SIZE); tx <= Math.ceil(gx2 / TILE_SIZE); tx++) {
-      const wrappedTx = ((tx % n) + n) % n;
-      const url = satellite
-        ? `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${ty}/${wrappedTx}`
-        : `https://tile.openstreetmap.org/${zoom}/${wrappedTx}/${ty}.png`;
-      tiles.push({
-        url,
-        x: (tx * TILE_SIZE - gx1) * scaleX,
-        y: (ty * TILE_SIZE - gy1) * scaleY,
-        w: TILE_SIZE * scaleX,
-        h: TILE_SIZE * scaleY,
-      });
-    }
-  }
-
-  return {
-    tiles,
-    bgW,
-    bgH,
-    left: (canvasW - bgW) / 2,
-    top: (canvasH - bgH) / 2,
-    attribution: satellite ? TILE_ATTRIBUTION.satellite : TILE_ATTRIBUTION.street,
-  };
+  const res = await fetch(functionsUrl("map-background-image"), {
+    method: "POST",
+    headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ providerId: layout.providerId, bbox: layout.bbox, width: layout.bgW, height: layout.bgH }),
+  });
+  if (!res.ok) throw new Error(`Kartenhintergrund-Export fehlgeschlagen (${res.status})`);
+  const blob = await res.blob();
+  return await blobToDataUri(blob);
 }
 
-// Renders the satellite/street tiles as SVG <image> elements, clipped to the
-// field box and rotated to match the selected area. Used both for the
-// standalone SVG export and as the base layer for the vector PDF export.
-function buildTileSvg(mapConfig: PdfMapConfig, canvasW: number, canvasH: number): string {
-  const { tiles, bgW, bgH, left, top } = computeTileLayout(mapConfig, canvasW, canvasH);
+function blobToDataUri(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("Kartenhintergrund konnte nicht gelesen werden."));
+    reader.readAsDataURL(blob);
+  });
+}
 
-  const imgs = tiles.map(
-    (t) =>
-      `<image href="${t.url}" crossorigin="anonymous" x="${t.x.toFixed(1)}" y="${t.y.toFixed(1)}"` +
-      ` width="${t.w.toFixed(1)}" height="${t.h.toFixed(1)}" preserveAspectRatio="none"/>`
+// Rendert den Kartenhintergrund als SVG <image>-Element(e), geclippt auf die
+// Feldbox und passend zum ausgewählten Bereich rotiert. Genutzt sowohl für
+// den eigenständigen SVG-Export als auch als Basis-Layer für den PDF-Export.
+// Layout-Geometrie (Kachel-Grid vs. WMS-Einzelbild) kommt aus mapRender.ts,
+// das sich der Editor (MapBackground.tsx) genauso bedient.
+function buildTileSvg(mapConfig: PdfMapConfig, canvasW: number, canvasH: number): string {
+  const layout = computeMapRenderLayout(
+    { selection: mapConfig.selection, providerId: mapConfig.providerId, opacity: mapConfig.opacity },
+    canvasW,
+    canvasH
   );
+
+  const imgs =
+    layout.kind === "xyz"
+      ? layout.tiles.map(
+          (t) =>
+            `<image href="${t.url}" crossorigin="anonymous" x="${t.x.toFixed(1)}" y="${t.y.toFixed(1)}"` +
+            ` width="${t.w.toFixed(1)}" height="${t.h.toFixed(1)}" preserveAspectRatio="none"/>`
+        )
+      : [
+          `<image href="${mapConfig.wmsImageDataUri ?? layout.imageUrl}" crossorigin="anonymous" x="0" y="0"` +
+            ` width="${layout.bgW.toFixed(1)}" height="${layout.bgH.toFixed(1)}" preserveAspectRatio="none"/>`,
+        ];
 
   return (
     `<g opacity="${mapConfig.opacity}" clip-path="url(#mapClip)">` +
-    `<g transform="translate(${left.toFixed(1)},${top.toFixed(1)}) rotate(${-mapConfig.selection.rotationDeg},${(bgW / 2).toFixed(1)},${(bgH / 2).toFixed(1)})">` +
+    `<g transform="translate(${layout.left.toFixed(1)},${layout.top.toFixed(1)}) rotate(${-mapConfig.selection.rotationDeg},${(layout.bgW / 2).toFixed(1)},${(layout.bgH / 2).toFixed(1)})">` +
     imgs.join("") +
     `</g></g>`
   );
@@ -131,7 +144,7 @@ export function generateTrackSVG(
   );
 
   if (mapConfig) {
-    // Satellite/street tiles as the base layer; grid, border and formations are drawn on top.
+    // Kartenhintergrund als Basis-Layer; Gitter, Rand und Formationen liegen darüber.
     out.push(`<defs><clipPath id="mapClip"><rect width="${SVG_WIDTH}" height="${fmt(svgH)}"/></clipPath></defs>`);
     out.push(buildTileSvg(mapConfig, SVG_WIDTH, svgH));
   } else if (background !== "transparent") {
@@ -274,7 +287,7 @@ export function generateTrackSVG(
   }
 
   if (mapConfig) {
-    const attribution = mapConfig.satellite ? TILE_ATTRIBUTION.satellite : TILE_ATTRIBUTION.street;
+    const attribution = MAP_PROVIDERS[mapConfig.providerId].attribution;
     const fontSize = 7;
     const boxW = attribution.length * 4.2 + 8;
     out.push(
@@ -299,7 +312,7 @@ export function downloadSVG(svg: string, filename = "kartslalom.svg") {
   URL.revokeObjectURL(url);
 }
 
-// Renders the track (and, if given, the satellite/street background) as a
+// Renders the track (and, if given, the map background) as a
 // vector PDF and triggers a direct file download via jsPDF — no browser
 // print dialog involved.
 export async function exportPDF(

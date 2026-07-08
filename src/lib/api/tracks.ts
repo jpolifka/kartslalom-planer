@@ -18,6 +18,10 @@ export type TrackDetail = TrackRow & {
   state_json: { items: PlacedFormation[]; arrows: PlacedArrow[] };
   area_sel_json: unknown;
   map_satellite: boolean;
+  // "osm" | "rlp_dop20" — siehe src/lib/mapProviders.ts. Noch nicht vom
+  // Rendering ausgewertet (das übernimmt Commit 3 der Kartenanbieter-
+  // Abstraktion), map_satellite bleibt bis dahin maßgeblich.
+  map_provider_id: string;
   map_opacity: number;
   is_public: boolean;
 };
@@ -44,7 +48,7 @@ export async function fetchTracks(): Promise<TrackRow[]> {
 }
 
 const TRACK_DETAIL_COLUMNS =
-  "id, name, state_json, area_sel_json, manual_width, manual_length, map_satellite, map_opacity, is_public, created_at, updated_at" as const;
+  "id, name, state_json, area_sel_json, manual_width, manual_length, map_satellite, map_provider_id, map_opacity, is_public, created_at, updated_at" as const;
 
 export async function fetchTrack(id: string): Promise<TrackDetail | null> {
   const { data, error } = await supabase
@@ -198,6 +202,7 @@ export type TrackVersionDetail = {
   manual_width: number | null;   // numeric → JS number
   manual_length: number | null;
   map_satellite: boolean | null;
+  map_provider_id: string | null;
   map_opacity: number | null;
   created_at: string;
 };

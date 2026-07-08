@@ -227,6 +227,37 @@ async function main() {
       "Expliziter Pro-User kann map_satellite=true speichern"
     );
 
+    // 7b — Commit 2 Kartenanbieter-Abstraktion: map_provider_id synchron zu map_satellite
+    console.log("\n--- 7b: map_provider_id wird von save_track() synchron gehalten ---");
+    const { data: proTrackRow } = await admin
+      .from("tracks")
+      .select("map_satellite, map_provider_id")
+      .eq("id", proTrackId)
+      .single();
+    assertOk(
+      proTrackRow?.map_satellite === true && proTrackRow?.map_provider_id === "rlp_dop20",
+      "map_satellite=true → map_provider_id='rlp_dop20' nach save_track()"
+    );
+
+    const { error: proSatOffErr } = await clientB.rpc("save_track", {
+      p_track_id: proTrackId,
+      p_state_json: { items: [], arrows: [] },
+      p_area_sel: null,
+      p_width: 18,
+      p_length: 36,
+      p_satellite: false,
+      p_opacity: 0.5,
+    });
+    const { data: proTrackRowOff } = await admin
+      .from("tracks")
+      .select("map_satellite, map_provider_id")
+      .eq("id", proTrackId)
+      .single();
+    assertOk(
+      !proSatOffErr && proTrackRowOff?.map_satellite === false && proTrackRowOff?.map_provider_id === "osm",
+      "map_satellite=false → map_provider_id='osm' nach save_track()"
+    );
+
     // 8 — H0: Custom-Formation anlegen, RLS Fremdzugriff
     console.log("\n--- 8: H0 – Custom-Formation RLS (Fremdzugriff) ---");
     const { data: formationId, error: formationErr } = await clientA.rpc(
@@ -315,6 +346,32 @@ async function main() {
     assertErr(
       saveAsForeignErr,
       "User A kann aus Snapshot von User B keinen neuen Track anlegen (not_owner)"
+    );
+
+    // 11b — Commit 2 Kartenanbieter-Abstraktion: map_provider_id im Snapshot-Pfad
+    console.log("\n--- 11b: map_provider_id in Versionshistorie/Speichern-unter ---");
+    const { data: versionDetail, error: versionDetailErr } = await clientB.rpc(
+      "get_track_version_detail",
+      { p_version_id: versionId }
+    );
+    const versionDetailRow = Array.isArray(versionDetail) ? versionDetail[0] : null;
+    assertOk(
+      !versionDetailErr && versionDetailRow?.map_provider_id === "osm",
+      "get_track_version_detail liefert map_provider_id ('osm', Snapshot war map_satellite=false)"
+    );
+
+    const { data: newTrackId, error: saveAsOwnErr } = await clientB.rpc("create_track_from_version", {
+      p_version_id: versionId,
+      p_name: `map_provider_id Kopie ${ts}`,
+    });
+    const { data: newTrackRow } = await admin
+      .from("tracks")
+      .select("map_provider_id")
+      .eq("id", newTrackId)
+      .single();
+    assertOk(
+      !saveAsOwnErr && newTrackRow?.map_provider_id === "osm",
+      "create_track_from_version übernimmt map_provider_id aus dem Snapshot"
     );
 
     // 12 — Phase 2: Track-Share-Links
