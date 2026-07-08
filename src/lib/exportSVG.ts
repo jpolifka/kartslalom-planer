@@ -151,44 +151,55 @@ export function generateTrackSVG(
     out.push(`<rect width="${SVG_WIDTH}" height="${fmt(svgH)}" fill="white"/>`);
   }
 
-  // Grid (1 m cells)
-  out.push(`<g stroke="#e2e8f0" stroke-width="1">`);
-  for (let x = 1; x < Math.ceil(fieldWidth); x++) {
-    const px = fmt(x * scale);
-    out.push(`<line x1="${px}" y1="0" x2="${px}" y2="${fmt(svgH)}"/>`);
-  }
-  for (let y = 1; y < Math.ceil(fieldLength); y++) {
-    const py = fmt(y * scale);
-    out.push(`<line x1="0" y1="${py}" x2="${SVG_WIDTH}" y2="${py}"/>`);
-  }
-  out.push(`</g>`);
+  // Gitter/Rand/Beschriftung nur bei "weißem" Export (SVG/PDF): bei
+  // background="transparent" (PNG) erwartet der Nutzer ein sauberes Overlay
+  // aus nur Strecke/Pylonen, kein Referenzraster (siehe PNG-Export-Doku).
+  if (background !== "transparent") {
+    // Opacity analog zur interaktiven Ansicht (TrackCanvas.tsx-Gitterlayer:
+    // 0.35 ohne Kartenhintergrund, 0.15 mit) — vorher fest bei voller
+    // Deckkraft gezeichnet, dadurch im Export deutlich dominanter als am
+    // Bildschirm ("Raster zu stark").
+    const gridOpacity = mapConfig ? 0.15 : 0.35;
 
-  // 5 m accent lines
-  out.push(`<g stroke="#cbd5e1" stroke-width="1.5">`);
-  for (let x = 5; x < fieldWidth; x += 5) {
-    const px = fmt(x * scale);
-    out.push(`<line x1="${px}" y1="0" x2="${px}" y2="${fmt(svgH)}"/>`);
-  }
-  for (let y = 5; y < fieldLength; y += 5) {
-    const py = fmt(y * scale);
-    out.push(`<line x1="0" y1="${py}" x2="${SVG_WIDTH}" y2="${py}"/>`);
-  }
-  out.push(`</g>`);
+    // Grid (1 m cells)
+    out.push(`<g stroke="#e2e8f0" stroke-width="1" opacity="${gridOpacity}">`);
+    for (let x = 1; x < Math.ceil(fieldWidth); x++) {
+      const px = fmt(x * scale);
+      out.push(`<line x1="${px}" y1="0" x2="${px}" y2="${fmt(svgH)}"/>`);
+    }
+    for (let y = 1; y < Math.ceil(fieldLength); y++) {
+      const py = fmt(y * scale);
+      out.push(`<line x1="0" y1="${py}" x2="${SVG_WIDTH}" y2="${py}"/>`);
+    }
+    out.push(`</g>`);
 
-  // Outer border
-  out.push(`<rect width="${SVG_WIDTH}" height="${fmt(svgH)}" fill="none" stroke="#0f172a" stroke-width="3"/>`);
+    // 5 m accent lines
+    out.push(`<g stroke="#cbd5e1" stroke-width="1.5" opacity="${gridOpacity}">`);
+    for (let x = 5; x < fieldWidth; x += 5) {
+      const px = fmt(x * scale);
+      out.push(`<line x1="${px}" y1="0" x2="${px}" y2="${fmt(svgH)}"/>`);
+    }
+    for (let y = 5; y < fieldLength; y += 5) {
+      const py = fmt(y * scale);
+      out.push(`<line x1="0" y1="${py}" x2="${SVG_WIDTH}" y2="${py}"/>`);
+    }
+    out.push(`</g>`);
 
-  // Ruler labels along top and left edges
-  out.push(`<g font-family="Arial,sans-serif" font-size="${Math.max(9, scale * 0.28)}" fill="#64748b">`);
-  for (let x = 0; x <= Math.floor(fieldWidth); x += (fieldWidth > 30 ? 5 : 2)) {
-    if (x === 0) continue;
-    out.push(`<text x="${fmt(x * scale + 2)}" y="${Math.max(9, scale * 0.28)}">${x}m</text>`);
+    // Outer border
+    out.push(`<rect width="${SVG_WIDTH}" height="${fmt(svgH)}" fill="none" stroke="#0f172a" stroke-width="3"/>`);
+
+    // Ruler labels along top and left edges
+    out.push(`<g font-family="Arial,sans-serif" font-size="${Math.max(9, scale * 0.28)}" fill="#64748b">`);
+    for (let x = 0; x <= Math.floor(fieldWidth); x += (fieldWidth > 30 ? 5 : 2)) {
+      if (x === 0) continue;
+      out.push(`<text x="${fmt(x * scale + 2)}" y="${Math.max(9, scale * 0.28)}">${x}m</text>`);
+    }
+    for (let y = 0; y <= Math.floor(fieldLength); y += (fieldLength > 30 ? 5 : 2)) {
+      if (y === 0) continue;
+      out.push(`<text x="3" y="${fmt(y * scale - 2)}">${y}m</text>`);
+    }
+    out.push(`</g>`);
   }
-  for (let y = 0; y <= Math.floor(fieldLength); y += (fieldLength > 30 ? 5 : 2)) {
-    if (y === 0) continue;
-    out.push(`<text x="3" y="${fmt(y * scale - 2)}">${y}m</text>`);
-  }
-  out.push(`</g>`);
 
   // Formations
   for (const item of items) {
