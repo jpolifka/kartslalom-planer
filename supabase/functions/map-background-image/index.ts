@@ -17,6 +17,8 @@ const SITE_URL         = Deno.env.get("SITE_URL") ?? "https://kart.cheezuscraizt
 const MAX_WIDTH = 3000;
 const MAX_HEIGHT = 3000;
 const MAX_PIXELS = 6_000_000;
+const UPSTREAM_TIMEOUT_MS = 10_000;
+const MAX_UPSTREAM_BYTES = 15 * 1024 * 1024;
 
 // Erdradius-Konstante der Web-Mercator-Projektion (EPSG:3857) — muss zur
 // Umrechnung in src/lib/geo.ts (lngToMercatorX/latToMercatorY) passen.
@@ -32,8 +34,9 @@ type WmsProvider = {
 
 // Serverseitige Allowlist — bewusst dupliziert aus src/lib/mapProviders.ts
 // (Edge Functions in diesem Repo importieren keinen App-Code, siehe oben).
-// Nur hier gelistete Provider-IDs sind aufrufbar.
-const PROVIDERS: Record<string, WmsProvider> = {
+// Nur hier gelistete Provider-IDs sind aufrufbar. Export nur für den
+// Konfig-Drift-Contract-Test (mapProviderConfigDrift.test.ts).
+export const PROVIDERS: Record<string, WmsProvider> = {
   rlp_dop20: {
     baseUrl: "https://geo4.service24.rlp.de/wms/rp_dop20.fcgi",
     layers: "rp_dop20",
@@ -145,10 +148,36 @@ export async function handler(req: Request): Promise<Response> {
     HEIGHT: String(Math.round(height)),
   });
 
-  const wmsRes = await fetch(`${provider.baseUrl}?${params.toString()}`);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+  let wmsRes: Response;
+  try {
+    wmsRes = await fetch(`${provider.baseUrl}?${params.toString()}`, { signal: controller.signal });
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      return json({ error: "upstream_timeout" }, 504, cors);
+    }
+    return json({ error: "upstream_error" }, 502, cors);
+  } finally {
+    clearTimeout(timeout);
+  }
   if (!wmsRes.ok) return json({ error: "upstream_error" }, 502, cors);
 
+  // WMS-Dienste liefern Fehler teils als XML/HTML mit HTTP 200 — Content-Type
+  // erzwingen statt dem Upstream-Status blind zu vertrauen.
+  const contentType = wmsRes.headers.get("content-type") ?? "";
+  if (!contentType.startsWith("image/")) {
+    return json({ error: "invalid_upstream_response" }, 502, cors);
+  }
+  const contentLength = Number(wmsRes.headers.get("content-length") ?? NaN);
+  if (Number.isFinite(contentLength) && contentLength > MAX_UPSTREAM_BYTES) {
+    return json({ error: "upstream_response_too_large" }, 502, cors);
+  }
+
   const imageBuffer = await wmsRes.arrayBuffer();
+  if (imageBuffer.byteLength > MAX_UPSTREAM_BYTES) {
+    return json({ error: "upstream_response_too_large" }, 502, cors);
+  }
   return new Response(imageBuffer, {
     status: 200,
     headers: { ...cors, "Content-Type": provider.format },

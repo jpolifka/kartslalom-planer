@@ -11,7 +11,7 @@ angemeldet ist (`useAuthStore().session`):
 
 `SavedState` aus `storage.ts` bleibt in beiden Fällen die gemeinsame
 Datenform — im Cloud-Modus wird sie 1:1 in die RPC-Parameter
-(`p_state_json`, `p_area_sel`, `p_width`, `p_length`, `p_satellite`,
+(`p_state_json`, `p_area_sel`, `p_width`, `p_length`, `p_map_provider_id`,
 `p_opacity`) abgebildet.
 
 ## Autosave (localStorage, Gast-Modus)
@@ -41,10 +41,10 @@ Bei vorhandener Session ruft `EditorPage.tsx` denselben debounced
 - **Bestehende Strecke** (`/editor/:trackId`): `useTrack(trackId)` lädt den
   Datensatz einmalig in den lokalen State (`cloudAppliedRef`), danach greift
   der normale Autosave.
-- **Fehlerbehandlung**: Liefert `save_track()` `SATELLITE_REQUIRES_PRO`
-  (Free-Tarif + `map_satellite=true`), setzt das Frontend `mapSatellite`
-  automatisch zurück und zeigt einen Hinweis. `NOT_OWNER` (fremder Track)
-  wird als generischer Fehler behandelt.
+- **Fehlerbehandlung**: Liefert `save_track()` `MAP_PROVIDER_REQUIRES_PRO`
+  (Free-Tarif + Premium-Kartenanbieter wie `rlp_dop20`), setzt das Frontend
+  `mapProviderId` automatisch auf `"osm"` zurück und zeigt einen Hinweis.
+  `NOT_OWNER` (fremder Track) wird als generischer Fehler behandelt.
 
 ## localStorage-Migration beim ersten Login
 

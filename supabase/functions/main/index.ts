@@ -116,7 +116,7 @@ async function handleAccountExport(req: Request): Promise<Response> {
 
   const [profileRes, tracksRes] = await Promise.all([
     fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${uid}&select=id,email,tier,created_at,last_active_at`, { headers: svcHeaders() }),
-    fetch(`${SUPABASE_URL}/rest/v1/tracks?owner_id=eq.${uid}&select=id,name,description,state_json,area_sel_json,manual_width,manual_length,map_satellite,map_opacity,created_at,updated_at&order=created_at`, { headers: svcHeaders() }),
+    fetch(`${SUPABASE_URL}/rest/v1/tracks?owner_id=eq.${uid}&select=id,name,description,state_json,area_sel_json,manual_width,manual_length,map_provider_id,map_opacity,created_at,updated_at&order=created_at`, { headers: svcHeaders() }),
   ])
   const profiles = await profileRes.json()
   const tracks = await tracksRes.json()
@@ -242,6 +242,8 @@ const MBI_MAX_WIDTH = 3000
 const MBI_MAX_HEIGHT = 3000
 const MBI_MAX_PIXELS = 6_000_000
 const MBI_WEB_MERCATOR_R = 6378137
+const MBI_UPSTREAM_TIMEOUT_MS = 10_000
+const MBI_MAX_UPSTREAM_BYTES = 15 * 1024 * 1024
 
 type MbiWmsProvider = {
   baseUrl: string
@@ -329,10 +331,28 @@ async function handleMapBackgroundImage(req: Request): Promise<Response> {
     WIDTH: String(Math.round(width)), HEIGHT: String(Math.round(height)),
   })
 
-  const wmsRes = await fetch(`${provider.baseUrl}?${params.toString()}`)
+  const mbiController = new AbortController()
+  const mbiTimeout = setTimeout(() => mbiController.abort(), MBI_UPSTREAM_TIMEOUT_MS)
+  let wmsRes: Response
+  try {
+    wmsRes = await fetch(`${provider.baseUrl}?${params.toString()}`, { signal: mbiController.signal })
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') return json({ error: 'upstream_timeout' }, 504)
+    return json({ error: 'upstream_error' }, 502)
+  } finally {
+    clearTimeout(mbiTimeout)
+  }
   if (!wmsRes.ok) return json({ error: 'upstream_error' }, 502)
 
+  const mbiContentType = wmsRes.headers.get('content-type') ?? ''
+  if (!mbiContentType.startsWith('image/')) return json({ error: 'invalid_upstream_response' }, 502)
+  const mbiContentLength = Number(wmsRes.headers.get('content-length') ?? NaN)
+  if (Number.isFinite(mbiContentLength) && mbiContentLength > MBI_MAX_UPSTREAM_BYTES) {
+    return json({ error: 'upstream_response_too_large' }, 502)
+  }
+
   const imageBuffer = await wmsRes.arrayBuffer()
+  if (imageBuffer.byteLength > MBI_MAX_UPSTREAM_BYTES) return json({ error: 'upstream_response_too_large' }, 502)
   return new Response(imageBuffer, { status: 200, headers: { ...cors, 'Content-Type': provider.format } })
 }
 

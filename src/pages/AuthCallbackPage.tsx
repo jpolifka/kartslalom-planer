@@ -26,7 +26,7 @@ async function migrateLocalStorage() {
     arrows: local.arrows,
     manualWidth: local.manualWidth,
     manualLength: local.manualLength,
-    mapSatellite: false, // Free-User: kein Satellite, RPC würde es sowieso blocken
+    mapProviderId: "osm", // Free-User: kein Premium-Provider, RPC würde es sowieso blocken
     mapOpacity: local.mapOpacity,
     areaSel: local.areaSel,
   });

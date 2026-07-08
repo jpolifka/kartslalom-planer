@@ -4,6 +4,8 @@
 
 import type { AreaSelection } from "./areaSelection";
 import type { PlacedArrow, PlacedFormation } from "../types";
+import { mapProviderIdForSatelliteFlag } from "./mapProviders";
+import type { MapProviderId } from "./mapProviders";
 
 const STORAGE_KEY = "kartslalom_autosave";
 const CURRENT_VERSION = 1;
@@ -26,10 +28,23 @@ export type SavedState = {
   arrows: PlacedArrow[];
   manualWidth: number;
   manualLength: number;
-  mapSatellite: boolean;
+  mapProviderId: MapProviderId;
   mapOpacity: number;
   areaSel: AreaSelection | null;
 };
+
+// Format vor der Boolean→Provider-ID-Migration (Kartenanbieter-Abstraktion,
+// Commit 7) — bestehende localStorage-Saves und exportierte JSON-Dateien
+// haben weiterhin nur ein Boolean. CURRENT_VERSION bleibt bewusst 1 (kein
+// Format-Bruch, der bestehende Gast-Saves ungültig machen würde);
+// normalizeSavedState() übersetzt beim Lesen transparent.
+type LegacySavedStateV1 = Omit<SavedState, "mapProviderId"> & { mapSatellite: boolean };
+
+function normalizeSavedState(raw: SavedState | LegacySavedStateV1): SavedState {
+  if ("mapProviderId" in raw && raw.mapProviderId) return raw;
+  const { mapSatellite, ...rest } = raw as LegacySavedStateV1;
+  return { ...rest, mapProviderId: mapProviderIdForSatelliteFlag(mapSatellite) };
+}
 
 export function saveState(state: Omit<SavedState, "version">): void {
   try {
@@ -43,9 +58,10 @@ export function loadState(): SavedState | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as SavedState;
+    const parsed = JSON.parse(raw) as SavedState | LegacySavedStateV1;
     if (parsed.version !== CURRENT_VERSION) return null;
-    return { ...parsed, items: sanitizeItems(parsed.items ?? []) };
+    const normalized = normalizeSavedState(parsed);
+    return { ...normalized, items: sanitizeItems(normalized.items ?? []) };
   } catch {
     return null;
   }
@@ -86,5 +102,6 @@ export function parseImportFile(json: string): SavedState {
   const p = parsed as Record<string, unknown>;
   if (p.version !== CURRENT_VERSION) throw new Error(`Inkompatible Version (erwartet: ${CURRENT_VERSION}).`);
   if (!Array.isArray(p.items) || !Array.isArray(p.arrows)) throw new Error("Fehlende Streckendaten.");
-  return { ...(p as unknown as SavedState), items: sanitizeItems(p.items) };
+  const normalized = normalizeSavedState(p as unknown as SavedState | LegacySavedStateV1);
+  return { ...normalized, items: sanitizeItems(p.items) };
 }

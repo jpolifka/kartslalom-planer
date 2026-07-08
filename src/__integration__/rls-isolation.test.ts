@@ -56,7 +56,7 @@ describe("RLS isolation (Tracks)", () => {
       p_area_sel:   null,
       p_width:      18,
       p_length:     36,
-      p_satellite:  false,
+      p_map_provider_id: "osm",
       p_opacity:    0.5,
     });
     assertRpcError(error, "not_owner", "B save auf Track A");

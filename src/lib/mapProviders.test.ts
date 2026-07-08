@@ -6,9 +6,10 @@ import { describe, it, expect } from "vitest";
 import {
   MAP_PROVIDERS,
   mapProviderIdForSatelliteFlag,
-  providerCoversPoint,
+  providerCoversBounds,
   buildWmsGetMapUrl,
 } from "./mapProviders";
+import type { GeoBounds } from "./geo";
 
 describe("mapProviders", () => {
   it("OSM-Tile-URL entspricht dem Standard-Schema zoom/x/y", () => {
@@ -30,24 +31,43 @@ describe("mapProviders", () => {
     expect(MAP_PROVIDERS.rlp_dop20.requiresPro).toBe(true);
   });
 
-  describe("providerCoversPoint", () => {
-    it("Provider ohne coverage (osm) deckt jeden Punkt ab", () => {
-      expect(providerCoversPoint(MAP_PROVIDERS.osm, 10, 10)).toBe(true);
-      expect(providerCoversPoint(MAP_PROVIDERS.osm, -80, 170)).toBe(true);
+  describe("providerCoversBounds", () => {
+    const boundsAround = (lat: number, lng: number, deltaDeg = 0.01): GeoBounds => ({
+      lat1: lat + deltaDeg,
+      lng1: lng - deltaDeg,
+      lat2: lat - deltaDeg,
+      lng2: lng + deltaDeg,
     });
 
-    it("rlp_dop20 deckt einen Punkt in Mainz ab", () => {
-      expect(providerCoversPoint(MAP_PROVIDERS.rlp_dop20, 49.9929, 8.2473)).toBe(true);
+    it("Provider ohne coverage (osm) deckt jede Envelope ab", () => {
+      expect(providerCoversBounds(MAP_PROVIDERS.osm, boundsAround(10, 10))).toBe(true);
+      expect(providerCoversBounds(MAP_PROVIDERS.osm, boundsAround(-80, 170))).toBe(true);
     });
 
-    it("rlp_dop20 deckt Berlin nicht ab", () => {
-      expect(providerCoversPoint(MAP_PROVIDERS.rlp_dop20, 52.52, 13.405)).toBe(false);
+    it("rlp_dop20 deckt eine kleine Envelope um Mainz vollständig ab", () => {
+      expect(providerCoversBounds(MAP_PROVIDERS.rlp_dop20, boundsAround(49.9929, 8.2473))).toBe(true);
     });
 
-    it("Randfälle der Bounding Box liegen innerhalb", () => {
+    it("rlp_dop20 deckt eine Envelope um Berlin nicht ab", () => {
+      expect(providerCoversBounds(MAP_PROVIDERS.rlp_dop20, boundsAround(52.52, 13.405))).toBe(false);
+    });
+
+    it("rlp_dop20 lehnt eine Envelope ab, deren Mittelpunkt innerhalb liegt, die aber über den Rand hinausragt", () => {
       const b = MAP_PROVIDERS.rlp_dop20.coverage!;
-      expect(providerCoversPoint(MAP_PROVIDERS.rlp_dop20, b.north, b.east)).toBe(true);
-      expect(providerCoversPoint(MAP_PROVIDERS.rlp_dop20, b.south, b.west)).toBe(true);
+      // Mittelpunkt knapp innerhalb der Ostgrenze, Envelope ragt darüber hinaus
+      const straddling: GeoBounds = {
+        lat1: (b.north + b.south) / 2 + 0.01,
+        lng1: b.east - 0.01,
+        lat2: (b.north + b.south) / 2 - 0.01,
+        lng2: b.east + 0.5,
+      };
+      expect(providerCoversBounds(MAP_PROVIDERS.rlp_dop20, straddling)).toBe(false);
+    });
+
+    it("Randfälle: Envelope deckungsgleich mit der Coverage-Box liegt innerhalb", () => {
+      const b = MAP_PROVIDERS.rlp_dop20.coverage!;
+      const exact: GeoBounds = { lat1: b.north, lng1: b.west, lat2: b.south, lng2: b.east };
+      expect(providerCoversBounds(MAP_PROVIDERS.rlp_dop20, exact)).toBe(true);
     });
   });
 

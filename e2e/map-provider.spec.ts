@@ -36,7 +36,7 @@ test("RLP-DOP20: Standort innerhalb Rheinland-Pfalz zeigt Luftbild aktiv und WMS
   await loginWithSession(page);
   const { editorUrl, trackId } = await createTrackAndGetIds(page);
 
-  await saveTrackArea(loadCredentials(), trackId, MAINZ, true);
+  await saveTrackArea(loadCredentials(), trackId, MAINZ, "rlp_dop20");
   await page.goto(editorUrl);
   await page.waitForURL(editorUrl, { timeout: 10_000 });
 
@@ -57,7 +57,7 @@ test("Ausserhalb der RLP-Abdeckung (Berlin) faellt die Anzeige auf Strassenkarte
   await loginWithSession(page);
   const { editorUrl, trackId } = await createTrackAndGetIds(page);
 
-  await saveTrackArea(loadCredentials(), trackId, BERLIN, true);
+  await saveTrackArea(loadCredentials(), trackId, BERLIN, "rlp_dop20");
   await page.goto(editorUrl);
   await page.waitForURL(editorUrl, { timeout: 10_000 });
 
@@ -76,7 +76,7 @@ test("Export: SVG-Export bettet das RLP-Luftbild als data-URI ein (kein Live-WMS
   await loginWithSession(page);
   const { editorUrl, trackId } = await createTrackAndGetIds(page);
 
-  await saveTrackArea(loadCredentials(), trackId, MAINZ, true);
+  await saveTrackArea(loadCredentials(), trackId, MAINZ, "rlp_dop20");
   await page.goto(editorUrl);
   await page.waitForURL(editorUrl, { timeout: 10_000 });
   await expect(page.locator('img[src*="geo4.service24.rlp.de"]')).toBeVisible({ timeout: 10_000 });

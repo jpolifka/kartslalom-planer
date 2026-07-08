@@ -156,7 +156,7 @@ async function main() {
       p_area_sel: null,
       p_width: 18,
       p_length: 36,
-      p_satellite: false,
+      p_map_provider_id: "osm",
       p_opacity: 0.5,
     });
     assertErr(
@@ -191,25 +191,25 @@ async function main() {
       "Direktes tier-Update auf profiles ist gesperrt (kein UPDATE-Policy)"
     );
 
-    // 7 — Feature-Bypass: Satellite-Gate — beide Tier-Seiten
-    console.log("\n--- 7: Feature-Bypass Satellite (Free abgelehnt, Pro erlaubt) ---");
+    // 7 — Feature-Bypass: Map-Provider-Gate — beide Tier-Seiten
+    console.log("\n--- 7: Feature-Bypass Map-Provider (Free abgelehnt, Pro erlaubt) ---");
     const { error: freeSatErr } = await clientA.rpc("save_track", {
       p_track_id: trackId,
       p_state_json: { items: [], arrows: [] },
       p_area_sel: null,
       p_width: 18,
       p_length: 36,
-      p_satellite: true,
+      p_map_provider_id: "rlp_dop20",
       p_opacity: 0.5,
     });
     assertErr(
       freeSatErr,
-      "Expliziter Free-User kann map_satellite=true nicht setzen (satellite_requires_pro)"
+      "Expliziter Free-User kann map_provider_id='rlp_dop20' nicht setzen (map_provider_requires_pro)"
     );
 
     const { data: proTrackId, error: proCreateErr } = await clientB.rpc(
       "create_track",
-      { track_name: `Pro Satellite Test ${ts}` }
+      { track_name: `Pro Map-Provider Test ${ts}` }
     );
     assertOk(!proCreateErr && proTrackId, "Pro-User kann eigenen Track anlegen");
 
@@ -219,24 +219,24 @@ async function main() {
       p_area_sel: null,
       p_width: 18,
       p_length: 36,
-      p_satellite: true,
+      p_map_provider_id: "rlp_dop20",
       p_opacity: 0.5,
     });
     assertOk(
       !proSatErr,
-      "Expliziter Pro-User kann map_satellite=true speichern"
+      "Expliziter Pro-User kann map_provider_id='rlp_dop20' speichern"
     );
 
-    // 7b — Commit 2 Kartenanbieter-Abstraktion: map_provider_id synchron zu map_satellite
-    console.log("\n--- 7b: map_provider_id wird von save_track() synchron gehalten ---");
+    // 7b — map_provider_id wird von save_track() korrekt persistiert
+    console.log("\n--- 7b: map_provider_id wird von save_track() persistiert ---");
     const { data: proTrackRow } = await admin
       .from("tracks")
-      .select("map_satellite, map_provider_id")
+      .select("map_provider_id")
       .eq("id", proTrackId)
       .single();
     assertOk(
-      proTrackRow?.map_satellite === true && proTrackRow?.map_provider_id === "rlp_dop20",
-      "map_satellite=true → map_provider_id='rlp_dop20' nach save_track()"
+      proTrackRow?.map_provider_id === "rlp_dop20",
+      "map_provider_id='rlp_dop20' nach save_track() korrekt gespeichert"
     );
 
     const { error: proSatOffErr } = await clientB.rpc("save_track", {
@@ -245,17 +245,17 @@ async function main() {
       p_area_sel: null,
       p_width: 18,
       p_length: 36,
-      p_satellite: false,
+      p_map_provider_id: "osm",
       p_opacity: 0.5,
     });
     const { data: proTrackRowOff } = await admin
       .from("tracks")
-      .select("map_satellite, map_provider_id")
+      .select("map_provider_id")
       .eq("id", proTrackId)
       .single();
     assertOk(
-      !proSatOffErr && proTrackRowOff?.map_satellite === false && proTrackRowOff?.map_provider_id === "osm",
-      "map_satellite=false → map_provider_id='osm' nach save_track()"
+      !proSatOffErr && proTrackRowOff?.map_provider_id === "osm",
+      "map_provider_id='osm' nach save_track() korrekt gespeichert"
     );
 
     // 8 — H0: Custom-Formation anlegen, RLS Fremdzugriff
@@ -330,7 +330,7 @@ async function main() {
       p_area_sel: null,
       p_width: 18,
       p_length: 36,
-      p_satellite: false,
+      p_map_provider_id: "osm",
       p_opacity: 0.5,
     });
     assertOk(!bVersionErr, "Setup: Pro-User speichert Track vor Snapshot");
@@ -357,7 +357,7 @@ async function main() {
     const versionDetailRow = Array.isArray(versionDetail) ? versionDetail[0] : null;
     assertOk(
       !versionDetailErr && versionDetailRow?.map_provider_id === "osm",
-      "get_track_version_detail liefert map_provider_id ('osm', Snapshot war map_satellite=false)"
+      "get_track_version_detail liefert map_provider_id ('osm', Snapshot war map_provider_id='osm')"
     );
 
     const { data: newTrackId, error: saveAsOwnErr } = await clientB.rpc("create_track_from_version", {

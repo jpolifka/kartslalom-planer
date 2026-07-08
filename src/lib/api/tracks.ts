@@ -17,10 +17,7 @@ export type TrackRow = {
 export type TrackDetail = TrackRow & {
   state_json: { items: PlacedFormation[]; arrows: PlacedArrow[] };
   area_sel_json: unknown;
-  map_satellite: boolean;
-  // "osm" | "rlp_dop20" — siehe src/lib/mapProviders.ts. Noch nicht vom
-  // Rendering ausgewertet (das übernimmt Commit 3 der Kartenanbieter-
-  // Abstraktion), map_satellite bleibt bis dahin maßgeblich.
+  // "osm" | "rlp_dop20" — siehe src/lib/mapProviders.ts.
   map_provider_id: string;
   map_opacity: number;
   is_public: boolean;
@@ -48,7 +45,7 @@ export async function fetchTracks(): Promise<TrackRow[]> {
 }
 
 const TRACK_DETAIL_COLUMNS =
-  "id, name, state_json, area_sel_json, manual_width, manual_length, map_satellite, map_provider_id, map_opacity, is_public, created_at, updated_at" as const;
+  "id, name, state_json, area_sel_json, manual_width, manual_length, map_provider_id, map_opacity, is_public, created_at, updated_at" as const;
 
 export async function fetchTrack(id: string): Promise<TrackDetail | null> {
   const { data, error } = await supabase
@@ -78,17 +75,17 @@ export async function saveTrack(
   state: Omit<SavedState, "version">
 ): Promise<void> {
   const { error } = await supabase.rpc("save_track", {
-    p_track_id:   id,
-    p_state_json: { items: state.items, arrows: state.arrows },
-    p_area_sel:   state.areaSel,
-    p_width:      state.manualWidth,
-    p_length:     state.manualLength,
-    p_satellite:  state.mapSatellite,
-    p_opacity:    state.mapOpacity,
+    p_track_id:        id,
+    p_state_json:      { items: state.items, arrows: state.arrows },
+    p_area_sel:        state.areaSel,
+    p_width:           state.manualWidth,
+    p_length:          state.manualLength,
+    p_map_provider_id: state.mapProviderId,
+    p_opacity:         state.mapOpacity,
   });
   if (error) {
-    if (error.message.includes("satellite_requires_pro")) throw new Error("SATELLITE_REQUIRES_PRO");
-    if (error.message.includes("not_owner"))              throw new Error("NOT_OWNER");
+    if (error.message.includes("map_provider_requires_pro")) throw new Error("MAP_PROVIDER_REQUIRES_PRO");
+    if (error.message.includes("not_owner"))                 throw new Error("NOT_OWNER");
     throw error;
   }
   // last_active_at wird in save_track() serverseitig gesetzt — kein separater touch_last_active() nötig
@@ -164,8 +161,8 @@ export async function getTrackVersions(trackId: string): Promise<TrackVersion[]>
 export async function restoreTrackVersion(versionId: string): Promise<void> {
   const { error } = await supabase.rpc("restore_track_version", { p_version_id: versionId });
   if (error) {
-    if (error.message.includes("satellite_requires_pro")) throw new Error("SATELLITE_REQUIRES_PRO");
-    if (error.message.includes("not_owner"))              throw new Error("NOT_OWNER");
+    if (error.message.includes("map_provider_requires_pro")) throw new Error("MAP_PROVIDER_REQUIRES_PRO");
+    if (error.message.includes("not_owner"))                 throw new Error("NOT_OWNER");
     throw error;
   }
 }
@@ -186,10 +183,10 @@ export async function createTrackFromVersion(versionId: string, name: string): P
     p_name: name,
   });
   if (error) {
-    if (error.message.includes("track_limit_reached"))    throw new Error("TRACK_LIMIT_REACHED");
-    if (error.message.includes("satellite_requires_pro")) throw new Error("SATELLITE_REQUIRES_PRO");
-    if (error.message.includes("not_owner"))               throw new Error("NOT_OWNER");
-    if (error.message.includes("invalid_name"))            throw new Error("INVALID_NAME");
+    if (error.message.includes("track_limit_reached"))       throw new Error("TRACK_LIMIT_REACHED");
+    if (error.message.includes("map_provider_requires_pro"))  throw new Error("MAP_PROVIDER_REQUIRES_PRO");
+    if (error.message.includes("not_owner"))                  throw new Error("NOT_OWNER");
+    if (error.message.includes("invalid_name"))               throw new Error("INVALID_NAME");
     throw error;
   }
   return data as string;
@@ -201,7 +198,6 @@ export type TrackVersionDetail = {
   area_sel_json: unknown;
   manual_width: number | null;   // numeric → JS number
   manual_length: number | null;
-  map_satellite: boolean | null;
   map_provider_id: string | null;
   map_opacity: number | null;
   created_at: string;

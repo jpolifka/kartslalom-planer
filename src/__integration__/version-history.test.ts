@@ -42,7 +42,7 @@ describe("Versionshistorie — Pro-User", () => {
       p_area_sel: null,
       p_width: 18,
       p_length: 36,
-      p_satellite: false,
+      p_map_provider_id: "osm",
       p_opacity: 0.5,
     });
   });
@@ -84,7 +84,7 @@ describe("Versionshistorie — Pro-User", () => {
       p_area_sel: null,
       p_width: 20,
       p_length: 40,
-      p_satellite: false,
+      p_map_provider_id: "osm",
       p_opacity: 0.8,
     });
     assertNoError(saveErr, "save_track modifiziert");
@@ -96,7 +96,7 @@ describe("Versionshistorie — Pro-User", () => {
     // Track muss wieder den initialen Zustand haben — alle Felder prüfen
     const { data: track, error: fetchErr } = await client
       .from("tracks")
-      .select("state_json, manual_width, manual_length, map_satellite, map_opacity")
+      .select("state_json, manual_width, manual_length, map_provider_id, map_opacity")
       .eq("id", trackId)
       .single();
     assertNoError(fetchErr, "fetch nach restore");
@@ -105,14 +105,14 @@ describe("Versionshistorie — Pro-User", () => {
     expect(stateJson.items[0].y).toBe(1);
     expect(track!.manual_width).toBe(18);
     expect(track!.manual_length).toBe(36);
-    expect(track!.map_satellite).toBe(false);
+    expect(track!.map_provider_id).toBe("osm");
     expect(Number(track!.map_opacity)).toBeCloseTo(0.5);
   });
 
   it("zweite Version erhält version_number 2", async () => {
     await client.rpc("save_track", {
       p_track_id: trackId, p_state_json: modifiedState,
-      p_area_sel: null, p_width: 18, p_length: 36, p_satellite: false, p_opacity: 0.5,
+      p_area_sel: null, p_width: 18, p_length: 36, p_map_provider_id: "osm", p_opacity: 0.5,
     });
     const { data, error } = await client.rpc("create_track_version", { p_track_id: trackId });
     assertNoError(error, "create_track_version 2");
@@ -140,7 +140,7 @@ describe("Versionshistorie — Pro-User", () => {
     // Zustand mit area_sel speichern und Snapshot anlegen
     await client.rpc("save_track", {
       p_track_id: trackId, p_state_json: initialState,
-      p_area_sel: mockAreaSel, p_width: 18, p_length: 36, p_satellite: false, p_opacity: 0.5,
+      p_area_sel: mockAreaSel, p_width: 18, p_length: 36, p_map_provider_id: "osm", p_opacity: 0.5,
     });
     const { data: areaVId, error: createErr } = await client.rpc("create_track_version", { p_track_id: trackId });
     assertNoError(createErr, "create area_sel version");
@@ -148,7 +148,7 @@ describe("Versionshistorie — Pro-User", () => {
     // area_sel leeren (Zustand ändern)
     await client.rpc("save_track", {
       p_track_id: trackId, p_state_json: modifiedState,
-      p_area_sel: null, p_width: 20, p_length: 40, p_satellite: false, p_opacity: 0.8,
+      p_area_sel: null, p_width: 20, p_length: 40, p_map_provider_id: "osm", p_opacity: 0.8,
     });
 
     // Wiederherstellen
@@ -210,7 +210,7 @@ describe("Versionshistorie — RLS Fremdzugriff", () => {
     trackIdA = tid as string;
     await clientA.rpc("save_track", {
       p_track_id: trackIdA, p_state_json: { items: [], arrows: [] },
-      p_area_sel: null, p_width: 18, p_length: 36, p_satellite: false, p_opacity: 0.5,
+      p_area_sel: null, p_width: 18, p_length: 36, p_map_provider_id: "osm", p_opacity: 0.5,
     });
     const { data: vid } = await clientA.rpc("create_track_version", { p_track_id: trackIdA });
     versionIdA = vid as string;
@@ -249,13 +249,13 @@ describe("Versionshistorie — RLS Fremdzugriff", () => {
   });
 });
 
-describe("Versionshistorie — Satellite-Gate beim Restore (Pro→Free)", () => {
+describe("Versionshistorie — Map-Provider-Gate beim Restore (Pro→Free)", () => {
   let client: Awaited<ReturnType<typeof loginAsUser>>;
   const userIds: string[] = [];
   let userId: string;
   let trackId: string;
-  let versionWithSatelliteId: string;
-  let versionWithoutSatelliteId: string;
+  let versionWithRlpId: string;
+  let versionWithOsmId: string;
 
   beforeAll(async () => {
     const email = `int-version-sat-${ts()}@test.invalid`;
@@ -264,26 +264,26 @@ describe("Versionshistorie — Satellite-Gate beim Restore (Pro→Free)", () => 
     userIds.push(user.id);
     client = await loginAsUser(email);
 
-    const { data: tid } = await client.rpc("create_track", { track_name: "Satellite-Gate-Test" });
+    const { data: tid } = await client.rpc("create_track", { track_name: "Map-Provider-Gate-Test" });
     trackId = tid as string;
 
-    // Snapshot 1: ohne Satellite (bleibt auch nach Downgrade wiederherstellbar)
+    // Snapshot 1: ohne Premium-Provider (bleibt auch nach Downgrade wiederherstellbar)
     await client.rpc("save_track", {
       p_track_id: trackId,
       p_state_json: { items: [], arrows: [] },
-      p_area_sel: null, p_width: 18, p_length: 36, p_satellite: false, p_opacity: 0.5,
+      p_area_sel: null, p_width: 18, p_length: 36, p_map_provider_id: "osm", p_opacity: 0.5,
     });
     const { data: v1 } = await client.rpc("create_track_version", { p_track_id: trackId });
-    versionWithoutSatelliteId = v1 as string;
+    versionWithOsmId = v1 as string;
 
-    // Snapshot 2: mit Satellite (Pro-Feature, darf nach Downgrade nicht restauriert werden)
+    // Snapshot 2: mit Premium-Provider (rlp_dop20, Pro-Feature, darf nach Downgrade nicht restauriert werden)
     await client.rpc("save_track", {
       p_track_id: trackId,
       p_state_json: { items: [], arrows: [] },
-      p_area_sel: null, p_width: 20, p_length: 40, p_satellite: true, p_opacity: 0.7,
+      p_area_sel: null, p_width: 20, p_length: 40, p_map_provider_id: "rlp_dop20", p_opacity: 0.7,
     });
     const { data: v2 } = await client.rpc("create_track_version", { p_track_id: trackId });
-    versionWithSatelliteId = v2 as string;
+    versionWithRlpId = v2 as string;
 
     // User auf Free downgraden — ab hier kein Snapshot-Erstellen mehr möglich
     await admin.from("profiles").update({ tier: "free" }).eq("id", userId);
@@ -293,23 +293,23 @@ describe("Versionshistorie — Satellite-Gate beim Restore (Pro→Free)", () => 
     await cleanupUsers(userIds);
   });
 
-  it("Restore eines Satellite-Snapshots schlägt für Free-User fehl", async () => {
-    const { error } = await client.rpc("restore_track_version", { p_version_id: versionWithSatelliteId });
-    assertRpcError(error, "satellite_requires_pro", "restore satellite als Free-User");
+  it("Restore eines Premium-Provider-Snapshots schlägt für Free-User fehl", async () => {
+    const { error } = await client.rpc("restore_track_version", { p_version_id: versionWithRlpId });
+    assertRpcError(error, "map_provider_requires_pro", "restore premium provider als Free-User");
   });
 
-  it("Restore eines Nicht-Satellite-Snapshots gelingt für Free-User", async () => {
-    const { error } = await client.rpc("restore_track_version", { p_version_id: versionWithoutSatelliteId });
-    assertNoError(error, "restore non-satellite als Free-User");
+  it("Restore eines OSM-Snapshots gelingt für Free-User", async () => {
+    const { error } = await client.rpc("restore_track_version", { p_version_id: versionWithOsmId });
+    assertNoError(error, "restore osm als Free-User");
 
     const { data: track } = await client
       .from("tracks")
-      .select("manual_width, manual_length, map_satellite")
+      .select("manual_width, manual_length, map_provider_id")
       .eq("id", trackId)
       .single();
     expect(track?.manual_width).toBe(18);
     expect(track?.manual_length).toBe(36);
-    expect(track?.map_satellite).toBe(false);
+    expect(track?.map_provider_id).toBe("osm");
   });
 });
 
@@ -327,7 +327,7 @@ describe("Versionshistorie — Race-Lock (parallele Snapshots)", () => {
     trackId = data as string;
     await client.rpc("save_track", {
       p_track_id: trackId, p_state_json: { items: [], arrows: [] },
-      p_area_sel: null, p_width: 18, p_length: 36, p_satellite: false, p_opacity: 0.5,
+      p_area_sel: null, p_width: 18, p_length: 36, p_map_provider_id: "osm", p_opacity: 0.5,
     });
   });
 
@@ -365,7 +365,7 @@ describe("Versionshistorie — Gleitendes Limit (Pro=10)", () => {
     trackId = data as string;
     await client.rpc("save_track", {
       p_track_id: trackId, p_state_json: { items: [], arrows: [] },
-      p_area_sel: null, p_width: 18, p_length: 36, p_satellite: false, p_opacity: 0.5,
+      p_area_sel: null, p_width: 18, p_length: 36, p_map_provider_id: "osm", p_opacity: 0.5,
     });
   });
 
@@ -411,7 +411,7 @@ describe("Versionshistorie — Speichern unter (create_track_from_version)", () 
     trackId = data as string;
     await client.rpc("save_track", {
       p_track_id: trackId, p_state_json: snapshotState,
-      p_area_sel: mockAreaSel, p_width: 22, p_length: 44, p_satellite: false, p_opacity: 0.6,
+      p_area_sel: mockAreaSel, p_width: 22, p_length: 44, p_map_provider_id: "osm", p_opacity: 0.6,
     });
     const { data: vid } = await client.rpc("create_track_version", { p_track_id: trackId });
     versionId = vid as string;
@@ -419,7 +419,7 @@ describe("Versionshistorie — Speichern unter (create_track_from_version)", () 
     // Ursprungstrack danach verändern — Save-As muss diesen NICHT beeinflussen
     await client.rpc("save_track", {
       p_track_id: trackId, p_state_json: { items: [], arrows: [] },
-      p_area_sel: null, p_width: 30, p_length: 50, p_satellite: false, p_opacity: 0.9,
+      p_area_sel: null, p_width: 30, p_length: 50, p_map_provider_id: "osm", p_opacity: 0.9,
     });
   });
 
@@ -438,7 +438,7 @@ describe("Versionshistorie — Speichern unter (create_track_from_version)", () 
 
     const { data: newTrack, error: fetchErr } = await client
       .from("tracks")
-      .select("name, state_json, area_sel_json, manual_width, manual_length, map_satellite, map_opacity")
+      .select("name, state_json, area_sel_json, manual_width, manual_length, map_provider_id, map_opacity")
       .eq("id", newId as string)
       .single();
     assertNoError(fetchErr, "fetch neuer Track");
@@ -449,7 +449,7 @@ describe("Versionshistorie — Speichern unter (create_track_from_version)", () 
     expect(newTrack!.area_sel_json).toMatchObject({ widthM: 80, heightM: 40 });
     expect(newTrack!.manual_width).toBe(22);
     expect(newTrack!.manual_length).toBe(44);
-    expect(newTrack!.map_satellite).toBe(false);
+    expect(newTrack!.map_provider_id).toBe("osm");
     expect(Number(newTrack!.map_opacity)).toBeCloseTo(0.6);
 
     // Kern-Anforderung: der Ursprungstrack bleibt vom Save-As unberührt
@@ -515,7 +515,7 @@ describe("Versionshistorie — Speichern unter: gelöschter Account", () => {
     const { data: tid } = await client.rpc("create_track", { track_name: "Deleted-Account-Test" });
     await client.rpc("save_track", {
       p_track_id: tid as string, p_state_json: { items: [], arrows: [] },
-      p_area_sel: null, p_width: 18, p_length: 36, p_satellite: false, p_opacity: 0.5,
+      p_area_sel: null, p_width: 18, p_length: 36, p_map_provider_id: "osm", p_opacity: 0.5,
     });
     const { data: vid } = await client.rpc("create_track_version", { p_track_id: tid as string });
     versionId = vid as string;
@@ -655,12 +655,12 @@ describe("Track-Limit ist race-sicher für create_track (FOR UPDATE)", () => {
   });
 });
 
-describe("Versionshistorie — Speichern unter: Satellite-Gate (Pro→Free)", () => {
+describe("Versionshistorie — Speichern unter: Map-Provider-Gate (Pro→Free)", () => {
   let client: Awaited<ReturnType<typeof loginAsUser>>;
   const userIds: string[] = [];
   let userId: string;
-  let versionWithSatelliteId: string;
-  let versionWithoutSatelliteId: string;
+  let versionWithRlpId: string;
+  let versionWithOsmId: string;
 
   beforeAll(async () => {
     const email = `int-saveas-sat-${ts()}@test.invalid`;
@@ -669,22 +669,22 @@ describe("Versionshistorie — Speichern unter: Satellite-Gate (Pro→Free)", ()
     userIds.push(user.id);
     client = await loginAsUser(email);
 
-    const { data: tid } = await client.rpc("create_track", { track_name: "Satellite-SaveAs-Test" });
+    const { data: tid } = await client.rpc("create_track", { track_name: "Map-Provider-SaveAs-Test" });
     const trackId = tid as string;
 
     await client.rpc("save_track", {
       p_track_id: trackId, p_state_json: { items: [], arrows: [] },
-      p_area_sel: null, p_width: 18, p_length: 36, p_satellite: false, p_opacity: 0.5,
+      p_area_sel: null, p_width: 18, p_length: 36, p_map_provider_id: "osm", p_opacity: 0.5,
     });
     const { data: v1 } = await client.rpc("create_track_version", { p_track_id: trackId });
-    versionWithoutSatelliteId = v1 as string;
+    versionWithOsmId = v1 as string;
 
     await client.rpc("save_track", {
       p_track_id: trackId, p_state_json: { items: [], arrows: [] },
-      p_area_sel: null, p_width: 20, p_length: 40, p_satellite: true, p_opacity: 0.7,
+      p_area_sel: null, p_width: 20, p_length: 40, p_map_provider_id: "rlp_dop20", p_opacity: 0.7,
     });
     const { data: v2 } = await client.rpc("create_track_version", { p_track_id: trackId });
-    versionWithSatelliteId = v2 as string;
+    versionWithRlpId = v2 as string;
 
     // Downgrade auf Free — der Ursprungstrack + 1 Snapshot-Track zählen gegen das Free-Limit (3)
     await admin.from("profiles").update({ tier: "free" }).eq("id", userId);
@@ -694,23 +694,23 @@ describe("Versionshistorie — Speichern unter: Satellite-Gate (Pro→Free)", ()
     await cleanupUsers(userIds);
   });
 
-  it("Save-As eines Satellite-Snapshots schlägt für Free-User fehl", async () => {
+  it("Save-As eines Premium-Provider-Snapshots schlägt für Free-User fehl", async () => {
     const { error } = await client.rpc("create_track_from_version", {
-      p_version_id: versionWithSatelliteId,
-      p_name: "Satellite-Kopie",
+      p_version_id: versionWithRlpId,
+      p_name: "RLP-Kopie",
     });
-    assertRpcError(error, "satellite_requires_pro", "create_track_from_version satellite als Free-User");
+    assertRpcError(error, "map_provider_requires_pro", "create_track_from_version premium provider als Free-User");
   });
 
-  it("Save-As eines Nicht-Satellite-Snapshots gelingt für Free-User", async () => {
+  it("Save-As eines OSM-Snapshots gelingt für Free-User", async () => {
     const { data: newId, error } = await client.rpc("create_track_from_version", {
-      p_version_id: versionWithoutSatelliteId,
-      p_name: "Non-Satellite-Kopie",
+      p_version_id: versionWithOsmId,
+      p_name: "Non-RLP-Kopie",
     });
-    assertNoError(error, "create_track_from_version non-satellite als Free-User");
+    assertNoError(error, "create_track_from_version osm als Free-User");
     const { data: newTrack } = await client
-      .from("tracks").select("map_satellite").eq("id", newId as string).single();
-    expect(newTrack?.map_satellite).toBe(false);
+      .from("tracks").select("map_provider_id").eq("id", newId as string).single();
+    expect(newTrack?.map_provider_id).toBe("osm");
   });
 });
 
@@ -732,7 +732,7 @@ describe("Versionshistorie — Speichern unter: RLS Fremdzugriff", () => {
     const { data: tid } = await clientA.rpc("create_track", { track_name: "RLS-SaveAs-A" });
     await clientA.rpc("save_track", {
       p_track_id: tid as string, p_state_json: { items: [], arrows: [] },
-      p_area_sel: null, p_width: 18, p_length: 36, p_satellite: false, p_opacity: 0.5,
+      p_area_sel: null, p_width: 18, p_length: 36, p_map_provider_id: "osm", p_opacity: 0.5,
     });
     const { data: vid } = await clientA.rpc("create_track_version", { p_track_id: tid as string });
     versionIdA = vid as string;

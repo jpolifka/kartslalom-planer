@@ -26,14 +26,22 @@ export type PdfMapConfig = {
   wmsImageDataUri?: string;
 };
 
-// Löst für einen WMS-Provider (z. B. RLP-DOP20) das Bild vorab über den
-// map-background-image-Edge-Function-Proxy auf (JWT/Tier/BBOX-geprüft,
-// siehe supabase/functions/map-background-image) und liefert es als
-// data:-URI zurück — der Export bettet dann kein von der Live-Erreichbarkeit
-// des WMS-Diensts abhängiges <image href> mehr ein. Für "xyz"-Provider (OSM)
-// oder ohne aktive Session (Gast-Modus, kein Proxy-Aufruf möglich) wird null
-// zurückgegeben; buildTileSvg fällt dann auf die direkte WMS-URL zurück
-// (identisch zum bisherigen Verhalten).
+// Löst für einen WMS-Provider (z. B. RLP-DOP20) das Bild vorab auf und
+// liefert es als data:-URI zurück — der Export bettet dann kein von der
+// Live-Erreichbarkeit des WMS-Diensts abhängiges <image href> mehr ein. Für
+// "xyz"-Provider (OSM) wird null zurückgegeben; buildTileSvg fällt dann auf
+// die direkte Tile-URL zurück (identisch zum bisherigen Verhalten).
+//
+// Mit aktiver Session läuft die Auflösung über den map-background-image-
+// Edge-Function-Proxy (JWT/Tier/BBOX-geprüft, siehe
+// supabase/functions/map-background-image). Ohne Session (Gast-Modus, kein
+// Proxy-Aufruf möglich, da der Proxy Auth verlangt) holt der Browser das Bild
+// direkt vom RLP-WMS-Dienst — der Dienst sendet
+// `Access-Control-Allow-Origin: *`, ein direkter Fetch ist also möglich (per
+// curl gegen den echten Dienst verifiziert, 2026-07-08). Schlägt der direkte
+// Fetch fehl (Netzwerk, CORS-Änderung beim Anbieter), fällt der Export auf
+// die rohe Bild-URL zurück statt zu scheitern — identisch zum Verhalten vor
+// dieser Änderung.
 export async function resolveWmsExportImage(
   mapConfig: PdfMapConfig,
   fieldWidth: number,
@@ -51,7 +59,15 @@ export async function resolveWmsExportImage(
   if (layout.kind !== "wms") return null;
 
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return layout.imageUrl;
+  if (!session) {
+    try {
+      const directRes = await fetch(layout.imageUrl);
+      if (!directRes.ok) return layout.imageUrl;
+      return await blobToDataUri(await directRes.blob());
+    } catch {
+      return layout.imageUrl;
+    }
+  }
 
   const res = await fetch(functionsUrl("map-background-image"), {
     method: "POST",

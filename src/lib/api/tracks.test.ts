@@ -20,7 +20,7 @@ const minimalState = {
   arrows: [],
   manualWidth: 20,
   manualLength: 40,
-  mapSatellite: false,
+  mapProviderId: "osm" as const,
   mapOpacity: 1,
   areaSel: null,
 };
@@ -64,9 +64,9 @@ describe("saveTrack", () => {
     expect(mockRpc).toHaveBeenCalledWith("save_track", expect.objectContaining({ p_track_id: "track-1" }));
   });
 
-  it("maps satellite_requires_pro error", async () => {
-    mockRpc.mockResolvedValue(err("satellite_requires_pro"));
-    await expect(saveTrack("t", { ...minimalState, mapSatellite: true })).rejects.toThrow("SATELLITE_REQUIRES_PRO");
+  it("maps map_provider_requires_pro error", async () => {
+    mockRpc.mockResolvedValue(err("map_provider_requires_pro"));
+    await expect(saveTrack("t", { ...minimalState, mapProviderId: "rlp_dop20" })).rejects.toThrow("MAP_PROVIDER_REQUIRES_PRO");
   });
 
   it("maps not_owner error", async () => {
@@ -118,9 +118,9 @@ describe("createTrackFromVersion", () => {
     await expect(createTrackFromVersion("v", "n")).rejects.toThrow("TRACK_LIMIT_REACHED");
   });
 
-  it("maps satellite_requires_pro error", async () => {
-    mockRpc.mockResolvedValue(err("satellite_requires_pro"));
-    await expect(createTrackFromVersion("v", "n")).rejects.toThrow("SATELLITE_REQUIRES_PRO");
+  it("maps map_provider_requires_pro error", async () => {
+    mockRpc.mockResolvedValue(err("map_provider_requires_pro"));
+    await expect(createTrackFromVersion("v", "n")).rejects.toThrow("MAP_PROVIDER_REQUIRES_PRO");
   });
 
   it("maps not_owner error", async () => {

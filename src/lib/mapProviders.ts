@@ -12,6 +12,8 @@
 // kommerzieller Nutzung, siehe project_esri_osm_licensing-Notiz) und durch
 // den amtlichen RLP-DOP20-Dienst ersetzt.
 
+import type { GeoBounds } from "./geo";
+
 export type MapProviderId = "osm" | "rlp_dop20";
 
 export type GeographicBounds = { west: number; south: number; east: number; north: number };
@@ -51,10 +53,15 @@ export const MAP_PROVIDERS: Record<MapProviderId, MapProvider> = {
     label: "Luftbild Rheinland-Pfalz",
     kind: "wms",
     requiresPro: true,
-    // Amtlicher Quellenvermerk lt. Metadaten des Dienstes (LVermGeoRP,
-    // dl-de/by-2-0). Jahr bewusst weggelassen (wechselnder Datenbezugsstand,
-    // kein fixes Aktualisierungsdatum bekannt) — siehe docs falls präzisiert.
-    attribution: "© GeoBasis-DE / LVermGeoRP, dl-de/by-2-0",
+    // Amtlicher Quellenvermerk lt. GetCapabilities-Fees-Feld des Dienstes:
+    // "©GeoBasis-DE / LVermGeoRP (Jahr des Datenbezugs), dl-de/by-2-0,
+    // http://www.lvermgeo.rlp.de [Daten bearbeitet]". "(Jahr des
+    // Datenbezugs)" ist im Muster selbst nur ein Platzhalter — der Dienst
+    // mosaikiert Luftbilder aus unterschiedlichen Befliegungsjahren, es gibt
+    // kein einzelnes auslesbares Jahr. Jahr daher bewusst weggelassen, URL
+    // und "Daten bearbeitet" (Zuschnitt/Skalierung/Rotation/Überlagerung im
+    // Export) ergänzt.
+    attribution: "© GeoBasis-DE / LVermGeoRP, dl-de/by-2-0, www.lvermgeo.rlp.de, Daten bearbeitet",
     // Abdeckung lt. GetCapabilities des Dienstes (LatLonBoundingBox), geprüft 2026-07-06.
     coverage: { west: 6.037773, south: 48.897996, east: 8.617703, north: 51.000893 },
     wms: {
@@ -66,13 +73,19 @@ export const MAP_PROVIDERS: Record<MapProviderId, MapProvider> = {
   },
 };
 
-/** Prüft, ob ein Provider mit begrenzter Abdeckung (z. B. RLP-DOP20) den
- *  angegebenen Punkt abdeckt. Provider ohne coverage (z. B. OSM) decken
- *  immer ab. */
-export function providerCoversPoint(provider: MapProvider, lat: number, lng: number): boolean {
+/** Prüft, ob ein Provider mit begrenzter Abdeckung die komplette (rotierte)
+ *  Auswahl-Envelope abdeckt, nicht nur den Mittelpunkt — dieselbe Envelope
+ *  (areaSelectionToBounds), die auch als WMS-BBox an den Export-Proxy geht.
+ *  Provider ohne coverage (z. B. OSM) decken immer ab. */
+export function providerCoversBounds(provider: MapProvider, bounds: GeoBounds): boolean {
   const b = provider.coverage;
   if (!b) return true;
-  return lng >= b.west && lng <= b.east && lat >= b.south && lat <= b.north;
+  return (
+    bounds.lng1 >= b.west &&
+    bounds.lng2 <= b.east &&
+    bounds.lat2 >= b.south &&
+    bounds.lat1 <= b.north
+  );
 }
 
 /** Baut die WMS-GetMap-URL für eine BBox (EPSG:3857-Meter,
