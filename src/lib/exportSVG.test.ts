@@ -115,6 +115,26 @@ describe("generateTrackSVG mit background-Parameter", () => {
     const svg = generateTrackSVG(18, 36, [customItem()], [], null, "transparent");
     expect(svg).not.toContain('fill="white"');
   });
+
+  it("bei background=\"transparent\" fehlen Raster, Rand und m-Beschriftung (sauberes Overlay)", () => {
+    const svg = generateTrackSVG(18, 36, [customItem()], [], null, "transparent");
+    expect(svg).not.toContain("#e2e8f0");
+    expect(svg).not.toContain("#cbd5e1");
+    expect(svg).not.toContain('stroke="#0f172a" stroke-width="3"');
+    expect(svg).not.toContain('<g font-family="Arial,sans-serif" font-size=');
+  });
+
+  it("bei background=\"white\" sind Raster/Rand/Beschriftung weiterhin vorhanden", () => {
+    const svg = generateTrackSVG(18, 36, [customItem()], []);
+    expect(svg).toContain("#e2e8f0");
+    expect(svg).toContain("#cbd5e1");
+    expect(svg).toContain('stroke="#0f172a" stroke-width="3"');
+  });
+
+  it("Raster ist ohne Kartenhintergrund gedämpft (opacity 0.35, nicht voll deckend)", () => {
+    const svg = generateTrackSVG(18, 36, [customItem()], []);
+    expect(svg).toContain('stroke="#e2e8f0" stroke-width="1" opacity="0.35"');
+  });
 });
 
 // H5: PDF-Smoke-Test — Custom-Snapshot überlebt PDF-Erzeugung
