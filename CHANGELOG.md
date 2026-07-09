@@ -1,5 +1,32 @@
 # Changelog
 
+## 2.6.0
+
+### Changed
+- **Kartenanbieter-Abstraktion**: Der Satellitenbild-Hintergrund läuft jetzt über eine
+  generische Provider-Registry (`map_provider_id`-Spalte statt Boolean-Flag) statt
+  verstreuter Esri/OSM-Ternaries — Grundlage für weitere Kartenanbieter.
+- **RLP-DOP20 statt Esri World Imagery**: Der Luftbild-Hintergrund nutzt jetzt
+  ausschließlich den amtlichen WMS-Dienst RLP-DOP20; Esri wurde vollständig entfernt
+  (Esri erlaubte den kostenlosen Zugriff nur für "Noncommercial Use").
+
+### Security
+- Export-Proxy für den WMS-Kartenhintergrund gehärtet, Gast-Export-Fetch abgesichert,
+  `save_track`-Rechte in einer zweiten Review-Runde nachgeschärft.
+
+### Fixed
+- **Bibliotheks-Formationen**: "Meine Hindernisse" zeigte durch einen fehlenden
+  Owner-Filter fälschlich auch fremde, in die Bibliothek aufgenommene Formationen an;
+  das Öffnen einer solchen Formation scheiterte gleichzeitig mit "Kein Zugriff", weil
+  die Berechtigungs-RPC die Bibliotheks-Mitgliedschaft nicht kannte. Behoben:
+  `fetchCustomFormations` filtert jetzt nach `owner_id`; `get_my_formation_permission`
+  und `duplicate_custom_formation` kennen `is_library=true` jetzt als Read-only-Zugriff
+  für alle eingeloggten Nutzer (Admins behalten vollen Bearbeitungszugriff auf jede
+  fremde Formation).
+- Export: Raster in SVG/PDF gedämpft dargestellt, bei PNG-Export vollständig entfernt
+  statt nur den weißen Hintergrund wegzulassen.
+- Lokaler OTP-Login-Flow im Dev-Setup vollständig repariert.
+
 ## 2.5.0
 
 ### Added
