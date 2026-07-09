@@ -6,10 +6,10 @@
 
 import { vi, describe, it, expect, beforeEach } from "vitest";
 
-const { mockRpc } = vi.hoisted(() => ({ mockRpc: vi.fn() }));
+const { mockRpc, mockFrom } = vi.hoisted(() => ({ mockRpc: vi.fn(), mockFrom: vi.fn() }));
 
 vi.mock("../supabase", () => ({
-  supabase: { rpc: mockRpc, from: vi.fn() },
+  supabase: { rpc: mockRpc, from: mockFrom },
 }));
 
 import {
@@ -17,6 +17,7 @@ import {
   updateCustomFormation,
   deleteCustomFormation,
   setDisplayName,
+  fetchCustomFormations,
 } from "./customFormations";
 
 const BASE_PARAMS = {
@@ -128,6 +129,25 @@ describe("customFormations.ts: mapError — deleteCustomFormation", () => {
   it("not_authorized → NOT_AUTHORIZED", async () => {
     mockRpc.mockReturnValue(rpcError("not_authorized"));
     await expect(deleteCustomFormation("id-1")).rejects.toThrow("NOT_AUTHORIZED");
+  });
+});
+
+describe("customFormations.ts: fetchCustomFormations", () => {
+  // RLS erlaubt zusätzlich geteilte und Library-Formationen (is_library=true) —
+  // ohne expliziten Owner-Filter würden diese fälschlich unter "Meine Hindernisse"
+  // auftauchen (siehe PR #16).
+  it("filtert explizit nach owner_id statt sich allein auf RLS zu verlassen", async () => {
+    const orderMock = vi.fn().mockResolvedValue({ data: [{ id: "f1", owner_id: "user-123" }], error: null });
+    const eqMock = vi.fn().mockReturnValue({ order: orderMock });
+    const selectMock = vi.fn().mockReturnValue({ eq: eqMock });
+    mockFrom.mockReturnValue({ select: selectMock });
+
+    const result = await fetchCustomFormations("user-123");
+
+    expect(mockFrom).toHaveBeenCalledWith("custom_formations");
+    expect(eqMock).toHaveBeenCalledWith("owner_id", "user-123");
+    expect(orderMock).toHaveBeenCalledWith("updated_at", { ascending: false });
+    expect(result).toEqual([{ id: "f1", owner_id: "user-123" }]);
   });
 });
 

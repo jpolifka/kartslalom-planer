@@ -9,6 +9,7 @@ import FormationEditorCanvas, { type EditorTool, type MeasurementLine, type Guid
 import FormationMetaPanel from "../components/formation-editor/FormationMetaPanel";
 import BasisAuswahl from "../components/formation-editor/BasisAuswahl";
 import { useCustomFormation, useCreateCustomFormation, useUpdateCustomFormation, useFormationPermission, useDuplicateCustomFormation, useAdminFormation, useAdminUpdateFormation } from "../hooks/useCustomFormations";
+import { resolveFormationAccess, isAccessDenied } from "../lib/formations/permission";
 import { useFeatureGate } from "../hooks/useFeatureGate";
 import { useAuthStore } from "../store/authStore";
 import { useProfile } from "../hooks/useProfile";
@@ -91,17 +92,16 @@ export default function FormationEditorPage() {
   const adminUpdateMutation = useAdminUpdateFormation();
   const duplicateMutation = useDuplicateCustomFormation();
 
-  // Ist die Formation fremd (Admin greift per SECURITY DEFINER RPC zu)?
-  const isAdminForeignFormation = needAdminFetch && !!adminFormation;
-
   const { data: permission, isLoading: permissionLoading } = useFormationPermission(isEdit ? id : undefined);
-  // get_my_formation_permission kennt nur Owner/Share-Beziehungen, keine Library-Mitgliedschaft.
-  // Explizit in die Bibliothek aufgenommene Formationen (is_library=true) sind daher für alle
-  // eingeloggten Nutzer ohne Owner/Share-Eintrag zusätzlich als "view" zugänglich.
-  const isLibraryFormation = !!effectiveFormation?.is_library;
-  // Admin darf fremde Formationen vollständig bearbeiten (via admin_update_custom_formation)
-  const effectivePermission = (isAdmin && permission === null) ? "edit" : (permission ?? (isLibraryFormation ? "view" : null));
-  const isReadOnly = isEdit && effectivePermission === "view";
+  // get_my_formation_permission kennt Owner/Share/Library (is_library=true -> "view").
+  // Admins duerfen zusaetzlich jede fremde Formation bearbeiten — siehe resolveFormationAccess.
+  const { effectivePermission, isReadOnly, isAdminForeignFormation } = resolveFormationAccess({
+    isEdit,
+    isAdmin,
+    permission,
+    ownerId: effectiveFormation?.owner_id,
+    currentUserId: session?.user.id,
+  });
   const isSharedEdit = isEdit && effectivePermission === "edit" && !isAdminForeignFormation;
 
   // edit-share users können speichern, auch wenn ihr eigener Tier free ist
@@ -222,14 +222,20 @@ export default function FormationEditorPage() {
 
   const handleSave = isCloudMode ? () => saveToCloud() : () => saveToLocalStorage();
 
+  const PRO_REQUIRED_HINT = "Eigene Hindernisse erfordern einen Pro-Tarif. Schreib uns: jens(at)polifka.info";
+
   async function handleDuplicate() {
     if (!id) return;
+    // Free-Tarif: RPC würde ohnehin mit premium_required scheitern — direkt den
+    // Upgrade-Hinweis zeigen statt erst einen Fehler abzuwarten (Button ist dafür
+    // separat als Upgrade-Aktion beschriftet, siehe unten).
+    if (!allowed) { alert(PRO_REQUIRED_HINT); return; }
     try {
       const newId = await duplicateMutation.mutateAsync(id);
       navigate(`/formations/${newId}`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
-      if (msg === "PREMIUM_REQUIRED") alert("Eigene Hindernisse erfordern einen Pro-Tarif. Schreib uns: jens(at)polifka.info");
+      if (msg === "PREMIUM_REQUIRED") alert(PRO_REQUIRED_HINT);
       else if (msg === "FORMATION_LIMIT_REACHED") alert("Du hast die maximale Anzahl eigener Hindernisse erreicht (100).");
       else alert("Hindernis konnte nicht dupliziert werden.");
     }
@@ -366,7 +372,7 @@ export default function FormationEditorPage() {
   if (isEdit && (cloudLoading || permissionLoading || (needAdminFetch && adminLoading))) {
     return <div style={{ padding: 40, color: "#6b7280" }}>Lädt Hindernis…</div>;
   }
-  if (isEdit && !permissionLoading && !isAdmin && permission === null && !isLibraryFormation) {
+  if (isEdit && !permissionLoading && isAccessDenied({ isAdmin, permission })) {
     return <div style={{ padding: 40, color: "#ef4444" }}>Kein Zugriff auf dieses Hindernis.</div>;
   }
 
@@ -411,7 +417,7 @@ export default function FormationEditorPage() {
             onClick={handleDuplicate}
             disabled={duplicateMutation.isPending}
           >
-            {duplicateMutation.isPending ? "Kopiere…" : "Als Kopie speichern"}
+            {duplicateMutation.isPending ? "Kopiere…" : allowed ? "Als Kopie speichern" : "Als eigene Formation übernehmen – Pro"}
           </button>
         ) : (
           <button
