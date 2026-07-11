@@ -2,10 +2,12 @@
 // Copyright (c) Jens Polifka
 // All rights reserved.
 
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { LogOut, ShieldCheck } from "lucide-react";
+import { LogOut, MessageSquare, ShieldCheck } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { useAuthStore } from "../../store/authStore";
+import FeedbackDialog from "../FeedbackDialog";
 
 const navLink: React.CSSProperties = { color: "#475569", textDecoration: "none", fontSize: 13 };
 const dim: React.CSSProperties = { color: "#94a3b8", fontSize: 13 };
@@ -13,6 +15,7 @@ const dim: React.CSSProperties = { color: "#94a3b8", fontSize: 13 };
 export default function GlobalNav() {
   const navigate = useNavigate();
   const { session, profile } = useAuthStore();
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -60,8 +63,20 @@ export default function GlobalNav() {
           <Link to="/login" style={{ ...navLink, fontWeight: 600, color: "var(--c-primary)" }}>Anmelden</Link>
         )}
         <span style={{ width: 1, height: 16, background: "#e2e8f0" }} />
+        <button
+          onClick={() => setFeedbackOpen(true)}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 5,
+            border: "none", background: "none", padding: 0, cursor: "pointer",
+            color: "#475569", fontSize: 13,
+          }}
+        >
+          <MessageSquare size={13} /> Feedback
+        </button>
+        <span style={{ width: 1, height: 16, background: "#e2e8f0" }} />
         <Link to="/impressum" style={dim}>Impressum</Link>
       </nav>
+      <FeedbackDialog isOpen={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </header>
   );
 }
