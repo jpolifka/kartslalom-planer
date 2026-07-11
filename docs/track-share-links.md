@@ -73,7 +73,10 @@ DoD gefordert):
   Nutzung der OSM-Daten selbst ist erlaubt (ODbL), aber die Tile-Usage-Policy
   des Demo-Servers ist ausdrücklich nur für Entwicklung/geringes Volumen
   gedacht — für produktive öffentliche Nutzung wird ein kommerzieller
-  Anbieter oder Self-Hosting empfohlen.
+  Anbieter oder Self-Hosting empfohlen. Der öffentliche Demo-Server wird
+  während der Pilotphase bewusst weiter genutzt (geringer Traffic); eine
+  Neubewertung erfolgt bei relevantem Traffic oder vor einem größeren
+  öffentlichen Rollout (siehe `docs/roadmap.md`, Phase "Später").
 
 **Update (2026-07-08):** Esri World Imagery wurde vollständig durch den
 amtlichen RLP-DOP20-WMS-Dienst (GeoBasis-DE/LVermGeoRP, dl-de/by-2-0) ersetzt
@@ -81,8 +84,9 @@ amtlichen RLP-DOP20-WMS-Dienst (GeoBasis-DE/LVermGeoRP, dl-de/by-2-0) ersetzt
 Esri-Lizenzpunkt erledigt; die RLP-DOP20-Nutzungsbedingungen (dl-de/by-2-0)
 erlauben kommerzielle Nutzung inkl. öffentlicher Weiterverbreitung, solange
 die Quelle genannt wird (Attribution im Provider-Eintrag hinterlegt). Die
-OSM-Tile-Usage-Policy-Frage (Demo-Server, Betriebs-Block der Roadmap) bleibt
-unverändert offen.
+OSM-Tile-Usage-Policy-Frage (Demo-Server) ist kein akuter Blocker mehr,
+sondern eine bewusst zurückgestellte Entscheidung für die Zeit nach der
+Pilotphase (siehe `docs/roadmap.md`).
 
 **Entscheidung (2026-07-06, weiterhin gültig):** Der öffentliche Share-Viewer
 (`/share/:token`) zeigt generell **keinen Kartenhintergrund**, unabhängig
@@ -118,4 +122,5 @@ Roadmap eingeplant, nicht Teil dieses Features.
 
 - Mehrere gleichzeitig aktive Links pro Strecke.
 - Ablaufdatum/Gültigkeitsdauer.
-- OSM-Tile-Anbieterwechsel/Self-Hosting — Betriebs-Block der Roadmap.
+- OSM-Tile-Anbieterwechsel/Self-Hosting — zurückgestellt auf "Später"
+  (`docs/roadmap.md`), erst bei relevantem Traffic.

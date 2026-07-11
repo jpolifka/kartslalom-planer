@@ -80,6 +80,8 @@ export default function LoginPage() {
             }}>
               Anmeldelink wurde an <strong>{email}</strong> gesendet. Klicke auf den Link in der E-Mail
               oder gib den 8-stelligen Code ein.
+              <br />
+              Falls die E-Mail nicht ankommt: bitte auch im Spam- bzw. Junk-Ordner nachsehen.
             </div>
             <form onSubmit={handleOtpSubmit} style={{ display: "grid", gap: 12 }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: "#475569" }}>
