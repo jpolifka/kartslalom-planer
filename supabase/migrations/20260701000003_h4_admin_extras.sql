@@ -10,6 +10,13 @@
 -- Muss als supabase_admin ausgeführt werden.
 
 -- 1. admin_list_tracks — als SQL-Funktion (kein plpgsql scope-Konflikt)
+-- DROP zuerst: rein defensiv, falls diese Migration auf eine DB trifft, die
+-- admin_list_tracks bereits mit abweichenden OUT-Parametern kennt (z. B.
+-- 20260701000005 wurde dort schon angewendet) — sonst bricht CREATE OR
+-- REPLACE mit "cannot change return type of existing function" ab. Auf
+-- frischen Installationen ein No-Op.
+drop function if exists public.admin_list_tracks(uuid);
+
 create or replace function public.admin_list_tracks(
   p_owner_id uuid default null
 ) returns table (

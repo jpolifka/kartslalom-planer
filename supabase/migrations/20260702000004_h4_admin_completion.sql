@@ -23,7 +23,11 @@ grant execute on function public.is_current_user_admin() to authenticated;
 -- Vorherige Versionen (006, 007) entfernen bevor wir den neuen Return-Typ anlegen.
 drop function if exists public.admin_list_custom_formations(text, text);
 
-create function public.admin_list_custom_formations(
+-- CREATE OR REPLACE statt CREATE: defensiv, falls die 4-Parameter-Signatur
+-- (mit p_limit/p_offset) auf dieser DB schon existiert (siehe admin_list_tracks
+-- in 20260701000003 für denselben Fall). No-Op-Unterschied auf frischen
+-- Installationen, wo sie noch nicht existiert.
+create or replace function public.admin_list_custom_formations(
   p_status    text    default null,
   p_category  text    default null,
   p_limit     integer default 100,

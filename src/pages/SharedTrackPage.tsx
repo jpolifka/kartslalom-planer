@@ -24,6 +24,10 @@ export default function SharedTrackPage() {
     if (!data) return null;
     // Bewusst ohne Kartenhintergrund (kein mapConfig) — siehe
     // docs/track-share-links.md (Kartenanbieter-Nutzungsbedingungen).
+    // manual_width/manual_length sind hier bereits die effektive Feldgröße
+    // (siehe SharedTrackDetail-Typ) — bei Strecken mit Kartenausschnitt NICHT
+    // mehr die reinen 18x36-Manual-Defaults, sonst wäre die Skalierung falsch
+    // und Items würden außerhalb der viewBox landen.
     const svg = generateTrackSVG(
       data.manual_width, data.manual_length,
       data.state_json.items, data.state_json.arrows
