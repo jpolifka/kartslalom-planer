@@ -139,6 +139,19 @@ function fmt(n: number) {
   return n.toFixed(2);
 }
 
+// Formation-Labels (customSnapshot.label) stammen aus freier Nutzereingabe im
+// Editor und landen unescaped als SVG-Text — ohne dies bricht ein Label wie
+// `</text><image href=x onerror=...>` aus dem <text>-Element aus (Stored-
+// Injection ins heruntergeladene SVG bzw. den innerHTML-PDF-Container).
+function escapeXml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;");
+}
+
 function arrowHeadPoints(
   ex: number, ey: number,
   cpx: number, cpy: number,
@@ -312,7 +325,7 @@ export function generateTrackSVG(
     out.push(
       `<text x="3" y="-3"` +
       ` font-family="Arial,sans-serif" font-size="${labelSize}"` +
-      ` fill="#475569">${formation.label}</text>`
+      ` fill="#475569">${escapeXml(formation.label)}</text>`
     );
 
     out.push(`</g>`);
@@ -334,7 +347,7 @@ export function generateTrackSVG(
     const boxW = attribution.length * 4.2 + 8;
     out.push(
       `<rect x="${fmt(SVG_WIDTH - boxW - 4)}" y="${fmt(svgH - 14)}" width="${fmt(boxW)}" height="11" fill="white" fill-opacity="0.75" rx="2"/>` +
-      `<text x="${SVG_WIDTH - 8}" y="${fmt(svgH - 6)}" font-family="Arial,sans-serif" font-size="${fontSize}" fill="#1f2937" text-anchor="end">${attribution}</text>`
+      `<text x="${SVG_WIDTH - 8}" y="${fmt(svgH - 6)}" font-family="Arial,sans-serif" font-size="${fontSize}" fill="#1f2937" text-anchor="end">${escapeXml(attribution)}</text>`
     );
   }
 

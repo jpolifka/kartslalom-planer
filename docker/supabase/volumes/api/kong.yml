@@ -1,6 +1,15 @@
 _format_version: '2.1'
 _transform: true
 
+# Red-Team-Review 2026-07-13: Das cors-Plugin lief an allen Routen ohne
+# config.origins -- Kong-Default ist dann "*", also Access-Control-Allow-
+# Origin: * fuer die komplette API (auth/rest/storage/functions/realtime),
+# unabhaengig davon, was einzelne Edge Functions selbst an CORS-Logik
+# implementieren (die wird von Kong ueberschrieben, siehe
+# supabase/functions/main/index.ts). $SITE_URL wird per kong-entrypoint.sh
+# (awk-Substitution) aus der Kong-Container-Umgebung eingesetzt -- siehe
+# docker/supabase/docker-compose.yml (kong-Service, SITE_URL-Env-Var).
+
 ###
 ### Consumers / Users
 ###
@@ -47,6 +56,13 @@ services:
           - /auth/v1/verify
     plugins:
       - name: cors
+        config:
+          origins:
+            - $SITE_URL
+            - http://localhost:5173
+            - http://localhost:5174
+            - http://127.0.0.1:5173
+            - http://127.0.0.1:5174
   - name: auth-v1-open-callback
     _comment: 'Auth: /auth/v1/callback* -> http://auth:9999/callback*'
     url: http://auth:9999/callback
@@ -57,6 +73,13 @@ services:
           - /auth/v1/callback
     plugins:
       - name: cors
+        config:
+          origins:
+            - $SITE_URL
+            - http://localhost:5173
+            - http://localhost:5174
+            - http://127.0.0.1:5173
+            - http://127.0.0.1:5174
   - name: auth-v1-open-authorize
     _comment: 'Auth: /auth/v1/authorize* -> http://auth:9999/authorize*'
     url: http://auth:9999/authorize
@@ -67,6 +90,13 @@ services:
           - /auth/v1/authorize
     plugins:
       - name: cors
+        config:
+          origins:
+            - $SITE_URL
+            - http://localhost:5173
+            - http://localhost:5174
+            - http://127.0.0.1:5173
+            - http://127.0.0.1:5174
   - name: auth-v1-open-jwks
     _comment: 'Auth: /auth/v1/.well-known/jwks.json -> http://auth:9999/.well-known/jwks.json'
     url: http://auth:9999/.well-known/jwks.json
@@ -77,6 +107,13 @@ services:
           - /auth/v1/.well-known/jwks.json
     plugins:
       - name: cors
+        config:
+          origins:
+            - $SITE_URL
+            - http://localhost:5173
+            - http://localhost:5174
+            - http://127.0.0.1:5173
+            - http://127.0.0.1:5174
 
   - name: auth-v1-open-sso-acs
     url: "http://auth:9999/sso/saml/acs"
@@ -87,6 +124,13 @@ services:
         - /sso/saml/acs
     plugins:
       - name: cors
+        config:
+          origins:
+            - $SITE_URL
+            - http://localhost:5173
+            - http://localhost:5174
+            - http://127.0.0.1:5173
+            - http://127.0.0.1:5174
 
   - name: auth-v1-open-sso-metadata
     url: "http://auth:9999/sso/saml/metadata"
@@ -97,6 +141,13 @@ services:
         - /sso/saml/metadata
     plugins:
       - name: cors
+        config:
+          origins:
+            - $SITE_URL
+            - http://localhost:5173
+            - http://localhost:5174
+            - http://127.0.0.1:5173
+            - http://127.0.0.1:5174
 
   ## Secure Auth routes
   - name: auth-v1
@@ -109,6 +160,13 @@ services:
           - /auth/v1/
     plugins:
       - name: cors
+        config:
+          origins:
+            - $SITE_URL
+            - http://localhost:5173
+            - http://localhost:5174
+            - http://127.0.0.1:5173
+            - http://127.0.0.1:5174
       - name: key-auth
         config:
           hide_credentials: false
@@ -138,6 +196,13 @@ services:
           - /rest/v1/
     plugins:
       - name: cors
+        config:
+          origins:
+            - $SITE_URL
+            - http://localhost:5173
+            - http://localhost:5174
+            - http://127.0.0.1:5173
+            - http://127.0.0.1:5174
       - name: key-auth
         config:
           hide_credentials: false
@@ -167,6 +232,13 @@ services:
           - /graphql/v1
     plugins:
       - name: cors
+        config:
+          origins:
+            - $SITE_URL
+            - http://localhost:5173
+            - http://localhost:5174
+            - http://127.0.0.1:5173
+            - http://127.0.0.1:5174
       - name: key-auth
         config:
           hide_credentials: false
@@ -198,6 +270,13 @@ services:
           - /realtime/v1/
     plugins:
       - name: cors
+        config:
+          origins:
+            - $SITE_URL
+            - http://localhost:5173
+            - http://localhost:5174
+            - http://127.0.0.1:5173
+            - http://127.0.0.1:5174
       - name: key-auth
         config:
           hide_credentials: false
@@ -259,6 +338,13 @@ services:
           - /realtime/v1/api
     plugins:
       - name: cors
+        config:
+          origins:
+            - $SITE_URL
+            - http://localhost:5173
+            - http://localhost:5174
+            - http://127.0.0.1:5173
+            - http://127.0.0.1:5174
       - name: key-auth
         config:
           hide_credentials: false
@@ -296,6 +382,13 @@ services:
           - /storage/v1/
     plugins:
       - name: cors
+        config:
+          origins:
+            - $SITE_URL
+            - http://localhost:5173
+            - http://localhost:5174
+            - http://127.0.0.1:5173
+            - http://127.0.0.1:5174
       - name: request-transformer
         config:
           add:
@@ -325,6 +418,13 @@ services:
           - /functions/v1/
     plugins:
       - name: cors
+        config:
+          origins:
+            - $SITE_URL
+            - http://localhost:5173
+            - http://localhost:5174
+            - http://127.0.0.1:5173
+            - http://127.0.0.1:5174
 
   ## OAuth 2.0 Authorization Server Metadata (RFC 8414)
   - name: well-known-oauth
@@ -337,6 +437,13 @@ services:
           - /.well-known/oauth-authorization-server
     plugins:
       - name: cors
+        config:
+          origins:
+            - $SITE_URL
+            - http://localhost:5173
+            - http://localhost:5174
+            - http://127.0.0.1:5173
+            - http://127.0.0.1:5174
 
   ## Analytics routes
   ## Not used - Studio and Vector talk directly to analytics via Docker networking.
@@ -435,6 +542,13 @@ services:
           - /
     plugins:
       - name: cors
+        config:
+          origins:
+            - $SITE_URL
+            - http://localhost:5173
+            - http://localhost:5174
+            - http://127.0.0.1:5173
+            - http://127.0.0.1:5174
       - name: basic-auth
         config:
           hide_credentials: true

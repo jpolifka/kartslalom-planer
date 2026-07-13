@@ -50,9 +50,22 @@ Zwei Ebenen, bewusst getrennt:
 
 1. **IP-basiert, Cloudflare-Tunnel-Ebene** — Infra-Konfiguration außerhalb
    dieses Repos, siehe Betriebs-Roadmap (Ops-Block). Noch nicht eingerichtet.
-2. **Einfacher Zähler pro Token** in `get_track_by_share_token()` (max. 120
+2. **Einfacher Zähler pro Token** in `get_track_by_share_token()` (max. 3000
    Aufrufe/Stunde, sonst `rate_limit_exceeded`) — Verteidigungstiefe, falls
    (1) fehlt oder umgangen wird. Kein Kong-Rate-Limiting-Plugin im Repo.
+
+   Ursprünglich 120/h (Red-Team-Review 2026-07-13): bei einem global pro
+   Token statt pro IP geführten Zähler kann ein Angreifer, der den Link
+   kennt, ihn absichtlich ausschöpfen und damit legitime Besucher für den
+   Rest des Stundenfensters aussperren (DoS gegen den Track-Eigentümer).
+   3000/h ist als Notfall-Bremse gegen automatisiertes Scraping gedacht,
+   nicht als praktisches Pro-Besucher-Limit — solange (1) fehlt, ist dieser
+   Zähler die einzige aktive Schutzschicht, ein hartes Limit auf einer für
+   normale Nutzung leicht erreichbaren Schwelle wäre also selbst das Risiko.
+   Zusätzlich wurde `for update of t` (Row-Lock bei jedem Lesezugriff)
+   entfernt — Lesezugriffe auf denselben Link liefen dadurch serialisiert;
+   der Zähler ist ohne Lock nicht mehr exakt (verlorene Updates unter hoher
+   Nebenläufigkeit möglich), das ist für reine Verteidigungstiefe akzeptabel.
 
 ## Kartenhintergrund: bewusst nicht im öffentlichen Viewer
 

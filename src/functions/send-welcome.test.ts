@@ -60,21 +60,65 @@ describe("send-welcome", () => {
     const twoMinutes = 2 * 60 * 1000;
     mockFetch
       .mockResolvedValueOnce(new Response(JSON.stringify(userWithAge(twoMinutes)), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ id: "uid-1" }]), { status: 200 })) // Claim erfolgreich
       .mockResolvedValueOnce(new Response(JSON.stringify({ id: "mail-1" }), { status: 200 }));
 
     const res = await handler(req({ authorization: "Bearer valid" }));
     const body = await res.json();
     expect(body.sent).toBe(true);
-    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(mockFetch).toHaveBeenCalledTimes(3);
   });
 
   it("returns 500 when Resend call fails", async () => {
     const twoMinutes = 2 * 60 * 1000;
     mockFetch
       .mockResolvedValueOnce(new Response(JSON.stringify(userWithAge(twoMinutes)), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ id: "uid-1" }]), { status: 200 }))
       .mockResolvedValueOnce(new Response("error", { status: 422 }));
 
     const res = await handler(req({ authorization: "Bearer valid" }));
     expect(res.status).toBe(500);
+  });
+
+  // Red-Team-Review 2026-07-13: wiederholte Aufrufe innerhalb der 5-Minuten-
+  // Frist dürfen nur einmal eine Mail auslösen (welcome_email_sent_at-Claim).
+  it("skips mail when welcome_email_sent_at is already claimed (repeat call)", async () => {
+    const twoMinutes = 2 * 60 * 1000;
+    mockFetch
+      .mockResolvedValueOnce(new Response(JSON.stringify(userWithAge(twoMinutes)), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([]), { status: 200 })); // 0 Zeilen -> bereits geclaimt
+
+    const res = await handler(req({ authorization: "Bearer valid" }));
+    const body = await res.json();
+    expect(body.skipped).toBe(true);
+    expect(body.reason).toBe("already_sent");
+    expect(mockFetch).toHaveBeenCalledTimes(2); // kein Resend-Aufruf
+  });
+
+  it("returns 500 when the claim PATCH itself fails", async () => {
+    const twoMinutes = 2 * 60 * 1000;
+    mockFetch
+      .mockResolvedValueOnce(new Response(JSON.stringify(userWithAge(twoMinutes)), { status: 200 }))
+      .mockResolvedValueOnce(new Response("db error", { status: 500 }));
+
+    const res = await handler(req({ authorization: "Bearer valid" }));
+    expect(res.status).toBe(500);
+    expect(mockFetch).toHaveBeenCalledTimes(2); // kein Resend-Aufruf
+  });
+
+  it("PATCHed an den erwarteten profiles-Endpunkt mit welcome_email_sent_at=is.null Filter", async () => {
+    const twoMinutes = 2 * 60 * 1000;
+    mockFetch
+      .mockResolvedValueOnce(new Response(JSON.stringify(userWithAge(twoMinutes)), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ id: "uid-1" }]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: "mail-1" }), { status: 200 }));
+
+    await handler(req({ authorization: "Bearer valid" }));
+
+    const [claimUrl, claimInit] = mockFetch.mock.calls[1] as [string, RequestInit];
+    expect(claimUrl).toBe(
+      "http://supabase.test/rest/v1/profiles?id=eq.uid-1&welcome_email_sent_at=is.null"
+    );
+    expect(claimInit.method).toBe("PATCH");
   });
 });

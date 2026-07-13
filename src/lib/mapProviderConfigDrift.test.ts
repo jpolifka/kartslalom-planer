@@ -2,11 +2,18 @@
 // Copyright (c) Jens Polifka
 // All rights reserved.
 
-// Contract-Test gegen Konfig-Drift: RLP-DOP20-URL/Layer/Version/Coverage
-// sind bewusst dupliziert (Edge Functions importieren keinen App-Code, siehe
-// Kommentare in mapProviders.ts / map-background-image/index.ts). Dieser
-// Test stellt sicher, dass ein künftiger Wert-Wechsel (z. B. neue Coverage-
-// BBox oder Endpoint-URL) nicht nur an einer Stelle landet.
+// Contract-Test gegen Konfig-Drift: RLP-DOP20-URL/Layer/Version/Coverage sind
+// bewusst zwischen Frontend (mapProviders.ts) und Edge Function
+// (map-background-image/handler.ts) dupliziert — Edge Functions importieren
+// keinen App-Code, siehe dortige Kommentare. Dieser Test stellt sicher, dass
+// ein künftiger Wert-Wechsel (z. B. neue Coverage-BBox oder Endpoint-URL)
+// nicht nur an einer Stelle landet.
+//
+// Innerhalb der Edge Functions selbst gibt es seit dem Handler.ts-Refactor
+// (Red-Team-Review 2026-07-13) keine zweite Kopie mehr: main/index.ts
+// importiert den handleMapBackgroundImage-Handler direkt aus
+// map-background-image/handler.ts statt ihn zu duplizieren — der zweite Test
+// unten prüft genau das (Import statt eigener PROVIDERS-Kopie).
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -38,31 +45,20 @@ describe("RLP-DOP20-Konfiguration bleibt zwischen Frontend und Edge Functions sy
     expect(edgeProvider.coverage).toEqual(appCoverage);
   });
 
-  it("supabase/functions/main/index.ts (lokaler Docker-Dispatcher, Duplikat) stimmt mit mapProviders.ts überein", () => {
-    // main/index.ts importiert u. a. ein Remote-HTTPS-Modul (jose) und ruft
-    // beim Laden Deno.serve() sowie Deno.env.get(...)! auf — direkter Import
-    // in vitest wäre unverhältnismäßig aufwändig. Stattdessen die
-    // MBI_PROVIDERS-Werte per Regex aus dem Quelltext extrahieren (robust
-    // gegen Anführungszeichen-Stil/Whitespace, fängt aber echten Werte-Drift).
+  it("supabase/functions/main/index.ts importiert den Handler statt ihn zu duplizieren (keine zweite PROVIDERS-Kopie)", () => {
+    // Regressionstest für den Red-Team-Review-2026-07-13-Fund: main/index.ts
+    // hatte früher eine eigene MBI_PROVIDERS-Kopie, die bei einem Fix leicht
+    // vergessen werden konnte (ist bei send-welcome/delete-account real
+    // passiert). Seit dem Handler.ts-Refactor importiert main/index.ts den
+    // Handler direkt — dieser Test stellt sicher, dass niemand versehentlich
+    // wieder eine eigene Kopie der Provider-Konfiguration einführt.
     const mainPath = join(process.cwd(), "supabase/functions/main/index.ts");
     const source = readFileSync(mainPath, "utf-8");
 
-    const mbiSectionMatch = source.match(/const MBI_PROVIDERS[\s\S]*?\n}\n/);
-    expect(mbiSectionMatch, "MBI_PROVIDERS-Block nicht gefunden — main/index.ts umstrukturiert?").toBeTruthy();
-    const mbiSection = mbiSectionMatch![0];
-
-    const extractString = (field: string): string | null =>
-      mbiSection.match(new RegExp(`${field}:\\s*['"]([^'"]*)['"]`))?.[1] ?? null;
-    const extractNumber = (field: string): number =>
-      Number(mbiSection.match(new RegExp(`${field}:\\s*(-?[\\d.]+)`))?.[1]);
-
-    expect(extractString("baseUrl")).toBe(appWms.baseUrl);
-    expect(extractString("layers")).toBe(appWms.layers);
-    expect(extractString("format")).toBe(appWms.format);
-    expect(extractString("version")).toBe(appWms.version);
-    expect(extractNumber("west")).toBe(appCoverage.west);
-    expect(extractNumber("south")).toBe(appCoverage.south);
-    expect(extractNumber("east")).toBe(appCoverage.east);
-    expect(extractNumber("north")).toBe(appCoverage.north);
+    expect(source).not.toMatch(/const MBI_PROVIDERS/);
+    expect(source).not.toMatch(/rp_dop20\.fcgi/);
+    expect(source).toMatch(
+      /import\s*\{\s*handler as handleMapBackgroundImage\s*\}\s*from\s*['"]\.\.\/map-background-image\/handler\.ts['"]/
+    );
   });
 });
