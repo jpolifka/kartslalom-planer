@@ -175,6 +175,11 @@ grant execute on function public.delete_track_version(uuid) to authenticated;
 
 -- get_track_version_detail — Snapshot-Inhalt fuer Vorschau im Editor laden
 -- Gibt state_json + area_sel_json einer spezifischen Version zurueck.
+-- DROP zuerst: defensiv, falls diese Funktion auf der Ziel-DB bereits mit
+-- abweichenden OUT-Parametern existiert (siehe admin_list_tracks in
+-- 20260701000003 fuer denselben Fall). No-Op auf frischen Installationen.
+drop function if exists public.get_track_version_detail(uuid);
+
 create or replace function public.get_track_version_detail(p_version_id uuid)
 returns table (
   version_number integer,
