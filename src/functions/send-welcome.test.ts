@@ -69,15 +69,65 @@ describe("send-welcome", () => {
     expect(mockFetch).toHaveBeenCalledTimes(3);
   });
 
-  it("returns 500 when Resend call fails", async () => {
+  // Red-Team-Review 2026-07-13 (2. Runde): ein transienter Resend-Fehler
+  // (422/429/500/...) darf den Claim nicht dauerhaft "verbrennen" — sonst
+  // würde jeder Wiederholungsversuch fälschlich "already_sent" melden, obwohl
+  // nie eine Mail rausging. Der Claim muss zurückgerollt werden.
+  it("returns 500 when Resend call fails und rollt den Claim zurück (welcome_email_sent_at=null)", async () => {
     const twoMinutes = 2 * 60 * 1000;
     mockFetch
       .mockResolvedValueOnce(new Response(JSON.stringify(userWithAge(twoMinutes)), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify([{ id: "uid-1" }]), { status: 200 }))
-      .mockResolvedValueOnce(new Response("error", { status: 422 }));
+      .mockResolvedValueOnce(new Response("error", { status: 422 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ id: "uid-1" }]), { status: 200 })); // Rollback-PATCH
 
     const res = await handler(req({ authorization: "Bearer valid" }));
     expect(res.status).toBe(500);
+    expect(mockFetch).toHaveBeenCalledTimes(4);
+
+    const [rollbackUrl, rollbackInit] = mockFetch.mock.calls[3] as [string, RequestInit];
+    expect(rollbackUrl).toMatch(
+      /^http:\/\/supabase\.test\/rest\/v1\/profiles\?id=eq\.uid-1&welcome_email_sent_at=eq\./
+    );
+    expect(rollbackInit.method).toBe("PATCH");
+    expect(JSON.parse(rollbackInit.body as string)).toEqual({ welcome_email_sent_at: null });
+  });
+
+  it("erlaubt nach einem zurückgerollten Claim einen erneuten, erfolgreichen Sendeversuch", async () => {
+    const twoMinutes = 2 * 60 * 1000;
+    // 1. Versuch: Resend schlägt fehl, Claim wird zurückgerollt.
+    mockFetch
+      .mockResolvedValueOnce(new Response(JSON.stringify(userWithAge(twoMinutes)), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ id: "uid-1" }]), { status: 200 }))
+      .mockResolvedValueOnce(new Response("error", { status: 500 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ id: "uid-1" }]), { status: 200 }));
+    const firstRes = await handler(req({ authorization: "Bearer valid" }));
+    expect(firstRes.status).toBe(500);
+
+    // 2. Versuch (Retry): welcome_email_sent_at ist durch den Rollback wieder
+    // NULL -> Claim gelingt erneut, Resend antwortet diesmal erfolgreich.
+    mockFetch
+      .mockResolvedValueOnce(new Response(JSON.stringify(userWithAge(twoMinutes)), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ id: "uid-1" }]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: "mail-1" }), { status: 200 }));
+    const secondRes = await handler(req({ authorization: "Bearer valid" }));
+    const body = await secondRes.json();
+    expect(body.sent).toBe(true);
+  });
+
+  // Rollback darf nur den eigenen Claim löschen (per eq.<claimedAt>-Filter in
+  // der URL, siehe Test oben) -- verifiziert per Konstruktion, dass bei
+  // erfolgreichem Versand GAR KEIN Rollback-Aufruf passiert (genau 3 Calls,
+  // nicht 4), sonst würde ein erfolgreicher Claim fälschlich gelöscht.
+  it("rollt den Claim NICHT zurück wenn Resend erfolgreich war", async () => {
+    const twoMinutes = 2 * 60 * 1000;
+    mockFetch
+      .mockResolvedValueOnce(new Response(JSON.stringify(userWithAge(twoMinutes)), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ id: "uid-1" }]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: "mail-1" }), { status: 200 }));
+
+    await handler(req({ authorization: "Bearer valid" }));
+    expect(mockFetch).toHaveBeenCalledTimes(3);
   });
 
   // Red-Team-Review 2026-07-13: wiederholte Aufrufe innerhalb der 5-Minuten-

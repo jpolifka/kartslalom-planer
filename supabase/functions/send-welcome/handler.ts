@@ -58,6 +58,7 @@ export async function handler(req: Request): Promise<Response> {
   // Atomarer Claim: nur der Aufruf, der welcome_email_sent_at von NULL auf
   // now() setzt, darf senden. Bereits geclaimte/gesendete Accounts bekommen
   // eine leere Antwort (0 Zeilen) zurück.
+  const claimedAt = new Date().toISOString();
   const claimRes = await fetch(
     `${SUPABASE_URL}/rest/v1/profiles?id=eq.${user.id}&welcome_email_sent_at=is.null`,
     {
@@ -68,7 +69,7 @@ export async function handler(req: Request): Promise<Response> {
         "Content-Type": "application/json",
         "Prefer": "return=representation",
       },
-      body: JSON.stringify({ welcome_email_sent_at: new Date().toISOString() }),
+      body: JSON.stringify({ welcome_email_sent_at: claimedAt }),
     }
   );
   if (!claimRes.ok) {
@@ -92,7 +93,7 @@ export async function handler(req: Request): Promise<Response> {
       html: `
         <p>Hallo,</p>
         <p>dein Account ist bereit. Du kannst jetzt Strecken erstellen und in der Cloud speichern.</p>
-        <p>Im Free-Tarif kannst du bis zu 3 Strecken speichern. Für mehr Strecken und Satellitenbilder
+        <p>Im Free-Tarif kannst du bis zu 3 Strecken speichern. Für mehr Strecken und Luftbilder
            schreib einfach eine kurze Mail an <a href="mailto:jens@polifka.info">jens@polifka.info</a>.</p>
         <p>Viel Spaß beim Planen!</p>
         <p>Jens</p>
@@ -102,6 +103,26 @@ export async function handler(req: Request): Promise<Response> {
 
   if (!emailRes.ok) {
     console.error("Resend error", emailRes.status, await emailRes.text());
+    // Claim zurückrollen, damit ein transienter Resend-Fehler (429/500/...)
+    // nicht dauerhaft "already_sent" vortäuscht und der Nutzer nie eine
+    // Willkommens-Mail bekommt. Bedingt auf den eigenen claimedAt-Wert, damit
+    // ein verzögerter Rollback keinen zwischenzeitlich neu gesetzten Claim
+    // löscht (z. B. durch einen erfolgreichen Retry, der schon durchgelaufen ist).
+    const rollbackRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/profiles?id=eq.${user.id}&welcome_email_sent_at=eq.${encodeURIComponent(claimedAt)}`,
+      {
+        method: "PATCH",
+        headers: {
+          "apikey": SERVICE_ROLE_KEY,
+          "Authorization": `Bearer ${SERVICE_ROLE_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ welcome_email_sent_at: null }),
+      }
+    );
+    if (!rollbackRes.ok) {
+      console.error("welcome_email_sent_at rollback failed", rollbackRes.status, await rollbackRes.text());
+    }
     return new Response(JSON.stringify({ error: "mail_send_failed" }), { status: 500, headers: cors });
   }
 

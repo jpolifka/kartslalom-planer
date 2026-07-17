@@ -144,12 +144,16 @@ function fmt(n: number) {
 // `</text><image href=x onerror=...>` aus dem <text>-Element aus (Stored-
 // Injection ins heruntergeladene SVG bzw. den innerHTML-PDF-Container).
 function escapeXml(value: string): string {
+  // .replace(regex, ...) statt .replaceAll(string, ...): Projekt-Target ist
+  // ES2020, String.replaceAll() ist erst ab ES2021 typisiert (tsc-Fehler
+  // TS2550). Reihenfolge bleibt wichtig: "&" zuerst, sonst würden die "&" aus
+  // den nachfolgenden Ersetzungen (z. B. "&lt;") selbst nochmal escaped.
   return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&apos;");
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
 }
 
 function arrowHeadPoints(
