@@ -1,5 +1,36 @@
 # Changelog
 
+## 2.6.1
+
+### Security
+- **SVG-/XML-Injection im Export geschlossen**: Formation-Labels und Karten-Attribution
+  landeten unescaped im generierten SVG (betrifft SVG-Download, PDF- und PNG-Export) — ein
+  frei benannter eigener Formationsname konnte aktive Elemente einschleusen. Jetzt
+  konsequent escaped, mit Injection-Tests für `<script>`, `<foreignObject>`,
+  Event-Handler und XML-Sonderzeichen.
+- **RPC-Ausführungsrechte systematisch gehärtet**: `anon` hatte zuvor auf praktisch allen
+  RPCs EXECUTE — sowohl über eine self-hosted-spezifische Default-Privilege-Regel als auch
+  über PostgreSQLs eingebauten PUBLIC-Default (beide unabhängig voneinander revoked). Nur
+  die zwei bewusst öffentlichen RPCs (`get_library_formations`, `get_track_by_share_token`)
+  bleiben freigegeben. Neuer automatisierter Test prüft das dynamisch über den gesamten
+  `public`-Funktionsbestand statt per Stichprobe.
+- **Kong-CORS-Wildcard geschlossen**: Das CORS-Plugin lief an 15 API-Routen
+  (auth/rest/storage/functions/realtime) ohne Origin-Einschränkung; jetzt explizite
+  Allowlist statt `Access-Control-Allow-Origin: *`.
+- **Welcome-Mail idempotent**: wiederholte Aufrufe im 5-Minuten-Fenster lösen keine
+  Mehrfach-Mails mehr aus; ein Claim wird bei fehlgeschlagenem Versand (z. B.
+  Resend-Fehler) korrekt zurückgerollt statt den Nutzer dauerhaft zu blockieren.
+- **Account-Löschung vervollständigt**: der self-hosted Live-Pfad rief die
+  Bereinigungs-RPC nicht auf und löschte persönliche Custom-Formationen dadurch nicht
+  wirklich (nur ownerlos statt entfernt) — jetzt korrekt, live verifiziert.
+- Öffentlicher Share-Link-Lesepfad ohne unnötigen Row-Lock; Notfall-Rate-Limit von 120 auf
+  3000 Aufrufe/Stunde angehoben (war zugleich einzige aktive Schutzschicht und DoS-Vektor
+  gegen den Link-Eigentümer).
+
+### Fixed
+- Produktionsbuild (`npm run build`) wieder grün — ein ES2021-only API (`String.replaceAll`)
+  kompilierte nicht gegen das ES2020-Ziel des Projekts.
+
 ## 2.6.0
 
 ### Changed
