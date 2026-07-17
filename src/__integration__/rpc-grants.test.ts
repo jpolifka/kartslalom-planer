@@ -29,12 +29,32 @@ describe("RPC-Grants: anon darf nur bewusst öffentliche RPCs ausführen", () =>
   it("debug_list_function_grants() zeigt anon_can_execute=true nur für die zwei bewusst öffentlichen RPCs", async () => {
     const { data, error } = await admin.rpc("debug_list_function_grants");
     assertNoError(error, "debug_list_function_grants");
-    const rows = data as { function_name: string; anon_can_execute: boolean; authenticated_can_execute: boolean }[];
+    const rows = data as {
+      function_oid: number;
+      function_name: string;
+      arguments: string;
+      anon_can_execute: boolean;
+      authenticated_can_execute: boolean;
+    }[];
 
     expect(rows.length).toBeGreaterThan(30); // Sanity: Katalog-Abfrage lief wirklich über alle Funktionen
 
-    const anonAllowed = rows.filter((r) => r.anon_can_execute).map((r) => r.function_name).sort();
-    expect(anonAllowed).toEqual([...INTENTIONALLY_PUBLIC].sort());
+    // Ein Eintrag pro Signatur (function_oid), nicht pro Name -- bei
+    // überladenen Funktionen (mehrere Signaturen, gleicher Name) würde ein
+    // Gruppieren/Deduplizieren nach Name allein verschlucken, wenn nur EINE
+    // von mehreren Überladungen versehentlich anon-EXECUTE hätte (externes
+    // Review 2026-07-13, 2. Runde). Aktuell keine Überladungen in `public`,
+    // aber die Prüfung bleibt auch dann korrekt, wenn sich das ändert.
+    const anonAllowed = rows
+      .filter((r) => r.anon_can_execute)
+      .map((r) => `${r.function_name}(${r.arguments})`);
+    const expectedSignatures = rows
+      .filter((r) => INTENTIONALLY_PUBLIC.has(r.function_name))
+      .map((r) => `${r.function_name}(${r.arguments})`);
+    expect(anonAllowed.sort()).toEqual(expectedSignatures.sort());
+    // Sanity: die zwei erwarteten Namen kamen im Katalog auch wirklich vor
+    // (sonst wäre expectedSignatures leer und der obige Vergleich trivial grün).
+    expect(expectedSignatures.length).toBe(INTENTIONALLY_PUBLIC.size);
 
     // Jede App-RPC muss weiterhin für eingeloggte Nutzer funktionieren — die
     // Härtung darf nicht versehentlich authenticated mit-entzogen haben.
