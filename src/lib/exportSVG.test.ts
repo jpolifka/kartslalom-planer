@@ -111,6 +111,60 @@ describe("generateTrackSVG mit customSnapshot", () => {
   });
 });
 
+// Red-Team-Review 2026-07-13: formation.label (customSnapshot.label) ist
+// freie Nutzereingabe und landet als SVG-<text>-Inhalt — ohne Escaping bricht
+// ein Label mit `</text>` aus dem Element aus (Stored-Injection ins
+// heruntergeladene SVG bzw. den innerHTML-PDF-Container).
+describe("generateTrackSVG XML-Escaping von Formation-Labels", () => {
+  it("escaped </text> im Label statt das Element zu schließen", () => {
+    const svg = generateTrackSVG(
+      18, 36,
+      [customItem({ customSnapshot: { ...snap, label: "</text><script>alert(1)</script><text>" } })],
+      []
+    );
+    expect(svg).not.toContain("<script>");
+    expect(svg).toContain("&lt;/text&gt;&lt;script&gt;alert(1)&lt;/script&gt;&lt;text&gt;");
+  });
+
+  it("escaped foreignObject-Payloads im Label", () => {
+    const svg = generateTrackSVG(
+      18, 36,
+      [customItem({ customSnapshot: { ...snap, label: "</text><foreignObject><body onload=alert(1)></foreignObject><text>" } })],
+      []
+    );
+    expect(svg).not.toContain("<foreignObject>");
+  });
+
+  it("escaped Event-Handler-Payloads (image onerror) im Label", () => {
+    const svg = generateTrackSVG(
+      18, 36,
+      [customItem({ customSnapshot: { ...snap, label: '</text><image href="x" onerror="alert(1)"><text>' } })],
+      []
+    );
+    expect(svg).not.toContain("<image");
+    expect(svg).toContain("&lt;image href=&quot;x&quot; onerror=&quot;alert(1)&quot;&gt;");
+  });
+
+  it("escaped XML-Sonderzeichen (Ampersand, Anführungszeichen) im Label", () => {
+    const svg = generateTrackSVG(
+      18, 36,
+      [customItem({ customSnapshot: { ...snap, label: `"&<>' ` } })],
+      []
+    );
+    expect(svg).toContain("&quot;&amp;&lt;&gt;&apos;");
+  });
+
+  it("bleibt valides XML (öffnet und schließt svg-Tag) trotz Injection-Payload im Label", () => {
+    const svg = generateTrackSVG(
+      18, 36,
+      [customItem({ customSnapshot: { ...snap, label: "</text><script>alert(1)</script><text>" } })],
+      []
+    );
+    expect(svg).toMatch(/^<svg /);
+    expect(svg).toContain("</svg>");
+  });
+});
+
 // PNG-Export nutzt generateTrackSVG() mit background="transparent" wieder,
 // statt einer eigenen Rendering-Pipeline.
 describe("generateTrackSVG mit background-Parameter", () => {

@@ -394,8 +394,9 @@ async function main() {
 
     // 12 — Phase 2: Track-Share-Links
     // Hinweis: Der einfache Rate-Limit-Zähler in get_track_by_share_token()
-    // (max. 120 Aufrufe/Stunde/Token) wird hier bewusst NICHT durch 121
-    // echte Aufrufe getestet — das würde die Smoke-Suite unnötig verlangsamen.
+    // (max. 3000 Aufrufe/Stunde/Token, siehe Red-Team-Review 2026-07-13)
+    // wird hier bewusst NICHT durch echte wiederholte Aufrufe getestet —
+    // das würde die Smoke-Suite unnötig verlangsamen.
     console.log("\n--- 12: Phase 2 – Track-Share-Links ---");
 
     const { error: freeShareErr } = await clientA.rpc("create_track_share_link", { p_track_id: trackId });
