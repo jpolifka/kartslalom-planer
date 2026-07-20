@@ -4,7 +4,7 @@
 
 import React, { useMemo, useReducer, useRef, useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { X, HelpCircle, RotateCcw, Eye } from "lucide-react";
+import { X, RotateCcw, Eye } from "lucide-react";
 import TrackCanvas from "../components/TrackCanvas";
 import type { MapConfig } from "../components/TrackCanvas";
 import MapSelector from "../components/MapSelector";
@@ -32,7 +32,6 @@ import EditorHeader from "./editor/components/EditorHeader";
 import LeftSidebar from "./editor/components/LeftSidebar";
 import Toolbar from "./editor/components/Toolbar";
 import RightPanel from "./editor/components/RightPanel";
-import HelpContent from "./editor/components/HelpContent";
 
 // Load once at startup, shared across all useState lazy initializers (Gast-Modus)
 let _initialSaved = loadState();
@@ -76,7 +75,6 @@ export default function EditorPage() {
   // Area / map
   const [areaSel, setAreaSel] = useState<AreaSelection | null>(() => _initialSaved?.areaSel ?? null);
   const [showMapSelector, setShowMapSelector] = useState(false);
-  const [showHelp, setShowHelp] = useState(false);
   const [manualWidth, setManualWidth] = useState(() => _initialSaved?.manualWidth ?? 18);
   const [manualLength, setManualLength] = useState(() => _initialSaved?.manualLength ?? 36);
   const [manualWidthInput, setManualWidthInput] = useState(() => String(_initialSaved?.manualWidth ?? 18));
@@ -514,29 +512,6 @@ export default function EditorPage() {
         </div>
       )}
 
-      {/* ── Modal: Hilfe ────────────────────────────────────────────── */}
-      {showHelp && (
-        <div
-          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, boxSizing: "border-box" }}
-          onClick={() => setShowHelp(false)}
-        >
-          <div
-            style={{ background: "white", borderRadius: 20, padding: 22, width: "min(720px, 96vw)", maxHeight: "90vh", overflow: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.35)", boxSizing: "border-box" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-              <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
-                <HelpCircle size={20} color="var(--c-primary)" /> Hilfe
-              </h3>
-              <button onClick={() => setShowHelp(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", display: "flex", padding: 4 }} title="Schließen">
-                <X size={20} />
-              </button>
-            </div>
-            <HelpContent />
-          </div>
-        </div>
-      )}
-
       {/* ── Mobile drawer backdrop ──────────────────────────────────── */}
       {isMobile && mobilePanel && (
         <div
@@ -651,7 +626,6 @@ export default function EditorPage() {
           onNameFocus={() => setNameFocused(true)}
           onNameBlur={handleNameBlur}
           onNameKeyDown={handleNameKeyDown}
-          onShowHelp={() => setShowHelp(true)}
           shareLocked={shareLocked}
           onOpenShare={trackId ? () => setShowShareDialog(true) : undefined}
         />

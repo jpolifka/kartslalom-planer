@@ -3,7 +3,7 @@
 // All rights reserved.
 
 import React from "react";
-import { HelpCircle, Pencil, Share2 } from "lucide-react";
+import { Pencil, Share2 } from "lucide-react";
 import { iconBtnLabel } from "../editorStyles";
 
 type Props = {
@@ -17,7 +17,6 @@ type Props = {
   onNameFocus: () => void;
   onNameBlur: () => void;
   onNameKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
-  onShowHelp: () => void;
   shareLocked?: boolean;
   onOpenShare?: () => void;
 };
@@ -26,17 +25,11 @@ export default function EditorHeader({
   isMobile, isCloudMode, trackId,
   trackName, nameFocused, nameReadOnly,
   onSetTrackName, onNameFocus, onNameBlur, onNameKeyDown,
-  onShowHelp, shareLocked, onOpenShare,
+  shareLocked, onOpenShare,
 }: Props) {
   if (!isCloudMode || !trackId) {
-    // Gast-Modus: nur Hilfe-Button
-    return (
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: isMobile ? 8 : 12, flexShrink: 0 }}>
-        <button onClick={onShowHelp} style={{ ...iconBtnLabel, color: "var(--c-primary)", borderColor: "var(--c-primary-border)" }} title="Hilfe öffnen">
-          <HelpCircle size={14} /><span>Hilfe</span>
-        </button>
-      </div>
-    );
+    // Gast-Modus: kein zusätzlicher Header-Inhalt (Hilfe sitzt im globalen Nav)
+    return null;
   }
 
   return (
@@ -90,9 +83,6 @@ export default function EditorHeader({
           <Share2 size={14} />{!isMobile && <span>Teilen{shareLocked && " (Pro)"}</span>}
         </button>
       )}
-      <button onClick={onShowHelp} style={{ ...iconBtnLabel, color: "var(--c-primary)", borderColor: "var(--c-primary-border)" }} title="Hilfe öffnen">
-        <HelpCircle size={14} />{!isMobile && <span>Hilfe</span>}
-      </button>
     </div>
   );
 }
