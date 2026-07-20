@@ -28,11 +28,11 @@ export function useProfile() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, email, tier, role")
+        .select("id, email, tier, role, display_name")
         .eq("id", session!.user.id)
         .single();
       if (error) throw error;
-      return data as { id: string; email: string; tier: "free" | "pro" | "team"; role: string | null };
+      return data as { id: string; email: string; tier: "free" | "pro" | "team"; role: string | null; display_name: string | null };
     },
     enabled: !!session,
   });

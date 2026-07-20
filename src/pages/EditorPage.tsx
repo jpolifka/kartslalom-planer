@@ -506,7 +506,6 @@ export default function EditorPage() {
     if (!confirm("Strecke zurücksetzen und gespeicherten Stand löschen?")) return;
     clearSavedState();
     _initialSaved = null;
-    dispatch({ type: "UNDO" }); // force re-render workaround
     window.location.reload();
   }
 

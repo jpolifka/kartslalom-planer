@@ -69,16 +69,6 @@ export function ImprintContent() {
         </p>
       </HelpSection>
 
-      {/*
-        Technischer Kontext: OSM ist der Standard-Kartenhintergrund im Editor
-        (Provider "osm" in lib/mapProviders.ts, gerendert über
-        MapBackground.tsx/MapSelector.tsx als Tile-Bilder direkt vom Browser
-        geladen, daher die IP-Übermittlung unten). Für Pro-Nutzer gibt es
-        zusätzlich den amtlichen RLP-DOP20-Luftbilddienst als WMS-Einzelbild
-        (ebenfalls per direktem Bild-Request vom Browser, kein Proxy dazwischen) —
-        dieser Dienst wird hier in der Datenschutzerklärung aktuell nicht separat
-        genannt, siehe Anmerkung im Bericht.
-      */}
       <HelpSection title="4. Nutzung von OpenStreetMap">
         Diese Website verwendet Kartendaten von OpenStreetMap (OSM).
         <p style={{ margin: "6px 0" }}>
@@ -110,11 +100,54 @@ export function ImprintContent() {
       </HelpSection>
 
       {/*
+        PROD-RISK / Rechtlicher Hinweis: Ergänzt am 2026-07-20, nachdem beim
+        Kommentieren der Codebase auffiel, dass der Pro-Luftbilddienst
+        RLP-DOP20 hier bislang fehlte, obwohl er (wie OSM) Kartenbilder per
+        direktem <img>-Request vom Browser lädt (kein Server-Proxy dazwischen
+        — siehe lib/mapRender.ts und den Kommentar in
+        supabase/functions/map-background-image/handler.ts, der das für den
+        interaktiven Editor explizit bestätigt; der Proxy dort wird nur für
+        SVG/PDF/PNG-Exporte genutzt). Text unten nach demselben Muster wie
+        Abschnitt 4 formuliert — trotzdem vor Live-Schaltung juristisch
+        gegenprüfen lassen, das hier ist kein Ersatz für eine anwaltliche Prüfung.
+      */}
+      <HelpSection title="5. Nutzung des Luftbilddienstes Rheinland-Pfalz (RLP-DOP20)">
+        Für Nutzer mit Pro-Tarif bietet diese Website wahlweise einen amtlichen
+        Luftbild-Kartenhintergrund (RLP-DOP20) als Alternative zur Straßenkarte an.
+        <p style={{ margin: "6px 0" }}>
+          Wählen Sie diesen Kartenhintergrund aus, werden Bilddaten direkt von
+          Servern des Landesamts für Vermessung und Geobasisinformation
+          Rheinland-Pfalz abgerufen. Dabei wird Ihre IP-Adresse an diesen Server
+          übermittelt, da dies technisch erforderlich ist.
+        </p>
+        <p style={{ margin: "6px 0" }}>
+          Anbieter:<br />
+          Landesamt für Vermessung und Geobasisinformation Rheinland-Pfalz (LVermGeoRP)<br />
+          Von-Kuhl-Straße 49<br />
+          56070 Koblenz
+        </p>
+        <p style={{ margin: "6px 0" }}>
+          Die Nutzung erfolgt im Interesse einer benutzerfreundlichen Darstellung
+          von Karten und Streckenverläufen und ist optional (Standard-Kartenhintergrund
+          ist die Straßenkarte gemäß Abschnitt 4).
+        </p>
+        <p style={{ margin: "6px 0" }}>
+          Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO.
+        </p>
+        <p style={{ margin: "6px 0 0" }}>
+          Weitere Informationen zu diesem Dienst finden Sie unter:{" "}
+          <a href="https://www.lvermgeo.rlp.de" target="_blank" rel="noreferrer" style={link}>
+            lvermgeo.rlp.de
+          </a>
+        </p>
+      </HelpSection>
+
+      {/*
         Technischer Kontext: Cloudflare sitzt als CDN/Zero-Trust-Tunnel vor der
-        selbst gehosteten Supabase-Infrastruktur (siehe Abschnitt 6 und den
+        selbst gehosteten Supabase-Infrastruktur (siehe Abschnitt 7 und den
         PROD-RISK-Hinweis dort) — daher der eigene Abschnitt unabhängig von OSM.
       */}
-      <HelpSection title="5. Nutzung von Cloudflare">
+      <HelpSection title="6. Nutzung von Cloudflare">
         Diese Website nutzt Dienste von Cloudflare zur Verbesserung der Sicherheit
         und Verfügbarkeit der Website.
         <p style={{ margin: "6px 0" }}>
@@ -158,7 +191,7 @@ export function ImprintContent() {
         eine AV-Vereinbarung mit Cloudflare für den Zero-Trust-Tunnel nötig
         ist) - das hier ist kein Ersatz für eine anwaltliche Prüfung.
       */}
-      <HelpSection title="6. Speicherung von Konto- und Streckendaten (self-hosted)">
+      <HelpSection title="7. Speicherung von Konto- und Streckendaten (self-hosted)">
         Für registrierte Nutzer werden Authentifizierung und Cloud-Speicherung über
         die selbst betriebene Open-Source-Software Supabase bereitgestellt. Es findet
         keine Auftragsverarbeitung durch die Supabase Inc. statt — die Software läuft
@@ -172,7 +205,7 @@ export function ImprintContent() {
         </p>
         <p style={{ margin: "6px 0" }}>
           Der Zugriff auf den Server erfolgt über einen Cloudflare-Tunnel
-          (Cloudflare Zero Trust) — siehe Abschnitt 5 zur Nutzung von Cloudflare.
+          (Cloudflare Zero Trust) — siehe Abschnitt 6 zur Nutzung von Cloudflare.
         </p>
         <p style={{ margin: "6px 0" }}>
           Bei der Registrierung und Anmeldung per Magic Link wird die E-Mail-Adresse
@@ -184,7 +217,7 @@ export function ImprintContent() {
         </p>
       </HelpSection>
 
-      <HelpSection title="7. Kontolöschung und Inaktivitätsregel">
+      <HelpSection title="8. Kontolöschung und Inaktivitätsregel">
         <strong>Kontolöschung auf Anfrage (Art. 17 DSGVO):</strong> Über den Bereich
         „Einstellungen" in der Anwendung können Sie Ihr Konto jederzeit selbst löschen.
         Dabei werden Ihr Benutzerprofil, alle gespeicherten Streckenpläne sowie Ihre
@@ -219,7 +252,7 @@ export function ImprintContent() {
         </p>
       </HelpSection>
 
-      <HelpSection title="8. Kontaktaufnahme per E-Mail">
+      <HelpSection title="9. Kontaktaufnahme per E-Mail">
         Wenn Sie per E-Mail Kontakt aufnehmen, werden die von Ihnen übermittelten
         Daten ausschließlich zur Bearbeitung Ihrer Anfrage verwendet.
         <p style={{ margin: "6px 0" }}>
@@ -233,12 +266,12 @@ export function ImprintContent() {
         </p>
       </HelpSection>
 
-      <HelpSection title="9. Ihre Rechte">
+      <HelpSection title="10. Ihre Rechte">
         Sie haben im Rahmen der geltenden gesetzlichen Bestimmungen das Recht auf:
         <ul style={ul}>
           <li>Auskunft über Ihre gespeicherten Daten (Art. 15 DSGVO)</li>
           <li>Berichtigung unrichtiger Daten (Art. 16 DSGVO)</li>
-          <li>Löschung Ihrer Daten (Art. 17 DSGVO) — siehe Abschnitt 7</li>
+          <li>Löschung Ihrer Daten (Art. 17 DSGVO) — siehe Abschnitt 8</li>
           <li>Einschränkung der Verarbeitung (Art. 18 DSGVO)</li>
           <li>Datenübertragbarkeit (Art. 20 DSGVO) — Datenexport in den Einstellungen</li>
           <li>Widerspruch gegen die Verarbeitung (Art. 21 DSGVO)</li>
@@ -247,7 +280,7 @@ export function ImprintContent() {
         Kontaktadresse wenden.
       </HelpSection>
 
-      <HelpSection title="10. Beschwerderecht bei einer Aufsichtsbehörde">
+      <HelpSection title="11. Beschwerderecht bei einer Aufsichtsbehörde">
         Sie haben das Recht, sich bei einer Datenschutzaufsichtsbehörde über die
         Verarbeitung Ihrer personenbezogenen Daten zu beschweren.
         <p style={{ margin: "6px 0 0" }}>
@@ -257,11 +290,11 @@ export function ImprintContent() {
         </p>
       </HelpSection>
 
-      <HelpSection title="11. Änderungen dieser Datenschutzerklärung">
+      <HelpSection title="12. Änderungen dieser Datenschutzerklärung">
         Ich behalte mir vor, diese Datenschutzerklärung anzupassen, sofern dies
         aufgrund technischer oder rechtlicher Änderungen erforderlich wird.
         <p style={{ margin: "10px 0 0", color: "#94a3b8", fontSize: 12 }}>
-          Stand: Juni 2026
+          Stand: Juli 2026
         </p>
       </HelpSection>
     </div>
