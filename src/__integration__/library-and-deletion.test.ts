@@ -3,6 +3,18 @@
 // All rights reserved.
 //
 // Integration: Library-Formationen (anon + auth) + Account-Löschung
+//
+// Zweiter Block deckt einen nicht-trivialen Edge Case ab: Was passiert mit
+// einer Formation, die bereits in die öffentliche Bibliothek befördert wurde
+// (is_library = true), wenn der ursprüngliche Owner sein Konto löscht?
+// Erwartetes Verhalten: die Library-Formation MUSS die Löschung überleben
+// (sie gehört inzwischen "der Community", nicht mehr exklusiv dem Nutzer),
+// owner_id wird dabei auf NULL gesetzt (FK ON DELETE SET NULL) statt die Zeile
+// mitzulöschen — während rein private, nicht beförderte Formationen desselben
+// Nutzers regulär mitgelöscht werden. Ohne diesen Test könnte eine künftige
+// FK-Änderung (z. B. versehentlich ON DELETE CASCADE für alle
+// custom_formations) stillschweigend öffentliche Bibliotheksinhalte beim
+// Löschen irgendeines Nutzeraccounts vernichten.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createClient } from "@supabase/supabase-js";

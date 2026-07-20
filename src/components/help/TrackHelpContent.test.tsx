@@ -6,6 +6,10 @@ import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import TrackHelpContent from "./TrackHelpContent";
 
+// Reiner Render-Smoke-Test: prüft, dass die ?raw-Markdown-Imports + react-markdown
+// tatsächlich zusammenspielen (Überschriften/Inline-Code kommen an), nicht den
+// Wortlaut der Hilfe-Texte selbst — inhaltliche Änderungen an den docs/user/*.md
+// sollen diesen Test nicht brechen.
 describe("TrackHelpContent", () => {
   it("rendert alle neun Abschnitte aus den docs/user/*.md-Dateien", () => {
     render(<TrackHelpContent />);

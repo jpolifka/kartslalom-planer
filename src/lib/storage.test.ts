@@ -7,6 +7,10 @@ import { saveState, loadState, clearSavedState, parseImportFile, sanitizeItems }
 import type { PlacedFormation } from "../types";
 
 const STORAGE_KEY = "kartslalom_autosave";
+// Dupliziert bewusst die Konstante aus storage.ts (Test soll unabhängig vom
+// internen Wert verifizieren, dass genau diese Versionsnummer geschrieben/
+// akzeptiert wird) — bei einer künftigen CURRENT_VERSION-Erhöhung muss dieser
+// Wert hier mit angepasst werden, siehe Kommentar bei LegacySavedStateV1 in storage.ts.
 const CURRENT_VERSION = 1;
 
 const baseState = {

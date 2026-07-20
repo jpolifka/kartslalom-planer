@@ -46,11 +46,21 @@ export default function FormationThumbnail({
   const bw = Math.max(b.width + 2 * CONE_RADIUS_M, 2 * CONE_RADIUS_M);
   const bh = Math.max(b.height + 2 * CONE_RADIUS_M, 2 * CONE_RADIUS_M);
   const usable = size - 2 * pad;
+  // Ein gemeinsamer Skalierungsfaktor für beide Achsen (statt getrennt X/Y), damit die
+  // Formation seitenverhältnistreu bleibt — sonst würden z.B. quadratische Slalom-Gassen
+  // im Thumbnail verzerrt/gestaucht dargestellt.
   const s = Math.min(usable / bw, usable / bh);
+  // Untere Grenze, damit Pylonen bei sehr kleinen/schmalen Formationen (großer bw/bh,
+  // kleines s) im Mini-Vorschaubild noch als Fläche erkennbar bleiben statt als Punkt.
   const pylonR = Math.max(1.5, CONE_RADIUS_M * s);
+  // Da s meist nicht beide Achsen exakt ausfüllt, bleibt auf der kürzeren Achse Luft übrig —
+  // ox/oy zentrieren die skalierte Bounding-Box in dieser Achse innerhalb des Padding-Bereichs.
   const ox = pad + (usable - bw * s) / 2;
   const oy = pad + (usable - bh * s) / 2;
 
+  // Rechnet Modell-Koordinaten (Meter, relativ zu b.minX/minY) in SVG-Pixel um.
+  // "+ CONE_RADIUS_M" verschiebt um den Rand, der oben beim Aufweiten der Bounding-Box
+  // hinzugefügt wurde, damit der erste/letzte Pylon nicht am Rand angeschnitten wird.
   const px = (x: number) => ox + (x - b.minX + CONE_RADIUS_M) * s;
   const py = (y: number) => oy + (y - b.minY + CONE_RADIUS_M) * s;
 

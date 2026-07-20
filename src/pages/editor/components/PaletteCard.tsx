@@ -9,6 +9,11 @@ import { getFormation } from "../../../lib/formationRegistry";
 
 const ROTATIONS = [0, 90, 180, 270];
 
+// Eine Kachel in der Formations-Palette (LeftSidebar). Klick fügt die Formation
+// in 0°-Standardausrichtung ein. Für Formationsgruppen ohne Rotationssymmetrie
+// (z.B. Kurven, siehe FORMATION_GROUPS.rotationSubMenu) blendet ein separater
+// kleiner Button ein Untermenü mit vorgedrehten Varianten (90/180/270°) ein,
+// damit Nutzer nicht nachträglich manuell drehen müssen.
 type Props = {
   formation: ReturnType<typeof getFormation>;
   onClick: (rotDeg: number) => void;

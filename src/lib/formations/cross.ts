@@ -6,6 +6,10 @@ import type { FormationDefinition } from "../../types";
 import { normalizeCones } from "../geometry";
 import { builder } from "./common";
 
+// "Kreuz": eine kreuzfoermige Kreuzung aus zwei sich schneidenden Fahrgassen. Die vier
+// Eckbloecke aus je 4-5 Pylonen (zwei Reihen ab jeweils neu gesetztem .at(0,0)-Ursprung)
+// markieren die vier "inneren Ecken" der Kreuzung, sodass in der Mitte ein freier Kreuzungs-
+// bereich entsteht, den das Kart aus beliebiger Richtung durchqueren kann.
 export const cross: FormationDefinition = {
   key: "cross",
   label: "Kreuz",

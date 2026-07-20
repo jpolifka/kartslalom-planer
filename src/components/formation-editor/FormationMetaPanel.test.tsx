@@ -64,6 +64,9 @@ describe("FormationMetaPanel", () => {
     expect(values).toContain("1");
   });
 
+  // 1.65 m entspricht TASK_LANE_WIDTH (Mindest-Aufgabenbreite aus
+  // lib/formations/common.ts) — bewusst als Literal statt Import, damit der
+  // Test bricht, falls sich der Schwellenwert und diese Erwartung auseinanderentwickeln.
   it("shows lichte Breite warning when below 1.65 m", () => {
     render(<FormationMetaPanel {...baseProps} lichteBreite={1.2} />);
     expect(screen.getByText(/zu schmal/i)).toBeInTheDocument();

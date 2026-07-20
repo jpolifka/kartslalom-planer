@@ -133,6 +133,9 @@ async function main() {
     });
 
     // 1 — Track anlegen
+    // Reine Grundlage für alle folgenden Checks (Ownership-Fixture) — prüft
+    // nebenbei, dass der Standard-Flow für einen legitimen User überhaupt
+    // funktioniert (kein Security-Check, aber Voraussetzung dafür).
     console.log("--- 1: Track anlegen ---");
     const { data: trackId, error: createErr } = await clientA.rpc(
       "create_track",
@@ -141,6 +144,10 @@ async function main() {
     assertOk(!createErr && trackId, "User A kann eigenen Track anlegen");
 
     // 2 — RLS: Fremder Lesezugriff
+    // Kernversprechen der Mandantentrennung: Ohne funktionierende Row-Level-
+    // Security könnte jeder eingeloggte Nutzer per direktem SELECT fremde
+    // Strecken (inkl. Standort/area_sel_json) auslesen. Der Fehlerfall wäre
+    // ein still leeres Ergebnis statt eines Fehlers — genau das wird geprüft.
     console.log("\n--- 2: RLS – Lesezugriff Fremduser ---");
     const { data: bRead, error: bReadErr } = await clientB
       .from("tracks")
@@ -152,6 +159,10 @@ async function main() {
     );
 
     // 3 — RLS: Fremder Schreibzugriff über save_track
+    // Prüft die Ownership-Prüfung INNERHALB der RPC-Funktion (nicht nur RLS
+    // auf der Tabelle) — save_track() läuft als SECURITY DEFINER, muss die
+    // Ownership also selbst durchsetzen. Ohne diese Prüfung könnte User B
+    // die Strecke von User A überschreiben, obwohl er sie nicht einmal sehen darf.
     console.log("\n--- 3: RLS – save_track durch Fremduser ---");
     const { error: bSaveErr } = await clientB.rpc("save_track", {
       p_track_id: trackId,
@@ -168,6 +179,10 @@ async function main() {
     );
 
     // 4 — Direktes INSERT auf tracks gesperrt
+    // Alle Schreibzugriffe müssen über die RPCs (create_track/save_track)
+    // laufen, weil dort die fachliche Logik (Owner setzen, Tier-Gates,
+    // Validierung) sitzt. Wäre INSERT direkt via PostgREST erlaubt, könnte
+    // ein Client diese Prüfungen komplett umgehen (z. B. beliebige owner_id setzen).
     console.log("\n--- 4: Direktes INSERT gesperrt ---");
     const { error: insertErr } = await clientA.from("tracks").insert({
       name: "Direct Insert",
@@ -176,6 +191,10 @@ async function main() {
     assertErr(insertErr, "Direktes INSERT auf tracks ist gesperrt (REVOKE)");
 
     // 5 — Direktes UPDATE auf tracks gesperrt
+    // Analog zu Check 4: Ein erlaubtes Direkt-UPDATE würde z. B. das
+    // Tier-Gate für map_provider_id (siehe Check 7) aushebeln — ein
+    // Free-User könnte map_provider_id='rlp_dop20' einfach per UPDATE
+    // setzen, statt über save_track() zu gehen, wo die Prüfung sitzt.
     console.log("\n--- 5: Direktes UPDATE gesperrt ---");
     const { error: updateErr } = await clientA
       .from("tracks")
@@ -184,6 +203,12 @@ async function main() {
     assertErr(updateErr, "Direktes UPDATE auf tracks ist gesperrt (REVOKE)");
 
     // 6 — Tier-Manipulation auf profiles gesperrt
+    // Zahlungsmodell der App: Es gibt keinen Stripe/Checkout-Flow, Tier-
+    // Upgrades passieren manuell per SQL durch den Betreiber (siehe
+    // project_payment_model). Könnte ein Nutzer sein eigenes tier-Feld per
+    // UPDATE ändern, würde er sich Pro/Team-Funktionen (Kartenanbieter,
+    // Sharing, Versionshistorie) selbst freischalten, ohne zu bezahlen —
+    // das wäre eine direkte Umgehung des gesamten Monetarisierungsmodells.
     console.log("\n--- 6: Tier-Update auf profiles gesperrt ---");
     const { error: tierErr } = await clientA
       .from("profiles")
@@ -195,6 +220,12 @@ async function main() {
     );
 
     // 7 — Feature-Bypass: Map-Provider-Gate — beide Tier-Seiten
+    // Das RLP-DOP20-Luftbild ist ein Pro-Feature. Die UI blendet die Option
+    // für Free-User zwar aus/deaktiviert sie, aber UI-Gating allein schützt
+    // nicht vor einem direkten RPC-Aufruf (z. B. via curl/DevTools) — die
+    // Durchsetzung muss serverseitig in save_track() (map_provider_requires_pro)
+    // erfolgen. Getestet wird beides: Free wird abgelehnt UND Pro funktioniert
+    // wirklich (kein Overblocking).
     console.log("\n--- 7: Feature-Bypass Map-Provider (Free abgelehnt, Pro erlaubt) ---");
     const { error: freeSatErr } = await clientA.rpc("save_track", {
       p_track_id: trackId,
@@ -231,6 +262,11 @@ async function main() {
     );
 
     // 7b — map_provider_id wird von save_track() korrekt persistiert
+    // Ergänzt Check 7 um die Gegenprobe über die admin-Verbindung (Ground
+    // Truth in der DB, nicht nur "kein Fehler zurückgegeben"): Ein Gate kann
+    // fälschlich "erfolgreich" zurückmelden, ohne den Wert tatsächlich zu
+    // schreiben (z. B. durch einen stillen No-Op-Pfad) — das würde diese
+    // Prüfung aufdecken, Check 7 allein nicht.
     console.log("\n--- 7b: map_provider_id wird von save_track() persistiert ---");
     const { data: proTrackRow } = await admin
       .from("tracks")
@@ -264,6 +300,12 @@ async function main() {
     // 7c — save_track() darf nicht für PUBLIC/anon ausführbar sein
     // (Least-Privilege — DROP+CREATE in der map_provider_id-Migration
     // vergibt EXECUTE sonst implizit wieder an PUBLIC, siehe REVOKE dort)
+    // Dies ist genau die Lückenklasse, die bei der externen Review 2026-07-13
+    // real gefunden wurde: Ein Blick auf pg_default_acl allein reicht nicht,
+    // um EXECUTE-Rechte zu beurteilen (siehe debug_list_function_grants()/
+    // has_function_privilege() in den Migrationen) — deshalb wird hier der
+    // tatsächliche RPC-Aufruf als anon ausgeführt statt nur die Grants
+    // statisch zu inspizieren; das ist der einzig verlässliche Nachweis.
     console.log("\n--- 7c: save_track() ist für anon gesperrt (Least-Privilege) ---");
     const { error: anonSaveErr } = await anonClient.rpc("save_track", {
       p_track_id: proTrackId,
@@ -280,6 +322,10 @@ async function main() {
     );
 
     // 8 — H0: Custom-Formation anlegen, RLS Fremdzugriff
+    // Dieselbe Mandantentrennungs-Frage wie Check 2, aber für eine andere
+    // Tabelle (custom_formations statt tracks) — bestätigt, dass die
+    // RLS-Policy konsequent auf allen nutzergenerierten Daten angewendet
+    // wird und nicht nur auf der am häufigsten getesteten tracks-Tabelle.
     console.log("\n--- 8: H0 – Custom-Formation RLS (Fremdzugriff) ---");
     const { data: formationId, error: formationErr } = await clientA.rpc(
       "create_custom_formation",
@@ -309,6 +355,10 @@ async function main() {
     );
 
     // 9 — H0: Direktes INSERT auf custom_formations gesperrt
+    // Analog zu Check 4, wieder für custom_formations: bestätigt, dass das
+    // REVOKE-Pattern (nur RPC-Zugriff, kein Direkt-Insert per PostgREST)
+    // projektweit konsistent umgesetzt ist und nicht versehentlich nur für
+    // eine Tabelle vergessen wurde.
     console.log("\n--- 9: H0 – Direktes INSERT auf custom_formations gesperrt ---");
     const { error: cfInsertErr } = await clientA
       .from("custom_formations")
@@ -316,6 +366,12 @@ async function main() {
     assertErr(cfInsertErr, "Direktes INSERT auf custom_formations ist gesperrt (REVOKE)");
 
     // 10 — H0: Library-Formation für anon lesbar
+    // Gegenprobe zu den bisherigen "gesperrt"-Checks: Library-Formationen
+    // (is_library=true) sind absichtlich öffentlich und sollen auch OHNE
+    // Login sichtbar sein. Diese Prüfung stellt sicher, dass eine zu strenge
+    // RLS-Policy nicht versehentlich auch den gewollten öffentlichen
+    // Lesezugriff blockiert (Overblocking wäre ein Funktionsbug, keine
+    // Sicherheitslücke, aber genauso ein Regressionsrisiko bei Policy-Änderungen).
     console.log("\n--- 10: H0 – Library-Formation für anon lesbar ---");
     const { data: libRow, error: libInsertErr } = await admin
       .from("custom_formations")
@@ -341,6 +397,11 @@ async function main() {
     );
 
     // 11 — Phase 2: create_track_from_version ("Speichern unter") — Fremdzugriff gesperrt
+    // Neuere RPCs bekommen nicht automatisch dieselbe Ownership-Härtung wie
+    // die etablierten (create_track/save_track) — jede neue SECURITY-DEFINER-
+    // Funktion muss ihre eigene Prüfung mitbringen. Ohne diese Prüfung könnte
+    // User A aus einem fremden Snapshot (von User B) einen neuen, eigenen
+    // Track erzeugen und sich so quasi eine Kopie fremder Streckendaten "leihen".
     console.log("\n--- 11: Phase 2 – create_track_from_version Fremdzugriff gesperrt ---");
     const { error: bVersionErr } = await clientB.rpc("save_track", {
       p_track_id: proTrackId,
@@ -367,6 +428,12 @@ async function main() {
     );
 
     // 11b — Commit 2 Kartenanbieter-Abstraktion: map_provider_id im Snapshot-Pfad
+    // Regressionsschutz für die spätere map_provider_id-Migration: Snapshots
+    // und "Speichern unter" existierten schon vor der Kartenanbieter-
+    // Abstraktion — ohne expliziten Test hätte ein neues Feld wie
+    // map_provider_id leicht in genau diesen (älteren, seltener angefassten)
+    // Code-Pfaden vergessen werden können und Nutzern beim Wiederherstellen
+    // oder Kopieren stillschweigend den falschen Kartenanbieter unterschieben.
     console.log("\n--- 11b: map_provider_id in Versionshistorie/Speichern-unter ---");
     const { data: versionDetail, error: versionDetailErr } = await clientB.rpc(
       "get_track_version_detail",
@@ -399,6 +466,7 @@ async function main() {
     // das würde die Smoke-Suite unnötig verlangsamen.
     console.log("\n--- 12: Phase 2 – Track-Share-Links ---");
 
+    // Sharing ist ein Pro-Feature (Tier-Gate) UND nur auf eigenen Tracks möglich (Ownership).
     const { error: freeShareErr } = await clientA.rpc("create_track_share_link", { p_track_id: trackId });
     assertErr(freeShareErr, "Free-User kann keinen Share-Link erzeugen (share_requires_pro)");
 
@@ -411,6 +479,11 @@ async function main() {
       "Pro-User kann eigenen Share-Link erzeugen"
     );
 
+    // Der Share-Endpoint ist absichtlich per Design "nur die Strecke, sonst
+    // nichts" — er darf weder die Owner-Identität preisgeben noch den
+    // Token-Hash zurückspiegeln (sonst liesse sich der Token daraus ableiten/
+    // fälschen) noch die realen Geokoordinaten (area_sel_json) eines
+    // öffentlich geteilten Links offenlegen (Standort-Privatsphäre).
     const { data: sharedRows, error: sharedReadErr } = await anonClient.rpc("get_track_by_share_token", {
       p_token: shareToken,
     });
@@ -429,17 +502,27 @@ async function main() {
     });
     assertErr(garbageTokenErr, "Ungültiger Token liefert einen Fehler (token_invalid)");
 
+    // Widerruf muss SOFORT wirken (kein Caching/Race), sonst könnte ein
+    // Nutzer, der einen Link öffentlich geteilt hat, sich nicht darauf
+    // verlassen, den Zugriff durch Widerruf tatsächlich zu beenden.
     const { error: revokeErr } = await clientB.rpc("revoke_track_share_link", { p_track_id: proTrackId });
     assertOk(!revokeErr, "Pro-User kann eigenen Share-Link widerrufen");
     const { error: revokedReadErr } = await anonClient.rpc("get_track_by_share_token", { p_token: shareToken });
     assertErr(revokedReadErr, "Widerrufener Token ist sofort ungültig (derselbe Fehler wie bei ungültigem Token)");
 
+    // Ein gelöschter Track darf keine "Zombie"-Freigabe hinterlassen, die
+    // über den (dann verwaisten) Token weiterhin abrufbar wäre.
     const { data: throwawayTrackId } = await clientB.rpc("create_track", { track_name: `Share Delete Test ${ts}` });
     const { data: throwawayToken } = await clientB.rpc("create_track_share_link", { p_track_id: throwawayTrackId });
     await clientB.from("tracks").delete().eq("id", throwawayTrackId);
     const { error: deletedTrackErr } = await anonClient.rpc("get_track_by_share_token", { p_token: throwawayToken });
     assertErr(deletedTrackErr, "Gelöschter Track macht seinen Share-Link ungültig");
 
+    // Analog beim Soft-Delete des Accounts (is_deleted statt echtem User-
+    // Löschen, siehe Datenschutz-Flow): Ein gelöschter Nutzer darf über einen
+    // alten Share-Link nicht weiterhin Inhalte öffentlich zugänglich machen —
+    // sonst würde "Konto löschen" die Daten des Nutzers nicht wirklich
+    // unzugänglich machen.
     const { data: proTrackId2 } = await clientB.rpc("create_track", { track_name: `Share Account-Delete Test ${ts}` });
     const { data: accountDeleteToken } = await clientB.rpc("create_track_share_link", { p_track_id: proTrackId2 });
     await admin.from("profiles").update({ is_deleted: true }).eq("id", userB.id);

@@ -7,6 +7,8 @@ import { renderHook } from "@testing-library/react";
 import { useAuthStore } from "../store/authStore";
 import { useTier } from "./useTier";
 
+// Store vor jedem Test zurücksetzen, damit Tests aus anderen Dateien (Zustand ist
+// ein Modul-Singleton) sich nicht gegenseitig über den globalen authStore beeinflussen.
 beforeEach(() => {
   useAuthStore.setState({ profile: null, session: null, isLoading: false });
 });

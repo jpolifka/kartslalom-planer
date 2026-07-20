@@ -22,6 +22,11 @@ vi.mock("jspdf", () => {
 });
 vi.mock("svg2pdf.js", () => ({ default: () => undefined }));
 
+// vi.hoisted: vi.mock()-Factories laufen vor allen Imports (gehoisted) — ohne
+// vi.hoisted() wäre mockGetSession beim Ausführen der Factory unten noch
+// nicht initialisiert (TDZ). So kann dieselbe Mock-Funktion in den Tests
+// weiter unten pro Testfall mit unterschiedlichen Session-Zuständen bestückt
+// werden (mockGetSession.mockResolvedValue(...)).
 const { mockGetSession } = vi.hoisted(() => ({ mockGetSession: vi.fn() }));
 vi.mock("./supabase", () => ({
   supabase: { auth: { getSession: mockGetSession } },

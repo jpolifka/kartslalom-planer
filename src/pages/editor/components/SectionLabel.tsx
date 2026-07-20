@@ -4,6 +4,9 @@
 
 import React from "react";
 
+// Kleine Überschrift innerhalb einer Karte (card-Style aus editorStyles.ts) —
+// einheitliches Sub-Heading für die Abschnitte in LeftSidebar/RightPanel
+// ("Streckenbereich", "Formationen", "Eigenschaften", "Kursdauer", "Prüfung").
 export default function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div style={{

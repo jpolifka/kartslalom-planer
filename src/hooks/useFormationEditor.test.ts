@@ -1,6 +1,11 @@
 // Kartslalom Streckenplaner
 // Copyright (c) Jens Polifka
 // All rights reserved.
+//
+// Testet den Undo/Redo-Reducer direkt (ohne React) über reducer()/EMPTY_SNAP.
+// Kernfragen: welche Aktionen committen sofort (past wächst) vs. welche nur
+// "live" den present-Snapshot ändern (past bleibt gleich), sowie der 30er-Deckel
+// der History und das Verwerfen von "future" bei einem neuen Commit nach Undo.
 
 import { describe, it, expect } from "vitest";
 import { reducer, EMPTY_SNAP } from "./useFormationEditor";

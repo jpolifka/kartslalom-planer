@@ -15,6 +15,11 @@ import s09 from "../../../docs/user/09-konto.md?raw";
 
 const SECTIONS = [s01, s02, s03, s04, s05, s06, s07, s08, s09];
 
+// Hilfe-Inhalt für den Streckeneditor, entlang des Nutzerpfads gegliedert
+// (Erste Schritte → ... → Konto), nicht entlang der UI-Struktur des Editors.
+// Die Reihenfolge hier MUSS mit der Nummerierung der Dateinamen übereinstimmen
+// (01..09) — die Datei selbst ist die einzige Quelle für den Kapiteltitel
+// (`## N. Titel`), es gibt keine zusätzliche title-Prop mehr.
 export default function TrackHelpContent() {
   return (
     <div>

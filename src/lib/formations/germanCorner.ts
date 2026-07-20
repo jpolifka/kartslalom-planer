@@ -7,6 +7,11 @@ import type { FormationDefinition } from "../../types";
 import { normalizeCones } from "../geometry";
 import { builder } from "./common";
 
+// "Deutsches Eck": eine rechtwinklige Ecke aus zwei je 5 Pylonen langen Außenarmen (oben und
+// rechts, mit gemeinsamer Eckpylone), die eine 90°-Wende erzwingt. Die zweite, um eine
+// Gassenbreite nach innen versetzte Pylonenreihe (ab dem zweiten .at(0,0)) markiert die
+// Innenkante der Fahrgasse; die letzte Pylone steht im 45°-Winkel und kennzeichnet den
+// Einlenkpunkt/die Ideallinie in die Kurve.
 export const germanCorner: FormationDefinition = {
   key: "germanCorner",
   label: "Deutsches Eck",

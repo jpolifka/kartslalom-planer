@@ -1,6 +1,17 @@
 /**
  * Playwright E2E — Kartenanbieter-Abstraktion (RLP-DOP20 als Esri-Ersatz)
  *
+ * Getestetes Szenario: Der Pro-Tier-Nutzer hat als Kartenanbieter das
+ * Luftbild "Rheinland-Pfalz (RLP-DOP20)" gewählt. Je nachdem ob der
+ * gespeicherte Streckenbereich geografisch innerhalb oder ausserhalb der
+ * RLP-Abdeckung liegt, muss die App unterschiedlich reagieren: innerhalb
+ * wird das echte WMS-Luftbild gerendert, ausserhalb faellt die Anzeige
+ * automatisch auf OSM-Strassenkarten zurueck (ohne die gespeicherte Auswahl
+ * zu verändern) und zeigt einen Coverage-Hinweis. Zusätzlich wird geprüft,
+ * dass der SVG-Export das Luftbild als eingebettetes data-URI mitliefert
+ * statt eines Live-Links auf den RLP-WMS-Dienst (Export muss offline nutzbar
+ * bleiben und keine Abhängigkeit vom Fremd-Dienst nach aussen tragen).
+ *
  * MapSelector.tsx hat kein Adress-/Koordinaten-Eingabefeld (nur Pan/Zoom/
  * Draw per Maus) — der Streckenbereich wird hier daher direkt über
  * save_track() (Node-seitig, siehe helpers/api.ts) gesetzt statt über die

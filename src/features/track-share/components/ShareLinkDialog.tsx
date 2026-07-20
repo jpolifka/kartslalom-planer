@@ -131,6 +131,11 @@ export default function ShareLinkDialog({ isOpen, trackId, isPublic, onClose }: 
   );
 }
 
+// SHARE_REQUIRES_PRO wird serverseitig in create_track_share_link() geprüft
+// (nicht nur clientseitig wie beim PNG-Export) — Share-Links sind eine
+// Backend-Ressource (Token-Hash, Rate-Limit-Zähler auf der Strecke) und
+// müssen daher auch gegen einen manipulierten/umgangenen Client abgesichert
+// sein, anders als der rein clientseitige PNG-Export.
 function mapErrorMessage(code: string): string {
   switch (code) {
     case "SHARE_REQUIRES_PRO": return "Share-Links erfordern mindestens den Pro-Tarif.";

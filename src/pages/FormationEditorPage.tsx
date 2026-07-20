@@ -17,6 +17,13 @@ import { normalizeCones, boundsFromCones, translateCones } from "../lib/geometry
 import type { FormationCategory, FormationKey, ConePoint } from "../types";
 import { TASK_LANE_WIDTH, PYLON_FOOT_SIZE } from "../lib/formations/common";
 
+// Für NEUE (noch nicht gespeicherte) Formationen wird der Entwurf laufend in
+// localStorage zwischengespeichert — unabhängig davon, ob der Nutzer
+// eingeloggt ist. Erst der explizite Speichern-Klick schreibt (bei
+// freigeschaltetem Feature) in die Cloud; der Draft wird danach gelöscht
+// (siehe clearDraft in saveToCloud). So geht clientseitige Arbeit nicht
+// verloren, auch wenn das Feature (noch) nicht freigeschaltet ist oder der
+// Cloud-Save fehlschlägt.
 const DRAFT_KEY = "kartslalom-formation-draft";
 
 type DraftData = {
@@ -104,7 +111,11 @@ export default function FormationEditorPage() {
   });
   const isSharedEdit = isEdit && effectivePermission === "edit" && !isAdminForeignFormation;
 
-  // edit-share users können speichern, auch wenn ihr eigener Tier free ist
+  // Cloud-Speicherung ist möglich, wenn entweder das eigene Konto das Feature
+  // freigeschaltet hat (`allowed`, tarifabhängig) ODER jemand anderes einem
+  // Bearbeitungszugriff auf SEINE Formation eingeräumt hat (`isSharedEdit`) —
+  // letzteres darf nicht am eigenen (ggf. Free-)Tarif des Bearbeiters scheitern,
+  // da die Berechtigung vom Formation-Owner kommt, nicht vom Bearbeiter-Tarif.
   const isCloudMode = !!session && (allowed || isSharedEdit);
 
   // For new formations: start from localStorage draft (unless editing from cloud)
@@ -260,7 +271,11 @@ export default function FormationEditorPage() {
     setClipboard([]);
   }
 
-  // Autosave
+  // Autosave: 800ms Debounce nach der letzten Änderung, um nicht bei jedem
+  // Tastendruck/jeder Cone-Bewegung eine Anfrage auszulösen. Neue (noch nicht
+  // gespeicherte) Formationen autosaven bewusst NUR lokal, auch im Cloud-Modus
+  // — der erste Cloud-Write passiert erst über den expliziten Speichern-Klick,
+  // der dann auch die ID vergibt und zur Edit-Route navigiert (siehe saveToCloud).
   useEffect(() => {
     if (showBasis || !initialized || isReadOnly) return;
     const t = setTimeout(() => {
@@ -308,7 +323,11 @@ export default function FormationEditorPage() {
   }, [dispatch, selectedConeIds, selectedArrowId, selectedMeasurementId, cones, clipboard]);
 
   function handleBasisConfirm(initialSnap: EditorSnap, sourceKey?: FormationKey) {
-    // Mathematisches Zentrum der Formation auf Canvas-Mitte legen
+    // Mathematisches Zentrum der Formation auf Canvas-Mitte legen — die
+    // Cones selbst (Registry-Formationen wie auch duplizierte eigene) sind
+    // bereits über normalizeCones auf Ursprung (0,0) normalisiert, hier wird
+    // nur noch die Bounding-Box-Mitte auf visibleM/2 verschoben, damit die
+    // Formation beim Start sichtbar in der Mitte der Arbeitsfläche liegt.
     const centered = initialSnap.cones.length > 0
       ? (() => {
           const b = boundsFromCones(initialSnap.cones);
@@ -339,6 +358,9 @@ export default function FormationEditorPage() {
     const c1 = cones.find((c) => c.id === gateFirstConeId);
     const c2 = cones.find((c) => c.id === id);
     if (c1 && c2) {
+      // Lichte Breite = Abstand der Mittelpunkte minus Pylon-Fußbreite (nicht
+      // der volle Mittelpunktabstand) — das entspricht dem tatsächlich
+      // durchfahrbaren Zwischenraum zwischen den beiden Pylon-Kanten.
       const centerDist = Math.sqrt((c1.x - c2.x) ** 2 + (c1.y - c2.y) ** 2);
       const lb = Math.max(0, centerDist - PYLON_FOOT_SIZE);
       setLichteBreite(Math.round(lb * 1000) / 1000);

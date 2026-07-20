@@ -2,6 +2,18 @@
 // Copyright (c) Jens Polifka
 // All rights reserved.
 
+// SVG-Zeichenfläche des Formation-Editors. Das Koordinatensystem ist zweistufig:
+// 1) "Meter" — die fachliche Position eines Cones/Pfeils/Hilfslinie, unabhängig vom Zoom.
+// 2) "SVG-Pixel" (0..CANVAS_PX) — die tatsächliche Zeichenfläche, quadratisch, immer
+//    genau `visibleM` Meter breit/hoch. Der Skalierungsfaktor S = CANVAS_PX / visibleM
+//    rechnet zwischen beiden um. Da der SVG-Container im Layout nicht immer quadratisch
+//    ist (z. B. auf schmalen Bildschirmen), wird zusätzlich "letterboxed" (siehe toMeters).
+//
+// Drag-Interaktionen (Cone verschieben, Pfeil krümmen, Hilfslinie verschieben, Cone
+// drehen) nutzen alle dasselbe Pattern: PointerDown setzt eine Ref/State mit dem
+// Startzustand + `setPointerCapture`, PointerMove auf dem äußeren <svg> berechnet das
+// Delta zum Startzustand, PointerUp räumt den Zustand wieder auf. So bleibt die Maus
+// "eingefangen", auch wenn der Zeiger schnell über den Rand der Fläche hinausgezogen wird.
 import { useRef, useState } from "react";
 import type { PlacedArrow } from "../../types";
 import type { EditableCone, EditorAction } from "../../hooks/useFormationEditor";
@@ -78,9 +90,18 @@ export default function FormationEditorCanvas({
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
   const [pylonLine, setPylonLine] = useState<LineDraw | null>(null);
 
-  const S = CANVAS_PX / visibleM;
+  const S = CANVAS_PX / visibleM; // Pixel pro Meter bei aktuellem Zoom
 
-  /** Screen coords → meters, accounting for letterbox when SVG DOM ≠ square */
+  /**
+   * Screen coords → meters, accounting for letterbox when SVG DOM ≠ square.
+   * Der SVG-viewBox ist quadratisch, aber der umgebende DOM-Container (z. B. bei
+   * schmalen Fenstern) nicht zwangsläufig — `size` ist die tatsächlich sichtbare
+   * Kantenlänge, `ox`/`oy` der Leerraum links/oben davon. Ohne diesen Ausgleich
+   * würden Klicks in einem nicht-quadratischen Container an der falschen
+   * Meter-Position landen. Ergebnis wird zusätzlich auf die Fläche geklemmt
+   * (Math.max/min), damit man z. B. einen Pylon nicht außerhalb von 0..visibleM
+   * platzieren kann, wenn der Zeiger über den Rand hinausgezogen wird.
+   */
   function toMeters(clientX: number, clientY: number) {
     const r = svgRef.current!.getBoundingClientRect();
     const size = Math.min(r.width, r.height);
@@ -116,6 +137,8 @@ export default function FormationEditorCanvas({
     return computeLinePylonsUtil(sx, sy, ex, ey);
   }
 
+  // Klick auf den leeren Hintergrund: Verhalten hängt vollständig vom aktuell
+  // aktiven Werkzeug ab (Auswahl leeren, Cone/Pfeil/Maßlinie/Hilfslinie starten).
   function handleBgPointerDown(e: React.PointerEvent<SVGRectElement>) {
     const pos = toMeters(e.clientX, e.clientY);
     if (tool === "guideH" || tool === "guideV") {
@@ -160,6 +183,10 @@ export default function FormationEditorCanvas({
   function handleBgPointerUp(e: React.PointerEvent<SVGRectElement>) {
     const pos = toMeters(e.clientX, e.clientY);
     if (pylonLine) {
+      // Shift+Drag im Platzierungs-Modus: computeLinePylons verteilt Pylone
+      // gleichmäßig entlang der gezogenen Linie (Reihenabstand + Ausrichtung
+      // für liegende Pylone kommt aus formationEditorUtils) — so lässt sich
+      // z. B. eine Slalomgasse in einem Zug aufbauen statt Pylon für Pylon.
       const positions = computeLinePylons(pylonLine.startX, pylonLine.startY, pos.x, pos.y);
       const kind = tool as "standing" | "lying" | "sensor";
       positions.forEach(({ x, y, angleDeg }) => {
@@ -176,7 +203,12 @@ export default function FormationEditorCanvas({
     }
     if (arrowDraw) {
       const { startX: sx, startY: sy } = arrowDraw;
+      // Mindestlänge verhindert, dass ein reiner Klick (kein Ziehen) einen
+      // Nullpfeil erzeugt.
       if (dist(sx, sy, pos.x, pos.y) > 0.1) {
+        // cpX/cpY (Kontrollpunkt der quadratischen Bézierkurve) startet auf dem
+        // Mittelpunkt der Strecke — dadurch ist der frisch gezeichnete Pfeil
+        // zunächst gerade, lässt sich aber sofort über den Kontrollpunkt krümmen.
         dispatch({ type: "ADD_ARROW", arrow: { id: crypto.randomUUID(), startX: sx, startY: sy, endX: pos.x, endY: pos.y, cpX: (sx + pos.x) / 2, cpY: (sy + pos.y) / 2 } });
       }
       setArrowDraw(null);
@@ -299,6 +331,11 @@ export default function FormationEditorCanvas({
       setArrowDragCp({ ...arrowDragCp, ox: e.clientX, oy: e.clientY });
     }
     if (rotDrag) {
+      // Winkel des Zeigers relativ zum Cone-Mittelpunkt, in derselben
+      // "0°=oben, im Uhrzeigersinn"-Konvention wie rotHandleX/Y oben
+      // (atan2(dx, -dy) statt des üblichen atan2(dy, dx)). Das Ergebnis wird
+      // auf 0..359° normalisiert, da JS' `%` bei negativen Zahlen negative
+      // Reste liefert.
       const svgPos = toSvgCoords(e.clientX, e.clientY);
       const cone = cones.find((c) => c.id === rotDrag.id);
       if (cone) {
@@ -314,7 +351,11 @@ export default function FormationEditorCanvas({
       guideDragRef.current = null;
     }
     if (dragRef.current) {
-      // Merge: gezogene Cones die auf einem anderen landen → löschen
+      // Merge-Geste: zieht man einen Cone nah genug (< MERGE_THRESHOLD Meter)
+      // auf einen anderen, NICHT mitgezogenen Cone, wird der gezogene Cone
+      // gelöscht statt exakt übereinandergelegt zu bleiben. Das erlaubt ein
+      // schnelles "Wegziehen"/Entfernen einzelner Pylone per Drag statt über
+      // Auswahl+Löschen, ohne dass zwei Cones unsichtbar aufeinanderliegen.
       const draggedIds = new Set(Object.keys(dragRef.current.initialPositions));
       const toMerge = cones
         .filter((c) => draggedIds.has(c.id))
@@ -388,8 +429,14 @@ export default function FormationEditorCanvas({
     );
   }
 
-  // Rotation handle for selected lying cone
-  // Rotation handle for selected standing or lying cone
+  // Rotation handle for selected standing or lying cone.
+  // Der Griff wird als Punkt auf einem Kreis um den Cone-Mittelpunkt platziert,
+  // im Abstand "halbe Cone-Ausdehnung + 14px Luft" — so bleibt er unabhängig
+  // vom Zoom (S) immer sichtbar außerhalb der Cone-Grafik. 0° zeigt nach oben
+  // (Bildschirm-Konvention, nicht Mathe-Konvention), deshalb sin/-cos statt
+  // cos/sin: bei angleDeg=0 ist sin(0)=0, -cos(0)=-1 → der Griff liegt genau
+  // über dem Cone, und positive Winkel drehen im Uhrzeigersinn (SVG-y wächst
+  // nach unten).
   const selectedRotCone = selectedConeIds.length === 1
     ? (cones.find((c) => c.id === selectedConeIds[0] && (c.kind === "lying" || c.kind === "standing")) ?? null)
     : null;

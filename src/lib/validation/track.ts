@@ -1,10 +1,21 @@
 // Kartslalom Streckenplaner
 // Copyright (c) Jens Polifka
 // All rights reserved.
+//
+// Rekonstruiert anhand der Cone-Positionen einen groben, angenommenen Fahrfluss
+// (welche Formation kommt in welcher Reihenfolge dran) und prüft Streckenregeln,
+// die sich nicht rein geometrisch pro Formation entscheiden lassen — u. a. ob
+// Vorstartbereich/Wechselzone (laut Regelwerk Pflicht) vorhanden sind, ob die
+// Strecke in getrennte Bereiche zerfällt oder ob Aufgaben zu weit/zu nah
+// aufeinanderfolgen (siehe docs/validierung.md). Ergänzt geometry.ts, das nur
+// einzelne Formationen isoliert betrachtet.
 
 import { resolveFormation } from "../formationRegistry";
 import type { ValidationContext, ValidationIssue } from "./types";
 
+// Geometrischer Mittelpunkt einer Formation (Durchschnitt aller Cone-Positionen,
+// relativ zur platzierten Position) — dient als vereinfachter "Aufenthaltsort"
+// der Formation für Abstands- und Reihenfolge-Berechnungen weiter unten.
 function centerOfItem(item: ValidationContext["items"][number]) {
   const formation = resolveFormation(item);
 
@@ -27,6 +38,11 @@ function distance(ax: number, ay: number, bx: number, by: number) {
   return Math.sqrt(dx * dx + dy * dy);
 }
 
+// Gruppiert Aufgaben-Mittelpunkte per einfacher Flood-Fill-artiger Suche in
+// zusammenhängende Cluster: zwei Knoten gehören zur selben Komponente, wenn
+// eine Kette von Nachbarn mit Abstand <= threshold zwischen ihnen existiert.
+// Mehr als eine Komponente bedeutet, die Strecke zerfällt in voneinander
+// getrennte Aufgabenbereiche — vermutlich kein durchgängiger Fahrfluss möglich.
 function buildConnectedComponents(
   nodes: Array<{ id: string; x: number; y: number }>,
   threshold: number
@@ -60,6 +76,11 @@ function buildConnectedComponents(
   return components;
 }
 
+// Schätzt eine plausible Fahrreihenfolge der Aufgaben per "nearest neighbour"
+// Greedy-Heuristik (startend links-oben, dann immer zur jeweils nächsten
+// unbesuchten Aufgabe) — keine exakte Streckenplanung, sondern nur eine grobe
+// Annäherung, um ungewöhnlich große Sprünge zwischen aufeinanderfolgenden
+// Aufgaben zu erkennen (track-long-jump unten).
 function orderTrackGreedy(nodes: Array<{ id: string; x: number; y: number }>) {
   if (nodes.length <= 1) return nodes;
 
@@ -91,6 +112,10 @@ function orderTrackGreedy(nodes: Array<{ id: string; x: number; y: number }>) {
   return ordered;
 }
 
+// Kürzester Pylon-zu-Pylon-Abstand von einer Formation zu jeder anderen
+// Formation auf der Fläche — Grundlage für die "zu nah"/"zu weit"-Prüfungen
+// unten (im Unterschied zu centerOfItem/orderTrackGreedy, die mit
+// Mittelpunkten statt einzelnen Pylonen rechnen).
 function nearestFormationGap(
   formationId: string,
   worldCones: ValidationContext["worldCones"]
@@ -129,6 +154,8 @@ function nearestFormationGap(
 export function validateTrack(ctx: ValidationContext): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
 
+  // Pfeile sind reine Richtungsmarkierungen, keine fahrerisch zu bewältigenden
+  // Aufgaben — für Fahrfluss-/Abstandsprüfungen zählen nur echte Formationen.
   const tasks = ctx.items.filter((item) => !resolveFormation(item).arrow);
 
   if (tasks.length === 0) {
@@ -141,6 +168,10 @@ export function validateTrack(ctx: ValidationContext): ValidationIssue[] {
     return issues;
   }
 
+  // Vorstartbereich/Wechselzone sind Warte-/Übergabezonen, keine fahrerisch zu
+  // durchfahrenden Aufgaben mit Abstandsvorgaben zu Nachbar-Formationen — daher
+  // von den Abstands-/Reihenfolge-Prüfungen unten ausgenommen (eigene Pflicht-
+  // Prüfung weiter unten: track-missing-vorstartbereich/-wechselzone).
   const ZONE_KEYS = new Set(["vorstartbereich", "wechselzone"]);
   const distanceTasks = tasks.filter((item) => !ZONE_KEYS.has(item.key));
 
@@ -150,6 +181,11 @@ export function validateTrack(ctx: ValidationContext): ValidationIssue[] {
     center: centerOfItem(item),
   }));
 
+  // Abstand zur jeweils nächstgelegenen anderen Formation: < 0.5 m gilt als
+  // "praktisch aufeinanderstehend" (Fahrer könnte die Aufgaben nicht sauber
+  // trennen), > 10 m als "zu weit auseinander" für einen zusammenhängenden
+  // Slalom-Fahrfluss auf typischer Feldgröße. Beides nur "warning": geometrisch
+  // zulässig, aber fahrerisch/planerisch fragwürdig — kein hartes Regelmaß.
   for (const task of taskCenters) {
     const { nearest } = nearestFormationGap(task.id, ctx.worldCones);
 
@@ -178,6 +214,9 @@ export function validateTrack(ctx: ValidationContext): ValidationIssue[] {
     }
   }
 
+  // Selber 10 m-Schwellwert wie oben, aber auf Formations-MITTELPUNKTE statt
+  // einzelner Pylonen angewendet, um zusammenhängende Cluster zu bilden — bewusst
+  // eine gröbere, globale Sicht auf die ganze Strecke statt paarweiser Abstände.
   const components = buildConnectedComponents(
     taskCenters.map((task) => ({ id: task.id, x: task.center.x, y: task.center.y })),
     10
@@ -193,6 +232,11 @@ export function validateTrack(ctx: ValidationContext): ValidationIssue[] {
     });
   }
 
+  // Höherer Schwellwert (14 m statt 10 m) als bei track-too-far: hier geht es
+  // nicht um den Abstand zur nächsten Formation generell, sondern speziell um
+  // den Sprung zwischen zwei in der geschätzten Fahrreihenfolge AUFEINANDERFOLGENDEN
+  // Aufgaben — bewusst toleranter, da orderTrackGreedy nur eine grobe Schätzung ist
+  // und nicht jeder große Abstand zwischen Nachbarn in der Reihenfolge ein Problem sein muss.
   const ordered = orderTrackGreedy(taskCenters.map((task) => ({ id: task.id, x: task.center.x, y: task.center.y })));
 
   for (let i = 0; i < ordered.length - 1; i++) {
@@ -211,6 +255,10 @@ export function validateTrack(ctx: ValidationContext): ValidationIssue[] {
     }
   }
 
+  // Ein klar erkennbarer Start-/Zielbereich liegt entweder an einer expliziten
+  // startGate/finishLane-Formation, oder zumindest eine Aufgabe steht nahe am
+  // Rand der Fläche (< 2 m). Fehlt beides, ist es nur ein unverbindlicher Hinweis
+  // ("info"), kein Fehler — reine Plausibilitätsvermutung, keine belastbare Regel.
   const edgeMargin = 2;
   const edgeRelated = taskCenters.filter(({ center }) => {
     return (
@@ -234,6 +282,11 @@ export function validateTrack(ctx: ValidationContext): ValidationIssue[] {
     });
   }
 
+  // Laut Regelwerk zwingend vorgeschriebene Zonen (jeweils 3×3 m) — Vorstartbereich
+  // zum Warten vor dem Start, Wechselzone für den Fahrerwechsel. Trotz "zwingend
+  // erforderlich" nur "warning" statt "error": eine unvollständig geplante Strecke
+  // soll sich weiterhin speichern/exportieren lassen, die Meldung ist ein Hinweis
+  // zur Nacharbeit, kein hartes Validierungs-Gate.
   const hasVorstart = ctx.items.some((item) => item.key === "vorstartbereich");
   if (!hasVorstart) {
     issues.push({

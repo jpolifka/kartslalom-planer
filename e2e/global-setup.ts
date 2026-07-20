@@ -6,6 +6,12 @@
  * /tmp/e2e-credentials.json. Die Smoke-Tests injizieren die Session per
  * localStorage-Injection (addInitScript) — ohne OTP-Fluss im Browser.
  *
+ * Läuft genau einmal vor der gesamten Test-Suite statt pro Spec-Datei: Der
+ * Login-Flow der App läuft über E-Mail-OTP (kein Passwort in der UI) — das
+ * pro Test im Browser nachzustellen wäre langsam (Mail-Zustellung/Mailpit)
+ * und potenziell flaky. Ein einmalig erzeugter Test-User + vorbereitete
+ * Session lässt alle Specs direkt eingeloggt starten (siehe helpers/auth.ts).
+ *
  * Pflicht-Env-Variablen:
  *   SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
  */
@@ -62,7 +68,9 @@ export default async function globalSetup() {
     throw new Error(`Test-User anlegen fehlgeschlagen: ${userErr?.message}`);
   }
 
-  // Pro-Tier setzen (für Versionshistorie-Tests)
+  // Pro-Tier setzen — mehrere Specs benötigen Pro (Versionshistorie, Speichern-
+  // unter, Kartenanbieter-Wechsel, Sharing); ein gemeinsamer Test-User mit
+  // Pro-Tier spart, für jede Spec einen eigenen Tier-Upgrade-Umweg zu bauen.
   await admin.from("profiles").update({ tier: "pro" }).eq("id", userData.user.id);
 
   // Session holen: password-basiertes Sign-In via Anon-Client (Node.js → Kong direkt)

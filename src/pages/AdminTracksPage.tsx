@@ -8,6 +8,11 @@ import { Trash2, ExternalLink, Map } from "lucide-react";
 import { useAdminTrackList, useAdminDeleteTrack } from "../hooks/useTracks";
 import type { AdminTrackRow } from "../lib/api/tracks";
 
+// Wie bei AdminFormationsPage: die Liste umfasst Strecken ALLER Nutzer.
+// useAdminTrackList/useAdminDeleteTrack rufen admin_list_tracks bzw.
+// admin_delete_track auf — beides SECURITY DEFINER-RPCs mit serverseitigem
+// profiles.role = 'admin'-Check. Ein normaler Nutzer sieht per RLS nur seine
+// eigenen Strecken; die Admin-RPCs umgehen das bewusst für diese Ansicht.
 type DeleteTarget = { id: string; name: string };
 
 export default function AdminTracksPage() {
@@ -89,6 +94,9 @@ export default function AdminTracksPage() {
                   </td>
                   <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
                     <div style={{ display: "flex", gap: 4 }}>
+                      {/* Öffnet fremde Strecke im Editor — nur Lesezugriff,
+                          Admins bearbeiten hier nicht den Inhalt, nur Metadaten
+                          (löschen). */}
                       <button
                         title="Im Editor öffnen (Lesezugriff)"
                         onClick={(e) => { e.stopPropagation(); navigate(`/editor/${t.id}`); }}

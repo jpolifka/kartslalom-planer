@@ -1,6 +1,13 @@
 /**
  * Playwright Smoke Tests — Login, Cloud Save, Sharing, Export
  *
+ * Zweck: Breite, flache Abdeckung der zentralen Nutzer-Flows (nicht deren
+ * fachliche Details) — soll grobe Regressionen (kaputter Build, kaputtes
+ * Routing, kaputte Auth-Injection, Kern-Feature komplett down) schnell und
+ * zuverlässig auffangen. Tiefere fachliche Spezialfälle (Versionshistorie,
+ * Kartenanbieter-Umschaltung, Speichern-unter) haben bewusst eigene,
+ * detailliertere Spec-Dateien, damit dieser Smoke-Test kurz und schnell bleibt.
+ *
  * Läuft gegen den lokalen Dev-Stack via docker/run-playwright-local.sh.
  * Voraussetzung: Dev-Stack läuft (docker compose -f docker/docker-compose.dev.yml up -d).
  *

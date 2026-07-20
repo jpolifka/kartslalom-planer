@@ -1,6 +1,13 @@
 // Kartslalom Streckenplaner
 // Copyright (c) Jens Polifka
 // All rights reserved.
+//
+// React-Query-Fassade über die Custom-Formations-API (src/lib/api/customFormations.ts).
+// Deckt den gesamten Lebenszyklus einer eigenen Formation ab: eigene Liste/CRUD,
+// Freigabe an andere Nutzer (Sharing), Community-Bibliothek (Library) sowie die
+// Admin-Moderation (Freigabe/Ablehnung eingereichter Formationen). Alle Mutationen
+// gehen serverseitig durch SECURITY DEFINER RPCs; hier wird nur invalidiert, nicht
+// selbst geprüft — Tarif-Gates (z. B. premium_required) und RLS entscheiden am Server.
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "../store/authStore";
@@ -28,6 +35,7 @@ import {
   type CreateFormationParams,
 } from "../lib/api/customFormations";
 
+// Liefert alle eigenen Formationen (private, geteilt, eingereicht ...) des eingeloggten Nutzers.
 export function useCustomFormationList() {
   const { session } = useAuthStore();
   return useQuery({
@@ -38,6 +46,8 @@ export function useCustomFormationList() {
   });
 }
 
+// Liefert eine einzelne Formation per ID — greift sowohl für eigene als auch für
+// per Sharing/Library freigegebene Formationen (RLS entscheidet, was zurückkommt).
 export function useCustomFormation(id: string | undefined) {
   return useQuery({
     queryKey: ["custom_formation", id],
@@ -47,6 +57,8 @@ export function useCustomFormation(id: string | undefined) {
   });
 }
 
+// Öffentliche Formations-Bibliothek (status="library", von Admins freigegeben).
+// Ändert sich selten → langes staleTime spart unnötige Refetches.
 export function useLibraryFormations() {
   return useQuery({
     queryKey: ["library_formations"],
@@ -82,6 +94,10 @@ export function useDeleteCustomFormation() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["custom_formations"] }),
   });
 }
+
+// Fehlercodes der obigen Mutationen (z. B. "premium_required", wenn das Server-Feature-Gate
+// aus useFeatureGate greift) werden bewusst nicht hier behandelt, sondern von mapError()
+// in lib/api/customFormations.ts übersetzt und von den aufrufenden Komponenten ausgewertet.
 
 // --- Sharing ---
 
@@ -138,6 +154,8 @@ export function useFormationPermission(id: string | undefined) {
   });
 }
 
+// Erstellt eine eigene, unabhängige Kopie einer Library-/geteilten Formation
+// (z. B. um eine Bibliotheks-Formation als Ausgangspunkt für eigene Änderungen zu nutzen).
 export function useDuplicateCustomFormation() {
   const qc = useQueryClient();
   return useMutation({
@@ -159,6 +177,10 @@ export function useSetDisplayName() {
 }
 
 // --- Admin ---
+// Moderations-Workflow für zur Bibliothek eingereichte Formationen (status="submitted"):
+// Admins sichten, promoten (→ Kopie in die öffentliche Library) oder bearbeiten/löschen.
+// Zugriffsschutz liegt komplett serverseitig (RPCs prüfen is_admin) — useIsAdmin dient nur
+// dem UI (z. B. Admin-Menüpunkt ein-/ausblenden).
 
 export function useIsAdmin() {
   const { session } = useAuthStore();
@@ -194,6 +216,8 @@ export function useAdminDeleteFormation() {
   });
 }
 
+// Übernimmt eine eingereichte Formation als Kopie in die öffentliche Library
+// (Original des Einreichers bleibt unangetastet) — daher Invalidierung beider Listen.
 export function useAdminPromoteToLibrary() {
   const qc = useQueryClient();
   return useMutation({

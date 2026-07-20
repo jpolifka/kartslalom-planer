@@ -42,6 +42,10 @@ export default function SettingsPage() {
     setExporting(true);
     setError(null);
     try {
+      // Edge Function "account-export" bündelt Profil (E-Mail, Tarif,
+      // Erstellungsdatum), alle eigenen Strecken (inkl. Geometrie/State) und
+      // deren Versionshistorie (track_versions) als eine JSON-Datei.
+      // Eigene Formationen/Formation-Shares sind NICHT enthalten.
       const res = await fetch(functionsUrl("account-export"), {
         method: "POST",
         headers: { Authorization: `Bearer ${session.access_token}` },
@@ -71,6 +75,14 @@ export default function SettingsPage() {
     setDeleting(true);
     setError(null);
     try {
+      // Edge Function "delete-account" ist ein ECHTES Hard-Delete, keine
+      // Deaktivierung: sie löscht zuerst serverseitig alle nicht in die
+      // Bibliothek aufgenommenen Formationen und markiert das Profil als
+      // gelöscht, dann entfernt sie den Auth-User komplett über die Admin-API
+      // (schlägt dieser letzte Schritt fehl, wird die Profil-Markierung wieder
+      // zurückgerollt). Bibliotheks-Formationen bleiben als Copies erhalten,
+      // verlieren aber den Eigentümer-Bezug; Formation-Shares mit anderen
+      // Nutzern werden mitgelöscht. Es gibt danach keinen Undo.
       const res = await fetch(functionsUrl("delete-account"), {
         method: "POST",
         headers: { Authorization: `Bearer ${session.access_token}` },

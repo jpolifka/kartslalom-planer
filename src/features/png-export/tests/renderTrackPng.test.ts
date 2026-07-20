@@ -69,6 +69,10 @@ describe("buildTrackPngBlob", () => {
     expect(blob.type).toBe("image/png");
   });
 
+  // Deckt den ersten der beiden in renderTrackPng.ts behandelten Fehlerfälle
+  // ab: getContext("2d") kann null liefern (z.B. sehr alte/eingeschränkte
+  // Browser oder erschöpfte Grafik-Ressourcen) — muss als Fehler statt als
+  // stiller Abbruch sichtbar werden.
   it("wirft einen Fehler, wenn kein 2D-Kontext verfügbar ist", async () => {
     HTMLCanvasElement.prototype.getContext = vi.fn(() => null) as unknown as typeof HTMLCanvasElement.prototype.getContext;
     await expect(buildTrackPngBlob(18, 36, [customItem()], [], "white")).rejects.toThrow(
@@ -76,6 +80,8 @@ describe("buildTrackPngBlob", () => {
     );
   });
 
+  // Zweiter Fehlerfall: das per data-URI geladene SVG kann vom Browser aus
+  // irgendeinem Grund nicht als Bild dekodiert werden (onerror statt onload).
   it("wirft einen Fehler, wenn das SVG-Bild nicht geladen werden kann", async () => {
     class FailingImage {
       onload: (() => void) | null = null;

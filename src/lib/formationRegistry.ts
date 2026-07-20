@@ -26,6 +26,12 @@ import { gasse } from "./formations/gasse";
 import { vorstartbereich } from "./formations/vorstartbereich";
 import { wechselzone } from "./formations/wechselzone";
 
+// Zentrale Override-Tabelle für Planungs-/Ablaufzeiten (Sekunden je
+// Formation), getrennt von den geometrie-fokussierten Formationsdefinitionen
+// in formations/*.ts. So können Standardzeiten für die Zeitplanung
+// (z. B. bei einer Trainings-/Wettkampfplanung) an einer Stelle gepflegt
+// werden, ohne die Cone-Geometrie-Module anzufassen; Formationen ohne Eintrag
+// hier behalten ihr eigenes defaultDurationSeconds (falls gesetzt).
 const DEFAULT_DURATIONS: Partial<Record<FormationKey, number>> = {
   germanCorner: 2,
   pretzel: 9,
@@ -86,12 +92,30 @@ export function getFormation(key: FormationDefinition["key"]) {
   return item;
 }
 
+// Ermittelt die tatsächlich für eine platzierte Formation geltende Dauer:
+// eine pro Platzierung individuell gesetzte Override-Zeit (durationSecondsOverride,
+// z. B. vom Nutzer im Editor angepasst) hat immer Vorrang vor dem Formations-
+// Standardwert. "custom"-Formationen haben keinen sinnvollen Standardwert
+// (ihre Geometrie ist frei/individuell und kommt nicht aus dieser Registry),
+// daher 0 ohne expliziten Override.
 export function getEffectiveDuration(durationSecondsOverride: number | undefined, key: FormationKey): number {
   if (durationSecondsOverride !== undefined) return durationSecondsOverride;
   if (key === "custom") return 0;
   return getFormation(key).defaultDurationSeconds ?? 0;
 }
 
+// Löst eine platzierte Formation zu ihrer tatsächlich zu rendernden Geometrie
+// auf. Für eingebaute Formationen (key !== "custom") ist das einfach die
+// gemeinsame, unveränderliche Definition aus FORMATIONS (per Key geteilt von
+// allen Platzierungen). Für "custom" trägt jede Platzierung stattdessen ihren
+// eigenen customSnapshot: ein zum Zeitpunkt des Platzierens eingefrorenes
+// Abbild der Cone-Geometrie/Label des vom Nutzer erstellten Hindernisses. Der
+// Snapshot entkoppelt den gespeicherten Track von der veränderlichen
+// Custom-Formation-Bibliothek (customFormationId verweist nur noch
+// informativ auf die Quelle) — wird die Quell-Formation später bearbeitet
+// oder gelöscht, bleibt der bereits platzierte Track unverändert korrekt
+// renderbar. Fehlt der Snapshot (alter Save vor dessen Einführung, oder
+// Datenfehler), wird ein Platzhalter statt eines App-Crashs zurückgegeben.
 export function resolveFormation(pf: PlacedFormation): FormationDefinition {
   if (pf.key === "custom") {
     const snap = pf.customSnapshot;

@@ -14,6 +14,10 @@ import s08 from "../../../docs/user/formation-editor/08-tastaturkuerzel.md?raw";
 
 const SECTIONS = [s01, s02, s03, s04, s05, s06, s07, s08];
 
+// Eigenständige Hilfe für den Formation-Editor (Werkzeuge zum Bauen einzelner
+// Pylon-Hindernisse) — bewusst getrennt von TrackHelpContent, da sonst die
+// Streckeneditor-Hilfe bei jedem neuen Formation-Editor-Werkzeug mitwachsen
+// müsste, obwohl beide Editoren unterschiedliche Zielgruppen/Kontexte haben.
 export default function FormationHelpContent() {
   return (
     <div>

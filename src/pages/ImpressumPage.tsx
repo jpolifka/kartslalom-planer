@@ -9,6 +9,13 @@ import { ImprintContent } from "../components/ImprintContent";
 export default function ImpressumPage() {
   const { hash } = useLocation();
 
+  // Impressum und Datenschutzerklärung leben als EIN Dokument in
+  // ImprintContent (nicht zwei Routen) — Links von außerhalb (Footer,
+  // Registrierungs-Hinweis, E-Mails) zeigen daher auf "/impressum#datenschutz",
+  // um direkt zum Datenschutz-Abschnitt zu springen. Da ImprintContent bei
+  // Navigation neu gemountet wird und das Ziel-Element erst danach im DOM
+  // existiert, kann der Browser den Anker nicht selbst anspringen — deshalb
+  // scrollen wir hier manuell nach dem Render.
   useEffect(() => {
     if (hash) {
       const el = document.getElementById(hash.slice(1));

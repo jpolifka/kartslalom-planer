@@ -4,6 +4,15 @@
 
 import type { GeoBounds } from "./geo";
 
+// Alle drei Funktionen unten rechnen intern in einem lokalen, ebenen
+// Metern-Koordinatensystem um den jeweiligen Mittelpunkt (r = Ost-Achse,
+// u = Nord-Achse), NICHT in echten Lat/Lng-Winkelgraden — auf Kartslalom-
+// Feldgrößen (Meter- bis niedriger Zweistelliger-Meter-Bereich) ist die
+// Erdkrümmung vernachlässigbar, daher genügt die einfache äquirechteckige
+// Näherung "1° Breite = 111320 m, 1° Länge = 111320 m * cos(lat)" statt einer
+// echten Kartenprojektion. rotationDeg ist "im Uhrzeigersinn ab Nord" (wie im
+// Feld-Editor gedreht wird); die Rotationsmatrix (cosT/sinT) unten ist deshalb
+// im Uhrzeigersinn, nicht die mathematisch übliche Gegenuhrzeigersinn-Matrix.
 export type AreaSelection = {
   centerLat: number;
   centerLng: number;
@@ -12,7 +21,14 @@ export type AreaSelection = {
   rotationDeg: number; // clockwise from north
 };
 
-// Project polygon points onto rotated axes and compute bounding rectangle
+// Bildet die (ggf. schräg gezeichneten) Polygonpunkte auf die um rotationDeg
+// gedrehten Achsen ab (r = Breiten-Achse, u = Höhen-Achse der gewünschten
+// Auswahl) und nimmt dort die achsenparallele Bounding-Box — das liefert die
+// kleinste Rotated-Rectangle-Umhüllende mit genau dieser Rotation, nicht nur
+// die achsenparallele Umhüllende des Originalpolygons. Der Schwerpunkt der
+// rotierten Box (rCenter/uCenter) wird anschließend zurückrotiert, weil er im
+// Allgemeinen nicht mit dem ursprünglichen Punkt-Schwerpunkt (centLat/centLng)
+// übereinstimmt.
 export function polygonToAreaSelection(
   points: Array<{ lat: number; lng: number }>,
   rotationDeg: number
@@ -36,12 +52,17 @@ export function polygonToAreaSelection(
   const minU = Math.min(...projs.map((p) => p.u));
   const maxU = Math.max(...projs.map((p) => p.u));
 
+  // Math.max(1, ...): entartete Eingaben (z. B. nur 1-2 Punkte oder alle
+  // Punkte kollinear) sollen eine minimale, aber gültige (>0) Feldgröße
+  // ergeben statt einer 0×0-Auswahl, mit der der Editor nichts anfangen kann.
   const widthM = Math.max(1, maxR - minR);
   const heightM = Math.max(1, maxU - minU);
   const rCenter = (minR + maxR) / 2;
   const uCenter = (minU + maxU) / 2;
 
-  // Inverse rotation to get adjusted centroid
+  // Inverse Rotation (gleicher Winkel, aber r/u vertauscht angewendet), um den
+  // Box-Mittelpunkt aus dem rotierten (r,u)-Raum zurück in den ursprünglichen
+  // (Ost,Nord)-Raum zu übersetzen.
   const dE = rCenter * cosT + uCenter * sinT;
   const dN = uCenter * cosT - rCenter * sinT;
 
@@ -54,7 +75,13 @@ export function polygonToAreaSelection(
   };
 }
 
-// Axis-aligned envelope of the rotated rectangle — used for tile fetching
+// Achsenparallele Umhüllende (Envelope) des rotierten Auswahl-Rechtecks —
+// wird gebraucht, weil sowohl XYZ-Kachel-Dienste (OSM) als auch WMS-GetMap
+// (RLP-DOP20) nur achsenparallele BBoxen abfragen können; die eigentliche
+// Rotation wird erst beim Rendern per CSS-/SVG-rotate() auf das so geladene
+// (größere) Rechteck angewendet, siehe computeBackgroundBox() in mapRender.ts.
+// Klassische Rotated-Rect-AABB-Formel: envW/envH sind die Projektionen der
+// beiden Rechteckseiten auf die Welt-Achsen, aufsummiert per |cos|/|sin|.
 export function areaSelectionToBounds(a: AreaSelection): GeoBounds {
   const θ = (a.rotationDeg * Math.PI) / 180;
   const envW = a.widthM * Math.abs(Math.cos(θ)) + a.heightM * Math.abs(Math.sin(θ));
@@ -68,7 +95,11 @@ export function areaSelectionToBounds(a: AreaSelection): GeoBounds {
   };
 }
 
-// Four corners of the selection rectangle in geo-coords (for SVG overlay)
+// Die vier Ecken des Auswahl-Rechtecks in Lat/Lng (für die SVG-Vorschau der
+// Auswahl auf der Karte). Reihenfolge: oben-links, oben-rechts, unten-rechts,
+// unten-links im lokalen (r,u)-Rahmen vor der Rotation — nach Anwendung von
+// rotationDeg ergibt das ein geschlossenes Viereck in der tatsächlich
+// gewünschten Ausrichtung.
 export function selectionCorners(sel: AreaSelection): Array<{ lat: number; lng: number }> {
   const θ = (sel.rotationDeg * Math.PI) / 180;
   const cosT = Math.cos(θ);

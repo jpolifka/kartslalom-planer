@@ -37,9 +37,26 @@ console.log('main function started')
 
 const JWT_SECRET       = Deno.env.get('JWT_SECRET')
 const SUPABASE_URL     = Deno.env.get('SUPABASE_URL')!
+// VERIFY_JWT ist ein GLOBALER Schalter für ALLE Functions hinter diesem
+// Router (siehe docker/supabase/docker-compose.yml-Kommentar dazu). Er wird
+// hier bewusst NICHT auf "true" gesetzt: user-lifecycle wird ohne User-JWT
+// per Cron aufgerufen (CRON_SECRET/x-cron-secret, siehe user-lifecycle/
+// handler.ts) und würde von einem globalen VERIFY_JWT=true fälschlich mit
+// 401 abgewiesen, da es (noch) keine Pro-Function-Konfiguration gibt. Jede
+// Function prüft ihre eigene Auth deshalb ohnehin selbst (account-export/
+// delete-account/send-welcome/map-background-image per /auth/v1/user,
+// user-lifecycle per CRON_SECRET) — dieser Schalter ist nur eine optionale
+// zusätzliche Verteidigungsschicht VOR dem Dispatch.
 const VERIFY_JWT       = Deno.env.get('VERIFY_JWT') === 'true'
 
 // ── JWT-Verifikation ─────────────────────────────────────────────────────────
+// Zwei unterstützte Signaturverfahren nebeneinander, für den Übergang
+// zwischen älteren und neueren Supabase/GoTrue-Auslieferungen:
+//   - HS256 (isValidLegacyJWT): symmetrisch, mit dem geteilten JWT_SECRET
+//     signiert — das klassische Supabase-Verfahren.
+//   - RS256/ES256 (isValidJWT): asymmetrisch, gegen den JWKS-Endpoint von
+//     GoTrue geprüft (Schlüsselrotation möglich, kein geteiltes Secret nötig).
+// Ein Token mit anderem/unbekanntem alg wird ohne weitere Prüfung abgelehnt.
 
 let SUPABASE_JWT_KEYS: ReturnType<typeof jose.createRemoteJWKSet> | null = null
 if (SUPABASE_URL) {
@@ -76,6 +93,10 @@ async function isValidJWT(jwt: string): Promise<boolean> {
   } catch { return false }
 }
 
+// OPTIONS wird immer durchgelassen (sonst würde ein CORS-Preflight ohne
+// Authorization-Header hier mit 401 statt mit einer Preflight-Antwort
+// scheitern); ohne VERIFY_JWT=true ist diese Funktion komplett inaktiv und
+// jede Function verlässt sich rein auf ihre eigene Auth-Prüfung.
 async function verifyRequest(req: Request): Promise<Response | null> {
   if (req.method === 'OPTIONS' || !VERIFY_JWT) return null
   try {
@@ -99,7 +120,21 @@ function json(data: unknown, status = 200, extra: Record<string, string> = {}) {
 }
 
 // ── Router ───────────────────────────────────────────────────────────────────
-
+// Routing-Prinzip: Kong terminiert "/functions/v1/" per strip_path (siehe
+// docker/supabase/volumes/api/kong.yml, Route functions-v1-all) und leitet
+// alles dahinter unverändert an diesen einen main-Prozess weiter. Der erste
+// Pfadsegment-Teil (z. B. "account-export" in "/account-export") entscheidet,
+// welcher In-Process-Handler aufgerufen wird — kein zusätzlicher HTTP-Hop,
+// kein separates Deno.serve() pro Function. Diese zentrale Datei existiert
+// NICHT, weil main.ts selbst keine anderen Module importieren könnte
+// (ein normaler statischer Import läuft im selben Deno-Prozess problemlos),
+// sondern weil der Fallback-Pfad unten (EdgeRuntime.userWorkers.create) kein
+// Deno.serve() als Entrypoint kennt — jede eigenständig deploybare Function
+// braucht dafür weiterhin ihr eigenes index.ts. Diese Datei ist also der
+// einzige Prozess, den Kong tatsächlich erreicht; separate Deployments pro
+// Function würden entweder denselben Code duplizieren (siehe Red-Team-Review
+// 2026-07-13 oben) oder bräuchten pro Function einen eigenen Kong-Route/
+// Worker-Prozess, was hier bewusst vermieden wird.
 const HANDLERS: Record<string, (req: Request) => Promise<Response>> = {
   'account-export':       handleAccountExport,
   'delete-account':       handleDeleteAccount,
@@ -121,7 +156,14 @@ Deno.serve(async (req: Request) => {
   const handler = HANDLERS[service_name]
   if (handler) return handler(req)
 
-  // Unbekannte Funktionen: User-Worker-Dispatch (Forward-Kompatibilität)
+  // Unbekannte Funktionen: User-Worker-Dispatch (Forward-Kompatibilität) —
+  // erlaubt, zusätzliche, nicht in HANDLERS eingetragene Functions einfach
+  // als eigenständiges Verzeichnis unter functions/ abzulegen, ohne main
+  // anfassen zu müssen. Achtung: ALLE Prozess-Umgebungsvariablen (envVars)
+  // werden an den Worker weitergereicht, nicht nur die für den jeweiligen
+  // Service relevanten — ein unbekannter/neu hinzugefügter Service-Name
+  // bekäme damit z. B. auch SUPABASE_SERVICE_ROLE_KEY oder RESEND_API_KEY
+  // zu sehen, obwohl er sie nicht braucht.
   const servicePath = `/home/deno/functions/${service_name}`
   console.error(`serving via worker: ${servicePath}`)
   const envVars = Object.entries(Deno.env.toObject())

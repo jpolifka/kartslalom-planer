@@ -7,6 +7,11 @@ import { Plus, Trash2, Pencil, Layers, Share2, Eye } from "lucide-react";
 import { useCustomFormationList, useDeleteCustomFormation, useSharedFormations } from "../hooks/useCustomFormations";
 import { useFeatureGate } from "../hooks/useFeatureGate";
 
+// Eigenständige Vollansicht "Meine Hindernisse" (eigene + mit mir geteilte
+// Formationen). Hinweis: DashboardPage.tsx zeigt denselben Datensatz
+// (useCustomFormationList) zusätzlich in einer eigenen, separat gepflegten
+// Kartenansicht inkl. eigener CATEGORY_LABELS-Kopie — bei Änderungen an
+// Kategorien/Labels/Kartenlayout hier immer auch dort prüfen.
 const CATEGORY_LABELS: Record<string, string> = {
   individuell: "Individuell",
   basis: "Basis",
@@ -68,6 +73,10 @@ export default function FormationsPage() {
   const { data: formations, isLoading } = useCustomFormationList();
   const { data: sharedWithMe, isLoading: sharedLoading } = useSharedFormations();
   const deleteMutation = useDeleteCustomFormation();
+  // Eigene Formationen sind ein Tarif-Feature (mind. Pro) — ohne Berechtigung
+  // bleibt "Neues Hindernis" ausgeblendet und ein Hinweis mit Kontakt-Link
+  // wird angezeigt statt eines Checkout-Flows (siehe Zahlungsmodell: Upgrades
+  // laufen manuell, es gibt keinen Self-Service-Checkout in der App).
   const { allowed, requiredTier } = useFeatureGate("custom_formations");
 
   async function handleDelete(e: React.MouseEvent, id: string, name: string) {
@@ -162,7 +171,9 @@ export default function FormationsPage() {
         </div>
       )}
 
-      {/* Geteilt mit mir */}
+      {/* Geteilt mit mir: Formationen, die andere Nutzer per
+          FormationSharePage(useShareFormation) freigegeben haben — je nach
+          vergebenem Recht nur ansehen (Eye) oder auch bearbeiten (Pencil). */}
       {!sharedLoading && !!sharedWithMe?.length && (
         <>
           <h3 style={{ fontSize: 15, fontWeight: 700, color: "#374151", margin: "0 0 12px" }}>Geteilt mit mir</h3>

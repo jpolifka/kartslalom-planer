@@ -4,6 +4,13 @@
 //
 // Integration: Track-Lifecycle gegen echte lokale Supabase.
 // create_track → save_track → fetch → fetch-by-id → delete → weg
+//
+// Deckt den kompletten Lebenszyklus einer Strecke ab: Anlegen, Umbenennen,
+// Speichern (inkl. serverseitiger Namens-/Payload-Validierung), Lesen des
+// gespeicherten State, Tier-Gates für Premium-Kartenanbieter (map_provider_id)
+// und schließlich Löschen. Läuft gegen die echte DB, weil die Validierung
+// (invalid_name, map_provider_requires_pro, track_limit_reached) serverseitig
+// in den RPCs sitzt und nicht im Frontend gemockt werden kann.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
@@ -157,6 +164,12 @@ describe("Track lifecycle", () => {
 
 // Szenario: Custom Formation mit Snapshot wird in Track gespeichert.
 // Nach Löschen der Quell-Formation muss der Snapshot in der DB erhalten bleiben.
+// customSnapshot ist bewusst eine Kopie der Formationsdaten zum Zeitpunkt des
+// Platzierens, keine Referenz (customFormationId zeigt zwar noch auf die
+// Quelle, wird aber nicht mehr aufgelöst) — deshalb reicht es hier zu prüfen,
+// dass state_json den Snapshot unverändert durch mehrfaches save_track
+// hindurch persistiert, ohne dass die referenzierte Quell-Formation überhaupt
+// noch existieren muss.
 describe("customSnapshot DB-Persistenz", () => {
   let client: Awaited<ReturnType<typeof loginAsUser>>;
   const userIds: string[] = [];

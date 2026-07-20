@@ -33,6 +33,9 @@ const BASE_PARAMS = {
   source_custom_formation_id: null,
 };
 
+// Simuliert eine Postgres-exception-Message, wie sie eine SECURITY DEFINER RPC
+// bei einer Regelverletzung wirft (z. B. Premium-Gate, Limit erreicht) — mapError()
+// in customFormations.ts übersetzt diese Rohtexte in stabile Fehlercodes für die UI.
 function rpcError(message: string) {
   return Promise.resolve({ data: null, error: { message } });
 }

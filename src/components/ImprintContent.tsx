@@ -69,6 +69,16 @@ export function ImprintContent() {
         </p>
       </HelpSection>
 
+      {/*
+        Technischer Kontext: OSM ist der Standard-Kartenhintergrund im Editor
+        (Provider "osm" in lib/mapProviders.ts, gerendert über
+        MapBackground.tsx/MapSelector.tsx als Tile-Bilder direkt vom Browser
+        geladen, daher die IP-Übermittlung unten). Für Pro-Nutzer gibt es
+        zusätzlich den amtlichen RLP-DOP20-Luftbilddienst als WMS-Einzelbild
+        (ebenfalls per direktem Bild-Request vom Browser, kein Proxy dazwischen) —
+        dieser Dienst wird hier in der Datenschutzerklärung aktuell nicht separat
+        genannt, siehe Anmerkung im Bericht.
+      */}
       <HelpSection title="4. Nutzung von OpenStreetMap">
         Diese Website verwendet Kartendaten von OpenStreetMap (OSM).
         <p style={{ margin: "6px 0" }}>
@@ -99,6 +109,11 @@ export function ImprintContent() {
         </p>
       </HelpSection>
 
+      {/*
+        Technischer Kontext: Cloudflare sitzt als CDN/Zero-Trust-Tunnel vor der
+        selbst gehosteten Supabase-Infrastruktur (siehe Abschnitt 6 und den
+        PROD-RISK-Hinweis dort) — daher der eigene Abschnitt unabhängig von OSM.
+      */}
       <HelpSection title="5. Nutzung von Cloudflare">
         Diese Website nutzt Dienste von Cloudflare zur Verbesserung der Sicherheit
         und Verfügbarkeit der Website.

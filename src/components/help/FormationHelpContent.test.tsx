@@ -6,6 +6,8 @@ import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import FormationHelpContent from "./FormationHelpContent";
 
+// Reiner Render-Smoke-Test (siehe TrackHelpContent.test.tsx für dasselbe Prinzip):
+// prüft nur, dass Markdown-Import + Rendering funktionieren, nicht den Wortlaut.
 describe("FormationHelpContent", () => {
   it("rendert alle acht Abschnitte aus den docs/user/formation-editor/*.md-Dateien", () => {
     render(<FormationHelpContent />);

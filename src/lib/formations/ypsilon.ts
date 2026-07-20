@@ -6,6 +6,11 @@ import type { FormationDefinition } from "../../types";
 import { normalizeCones } from "../geometry";
 import { builder } from "./common";
 
+// "Ypsilon": Y-foermige Verzweigung mit drei Ausfahrten. Zwei fast identische Pylonenreihen
+// (oben/unten, Ursprung jeweils bei .at(0,0) neu gesetzt) spreizen sich in der Mitte mit
+// Faktor 0,45 (statt 1,0) auseinander und laufen am Ende wieder zusammen — dieser
+// V-Abschnitt bildet den namensgebenden Ypsilon-Knick. Die letzte Pylone (move_pylon(-1,-1))
+// markiert den dritten, mittleren Ausgang zwischen den beiden Armen.
 export const ypsilon: FormationDefinition = {
   key: "ypsilon",
   label: "Ypsilon",

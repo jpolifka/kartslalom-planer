@@ -5,6 +5,10 @@
 import { describe, it, expect } from "vitest";
 import { resolveFormationAccess, isAccessDenied } from "./permission";
 
+// Prueft die Rechte-Matrix aus permission.ts: Owner/Edit-Share/View-Share/Library-Zugriff
+// fuer normale Nutzer, sowie den Admin-Override, der eine fremde Formation (auch ohne
+// Share oder mit owner_id=null) effektiv auf "edit" hochstuft, ohne die eigentliche
+// Owner/Share-Beziehung in der Datenbank zu veraendern.
 const ME = "user-me";
 const OTHER = "user-other";
 

@@ -52,7 +52,13 @@ export type CreateFormationParams = {
   source_custom_formation_id: string | null;
 };
 
+// Übersetzt die Postgres-exception-Message der RPCs in stabile, UI-taugliche
+// Fehlercodes. Die Server-Strings sind interne Implementierungsdetails der
+// SECURITY DEFINER Funktionen — der Code hier ist der einzige Ort, der sie kennen muss.
 function mapError(msg: string): Error {
+  // premium_required: Gate ist serverseitig vorbereitet (app_config.custom_formations_required_tier),
+  // aktuell aber auf null gesetzt — es existiert noch kein aktives Tarif-Modell,
+  // das diesen Fehler tatsächlich auslöst (siehe docs/planning/CUSTOM_FORMATIONS_PLAN.md).
   if (msg.includes("premium_required"))              return new Error("PREMIUM_REQUIRED");
   if (msg.includes("custom_formation_limit_reached")) return new Error("FORMATION_LIMIT_REACHED");
   if (msg.includes("too_many_cones"))                return new Error("TOO_MANY_CONES");
@@ -68,6 +74,10 @@ function mapError(msg: string): Error {
   return new Error(msg);
 }
 
+// Legt eine neue eigene Formation an (status="private", is_library=false).
+// Owner ist implizit der eingeloggte Nutzer (auth.uid() serverseitig) — kann
+// später per shareFormation() an einzelne Nutzer freigegeben oder per
+// admin_promote_to_library() (Kopie!) in die öffentliche Bibliothek übernommen werden.
 export async function createCustomFormation(p: CreateFormationParams): Promise<string> {
   const { data, error } = await supabase.rpc("create_custom_formation", {
     p_name:                       p.name,
@@ -85,6 +95,9 @@ export async function createCustomFormation(p: CreateFormationParams): Promise<s
   return data as string;
 }
 
+// Bearbeitet eine eigene Formation. source_formation_key/source_custom_formation_id
+// sind hier bewusst ausgeschlossen — die Herkunft (Kopie einer Registry- oder
+// Custom-Formation) ist ein Erstellungs-Attribut und wird nachträglich nicht verändert.
 export async function updateCustomFormation(id: string, p: Omit<CreateFormationParams, "source_formation_key" | "source_custom_formation_id">): Promise<void> {
   const { error } = await supabase.rpc("update_custom_formation", {
     p_id:               id,
@@ -144,6 +157,10 @@ export type LibraryFormationRow = {
   created_at: string;
 };
 
+// Formationen mit is_library=true — für alle Nutzer (auch ohne Login) sichtbar,
+// da RLS-Policy "custom_formations_select_library" is_library=true generell freigibt.
+// display_name ist der frei wählbare Anzeigename des ursprünglichen Erstellers
+// (null = anonym, UI zeigt dann "Community-Formation").
 export async function fetchLibraryFormations(): Promise<LibraryFormationRow[]> {
   const { data, error } = await supabase.rpc("get_library_formations");
   if (error) throw error;
@@ -151,6 +168,9 @@ export async function fetchLibraryFormations(): Promise<LibraryFormationRow[]> {
 }
 
 // --- Sharing ---
+// Direktes Teilen einer einzelnen Formation mit einem anderen registrierten Nutzer
+// (Owner behält die Kontrolle, RLS erlaubt dem Ziel-Nutzer je nach permission
+// nur Lesen oder auch Bearbeiten) — unabhängig von der öffentlichen Library.
 
 export type FormationShareEntry = {
   shared_with_id: string;
@@ -195,6 +215,8 @@ export async function fetchFormationShares(formationId: string): Promise<Formati
 
 export type SharedFormationRow = CustomFormationRow & { permission: "view" | "edit" };
 
+// Formationen, die ANDERE Nutzer per shareFormation() mit dem aktuellen Nutzer
+// geteilt haben (Gegenstück zu fetchCustomFormations, das nur eigene liefert).
 export async function fetchSharedFormations(): Promise<SharedFormationRow[]> {
   const { data, error } = await supabase.rpc("get_shared_formations");
   if (error) throw error;
@@ -203,12 +225,17 @@ export async function fetchSharedFormations(): Promise<SharedFormationRow[]> {
 
 export type FormationPermission = "owner" | "edit" | "view";
 
+// null = weder Owner noch Share-Empfänger — UI blendet Bearbeiten/Teilen-Aktionen
+// entsprechend aus, unabhängig davon, ob die Formation überhaupt geladen werden konnte.
 export async function fetchFormationPermission(id: string): Promise<FormationPermission | null> {
   const { data, error } = await supabase.rpc("get_my_formation_permission", { p_id: id });
   if (error) throw error;
   return data as FormationPermission | null;
 }
 
+// Kopiert eine fremde (geteilte oder Library-)Formation als neue eigene
+// Formation des aktuellen Nutzers — z. B. um eine Library-Formation als
+// Ausgangspunkt für eigene Anpassungen zu übernehmen.
 export async function duplicateCustomFormation(sourceId: string): Promise<string> {
   const { data, error } = await supabase.rpc("duplicate_custom_formation", { p_source_id: sourceId });
   if (error) throw mapError(error.message);
@@ -227,6 +254,8 @@ export async function setDisplayName(displayName: string | null): Promise<void> 
 }
 
 // --- Admin ---
+// Admin-RPCs dürfen fremde/alle Formationen unabhängig vom Owner sehen/ändern
+// (u.a. status in {submitted, library, rejected}, edited_by_admin_*-Audit-Felder).
 
 export async function isCurrentUserAdmin(): Promise<boolean> {
   const { data, error } = await supabase.rpc("is_current_user_admin");
@@ -261,6 +290,12 @@ export async function adminDeleteFormation(id: string): Promise<void> {
   if (error) throw mapError(error.message);
 }
 
+// Übernimmt eine von einem Nutzer eingereichte Formation (typischerweise status="submitted")
+// in die öffentliche Bibliothek. Erzeugt dabei eine eigenständige KOPIE mit is_library=true —
+// das Original bleibt beim ursprünglichen Ersteller unverändert samt Bearbeitungsrechten
+// erhalten (siehe docs/planning/CUSTOM_FORMATIONS_PLAN.md, Abschnitt "Promote-to-Library
+// = Kopie, nicht Verschieben"). Library- und Ursprungs-Eintrag laufen ab hier unabhängig
+// voneinander weiter.
 export async function adminPromoteToLibrary(id: string, category: string): Promise<string> {
   const { data, error } = await supabase.rpc("admin_promote_to_library", {
     p_formation_id: id,

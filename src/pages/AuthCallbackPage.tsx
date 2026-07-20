@@ -42,7 +42,12 @@ export default function AuthCallbackPage() {
     ranRef.current = true;
 
     async function handleCallback() {
-      // flowType "pkce": Link enthält ?code=... (Query-Parameter)
+      // Ablauf: Supabase schickt den Magic-Link mit emailRedirectTo auf genau
+      // diese Route (siehe LoginPage: `${origin}/auth/callback`). Bei
+      // flowType "pkce" (Default) hängt Supabase den Autorisierungscode als
+      // ?code=... an diesen Redirect an; wir tauschen ihn hier gegen eine
+      // Session. Nach erfolgreicher Anmeldung: einmalige Gast->Cloud-Migration,
+      // Willkommens-Mail anstoßen, dann Weiterleitung ins Dashboard.
       const code = new URLSearchParams(window.location.search).get("code");
 
       if (code) {

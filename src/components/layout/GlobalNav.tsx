@@ -107,9 +107,15 @@ export default function GlobalNav() {
         <Link to="/impressum" style={dim}>Impressum</Link>
       </nav>
       <FeedbackDialog isOpen={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+      {/* Nur 2 Inhalts-Varianten für 3 Routen-Fälle: isGeneralHelp (Dashboard/
+          Einstellungen) fällt bewusst in den Track-Hilfe-Zweig, da deren
+          "Konto"/"Versionen"-Kapitel dort bereits alles Nötige erklären
+          (siehe isGeneralHelp-Kommentar oben) — deshalb wird hier auf
+          isFormationEditor verzweigt (nicht isTrackEditor), damit sowohl
+          Editor als auch Dashboard/Einstellungen im else-Zweig landen. */}
       {helpOpen && (
         <HelpModal title="Hilfe" onClose={() => setHelpOpen(false)}>
-          {isTrackEditor ? <TrackHelpContent /> : <FormationHelpContent />}
+          {isFormationEditor ? <FormationHelpContent /> : <TrackHelpContent />}
         </HelpModal>
       )}
     </header>

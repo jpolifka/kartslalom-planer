@@ -1,11 +1,18 @@
 // Kartslalom Streckenplaner
 // Copyright (c) Jens Polifka
 // All rights reserved.
+//
+// Smoke-Tests für runValidation() (geometry.ts + track.ts kombiniert) —
+// prüft nur die Fehler-Ebene ("error"), nicht die zahlreichen "warning"/"info"-
+// Hinweise (Vorstartbereich, Wechselzone etc.), die bei einer derart minimalen
+// Testfläche erwartbar mit auftreten.
 
 import { describe, it, expect } from "vitest";
 import { runValidation } from "./index";
 import type { PlacedFormation } from "../../types";
 
+// Minimal-Helper für einen einzelnen Standard-Pylon ohne Rotation — reicht aus,
+// um die geometrischen Abstands-/Grenzprüfungen gezielt auszulösen.
 function pylon(id: string, x: number, y: number): PlacedFormation {
   return { id, key: "singlePylon", x, y, rotationDeg: 0, direction: "none" };
 }

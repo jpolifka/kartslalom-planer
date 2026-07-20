@@ -96,7 +96,14 @@ describe("delete-account", () => {
     expect(rollbackBody.deleted_at).toBeNull();
   });
 
-  // RPC wird mit User-Bearer aufgerufen (für auth.uid() im SECURITY DEFINER RPC)
+  // RPC wird mit User-Bearer aufgerufen (für auth.uid() im SECURITY DEFINER RPC).
+  // Das ist der zentrale Anti-IDOR-Mechanismus dieser Function: es gibt
+  // keinen Test dafür, dass "ein fremdes Konto per User-ID-Parameter gelöscht
+  // werden kann", weil es diesen Parameter im Handler schlicht nicht gibt --
+  // die uid kommt ausschließlich aus dem verifizierten Token (siehe
+  // handler.ts). Dieser Test verifiziert indirekt, dass genau dieser Bearer
+  // (und nicht der Service-Role-Key) an die RPC weitergereicht wird, damit
+  // auth.uid() im SECURITY-DEFINER-Kontext korrekt auf den Aufrufer zeigt.
   it("calls RPC with user bearer token, not service role", async () => {
     mockFetch
       .mockResolvedValueOnce(fetchOk({ id: "uid-1" }))

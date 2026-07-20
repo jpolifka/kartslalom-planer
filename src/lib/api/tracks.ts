@@ -1,6 +1,12 @@
 // Kartslalom Streckenplaner
 // Copyright (c) Jens Polifka
 // All rights reserved.
+//
+// Supabase-Zugriffsschicht für Cloud-Strecken (nur bei aktiver Session relevant —
+// im Gast-Modus läuft Persistenz stattdessen über lib/storage.ts/localStorage,
+// siehe docs/persistenz.md). Schreibende Operationen mit Tarif- oder Limit-Prüfung
+// laufen über SECURITY DEFINER RPCs statt direktem .insert()/.update(), damit
+// Free/Pro/Team-Gates serverseitig durchgesetzt werden und nicht im Client umgehbar sind.
 
 import { supabase } from "../supabase";
 import type { SavedState } from "../storage";
@@ -57,7 +63,10 @@ export async function fetchTrack(id: string): Promise<TrackDetail | null> {
   return data as TrackDetail | null;
 }
 
-// Erstellen via RPC — serverseitiges Limit-Check
+// Erstellen via RPC — serverseitiges Limit-Check.
+// TRACK_LIMIT_REACHED: Free-Tarif erlaubt nur eine begrenzte Anzahl eigener
+// Strecken; wird die RPC-Fehlermeldung geworfen, muss die UI zum Dashboard
+// zurück (kein Fallback, kein Client-seitiges Umgehen möglich).
 export async function createTrack(name = "Neue Strecke"): Promise<string> {
   const { data, error } = await supabase.rpc("create_track", { track_name: name });
   if (error) {
@@ -68,8 +77,11 @@ export async function createTrack(name = "Neue Strecke"): Promise<string> {
   return data as string;
 }
 
-// Speichern via RPC — Ownership + Tier-Validierung serverseitig
-// Kein direktes .from("tracks").update() — das wäre am Server vorbei
+// Speichern via RPC — Ownership + Tier-Validierung serverseitig.
+// Kein direktes .from("tracks").update() — das wäre am Server vorbei.
+// MAP_PROVIDER_REQUIRES_PRO: Free-Nutzer dürfen einen Premium-Kartenanbieter
+// (z. B. "rlp_dop20"-Luftbild) zwar lokal auswählen, aber der Server lehnt das
+// Speichern ab — die UI setzt mapProviderId danach automatisch auf "osm" zurück.
 export async function saveTrack(
   id: string,
   state: Omit<SavedState, "version">
@@ -109,9 +121,14 @@ export async function deleteTrack(id: string): Promise<void> {
 }
 
 // --- Share-Links ---
+// Öffentliche, widerrufbare Nur-Lese-Links auf eine Strecke, ohne Anmeldung für
+// Betrachter (Pro/Team-Feature, siehe docs/track-share-links.md). Es existiert
+// immer nur EIN aktiver Token pro Strecke — ein neu erzeugter Link ersetzt den
+// alten sofort, es gibt keinen Verlauf mehrerer gleichzeitig gültiger Links.
 // Der Plaintext-Token wird nur bei der Erzeugung einmalig zurückgegeben —
-// gespeichert wird serverseitig ausschließlich dessen Hash.
+// gespeichert wird serverseitig ausschließlich dessen SHA-256-Hash.
 
+// SHARE_REQUIRES_PRO: Free-Tarif darf keine Share-Links erzeugen.
 export async function createTrackShareLink(id: string): Promise<string> {
   const { data, error } = await supabase.rpc("create_track_share_link", { p_track_id: id });
   if (error) {
@@ -132,6 +149,10 @@ export async function revokeTrackShareLink(id: string): Promise<void> {
 }
 
 // --- Versionshistorie ---
+// Anders als Autosave (überschreibt laufend den aktuellen Stand) sind Versionen
+// bewusst gesetzte, manuelle Snapshots des aktuellen state_json — z. B. um vor
+// einer größeren Änderung einen Wiederherstellungspunkt zu haben. Pro/Team-Feature
+// (siehe docs/planning/IMPLEMENTATION_PLAN.md: "letzte 10 für Pro, unbegrenzt für Team").
 
 export type TrackVersion = {
   id: string;
@@ -139,6 +160,7 @@ export type TrackVersion = {
   created_at: string;
 };
 
+// VERSION_HISTORY_REQUIRES_PRO: Free-Tarif kann keine Snapshots anlegen.
 export async function createTrackVersion(trackId: string): Promise<string> {
   const { data, error } = await supabase.rpc("create_track_version", { p_track_id: trackId });
   if (error) {
@@ -158,6 +180,10 @@ export async function getTrackVersions(trackId: string): Promise<TrackVersion[]>
   return (data ?? []) as TrackVersion[];
 }
 
+// Überschreibt den AKTUELLEN Stand des zugehörigen Tracks mit diesem Snapshot
+// (destruktiv, im Unterschied zu createTrackFromVersion weiter unten). Kann wie
+// saveTrack() an MAP_PROVIDER_REQUIRES_PRO scheitern, falls der Snapshot einen
+// Premium-Kartenanbieter referenziert, der Nutzer aber inzwischen auf Free ist.
 export async function restoreTrackVersion(versionId: string): Promise<void> {
   const { error } = await supabase.rpc("restore_track_version", { p_version_id: versionId });
   if (error) {
@@ -214,6 +240,8 @@ export async function getTrackVersionDetail(versionId: string): Promise<TrackVer
 }
 
 // --- Admin ---
+// Admin-RPCs umgehen RLS bewusst (fremde Tracks lesen/löschen, inkl. owner_email
+// zur Zuordnung) — nur für die interne Admin-Oberfläche, nicht für normale Nutzer.
 
 export async function adminListTracks(ownerId?: string): Promise<AdminTrackRow[]> {
   const { data, error } = await supabase.rpc("admin_list_tracks", {

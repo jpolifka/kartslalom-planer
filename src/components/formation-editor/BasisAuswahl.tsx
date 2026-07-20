@@ -14,6 +14,10 @@ type Props = {
   onConfirm: (snap: EditorSnap, sourceKey?: FormationKey) => void;
 };
 
+// Reine Pfeil-Formationen (arrowStraight/arrow90/arrow180) haben keine Cones
+// und ergeben als Startpunkt für ein neues Hindernis keinen Sinn — deshalb
+// zusätzlich zu `!f.arrow` explizit ausgeschlossen (falls `arrow` bei diesen
+// Einträgen nicht konsequent gesetzt ist).
 const NON_CONE_KEYS: FormationKey[] = ["arrowStraight", "arrow90", "arrow180"];
 const SELECTABLE = FORMATIONS.filter((f) => !f.arrow && !NON_CONE_KEYS.includes(f.key));
 
@@ -32,6 +36,11 @@ const s: Record<string, React.CSSProperties> = {
   confirmBtnDisabled: { padding: "10px 0", background: "#93c5fd", color: "white", border: "none", borderRadius: 8, fontSize: 15, fontWeight: 600, cursor: "not-allowed" },
 };
 
+// Startdialog für ein neues Hindernis: leer, aus einer eingebauten
+// Standard-Formation dupliziert, oder (nur eingeloggt) aus einer eigenen
+// bestehenden Formation dupliziert. In allen drei Fällen bekommen die Cones
+// frische `crypto.randomUUID()`-IDs — es wird nie die Original-Formation
+// referenziert, sondern immer eine unabhängige Kopie im Editor-State erzeugt.
 export default function BasisAuswahl({ onConfirm }: Props) {
   const { session } = useAuthStore();
   const { data: ownFormations } = useCustomFormationList();
@@ -45,6 +54,10 @@ export default function BasisAuswahl({ onConfirm }: Props) {
       return;
     }
     if (mode === "standard" && selectedKey) {
+      // normalizeCones verschiebt die fest kodierten Formation-Koordinaten so,
+      // dass ihr Ursprung bei (0,0) liegt — die aufrufende Seite (FormationEditorPage)
+      // zentriert sie danach auf die sichtbare Fläche. So bleiben die
+      // Formation-Definitionen selbst unabhängig von der Canvas-Größe.
       const formation = FORMATIONS.find((f) => f.key === selectedKey)!;
       const normalized = normalizeCones(formation.cones);
       const cones: EditableCone[] = normalized.map((c) => ({ ...c, id: crypto.randomUUID() }));
@@ -54,6 +67,8 @@ export default function BasisAuswahl({ onConfirm }: Props) {
     if (mode === "own" && selectedOwnId && ownFormations) {
       const f = ownFormations.find((x) => x.id === selectedOwnId)!;
       const raw = f.cones_json as ConePoint[];
+      // Leere Cone-Liste würde normalizeCones vermutlich auf einer Division
+      // durch die Bounding-Box-Größe stolpern lassen — deshalb Sonderfall.
       const norm = raw.length > 0 ? normalizeCones(raw) : raw;
       const cones: EditableCone[] = norm.map((c) => ({ ...c, id: crypto.randomUUID() }));
       onConfirm({ cones, arrows: f.arrows_json });

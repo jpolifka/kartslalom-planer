@@ -1,6 +1,9 @@
 // Kartslalom Streckenplaner
 // Copyright (c) Jens Polifka
 // All rights reserved.
+//
+// Unit: tracks.ts — RPC-Aufrufparameter und Error-Mapping (Tarif-/Ownership-Gates)
+// gegen eine gemockte Supabase-RPC/Table-API, ohne echte Datenbank.
 
 import { vi, describe, it, expect, beforeEach } from "vitest";
 
@@ -15,6 +18,9 @@ vi.mock("../supabase", () => ({
 
 import { saveTrack, fetchTracks, fetchTrack, createTrack, renameTrack, deleteTrack, createTrackFromVersion, createTrackShareLink, revokeTrackShareLink } from "./tracks";
 
+// "osm" ist der kostenlose Standard-Kartenanbieter (kein Pro-Gate) — Tests, die
+// gezielt MAP_PROVIDER_REQUIRES_PRO auslösen wollen, überschreiben mapProviderId
+// explizit mit einem Premium-Anbieter wie "rlp_dop20".
 const minimalState = {
   items: [],
   arrows: [],

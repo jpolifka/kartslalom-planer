@@ -44,6 +44,8 @@ describe("send-welcome", () => {
     expect(res.status).toBe(401);
   });
 
+  // Verhindert, dass ein alter (aber noch gültiger) Bearer-Token Monate nach
+  // dem Signup erneut eine "Willkommens"-Mail auslösen kann.
   it("skips mail for account older than 5 minutes", async () => {
     const sixMinutes = 6 * 60 * 1000;
     mockFetch.mockResolvedValueOnce(

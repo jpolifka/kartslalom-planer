@@ -13,6 +13,12 @@ import SaveAsDialog from "../components/SaveAsDialog";
 
 // --- TrackVersionPanel ---
 
+// Klappt sich unter einer Streckenkarte im Dashboard auf (nur Pro-Tarif, siehe
+// `canUseVersionHistory` in DashboardPage). Versionen sind reine, manuell
+// ausgelöste Snapshots — es gibt keine automatische Historie. "Wiederherstellen"
+// überschreibt destruktiv den aktuellen Streckenstand (daher die Sicherheits-
+// abfrage), während "Als neue Strecke speichern" die Version stattdessen als
+// unabhängige Kopie ablegt, ohne den aktuellen Stand anzutasten.
 function TrackVersionPanel({ trackId, trackName }: { trackId: string; trackName: string }) {
   const navigate = useNavigate();
   const { data: versions, isLoading } = useTrackVersions(trackId);
@@ -192,6 +198,9 @@ export default function DashboardPage() {
   const deleteFormationMutation = useDeleteCustomFormation();
   const { allowed: formationsAllowed, requiredTier } = useFeatureGate("custom_formations");
 
+  // Tarif-Limit greift rein clientseitig für die Button-Sperre/UX-Hinweis —
+  // die eigentliche Durchsetzung passiert serverseitig im create_track-RPC
+  // (TRACK_LIMIT_REACHED-Fehler, siehe handleCreate).
   const limitReached = !!tracks && tracks.length >= trackLimit;
 
   async function handleCreate() {

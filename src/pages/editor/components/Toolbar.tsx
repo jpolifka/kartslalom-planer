@@ -38,6 +38,10 @@ type Props = {
   onReset: () => void;
 };
 
+// Eigenes Dropdown statt <select>, weil Export/Import-Einträge
+// unterschiedliches Verhalten brauchen (gesperrte PNG-Optionen mit
+// "Pro"-Badge, ein Datei-Input für den Import) — das wäre mit einem
+// nativen <select> nicht darstellbar.
 function DownloadDropdown({
   onExportSVG, onExportPDF, onExportPngWhite, onExportPngTransparent, pngLocked,
   onExportJSON, onImportClick, onImportChange, fileInputRef,
@@ -55,6 +59,8 @@ function DownloadDropdown({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
+  // Listener nur anhängen, während das Dropdown offen ist (sonst würde bei
+  // jedem Klick irgendwo in der App unnötig geprüft, ob außerhalb geklickt wurde).
   useEffect(() => {
     if (!open) return;
     function onClickOutside(e: MouseEvent) {
@@ -64,6 +70,10 @@ function DownloadDropdown({
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, [open]);
 
+  // Gesperrte Einträge (PNG ohne Pro-Tarif) sollen weder die Aktion auslösen
+  // noch das Dropdown schließen — der Nutzer soll sehen können, dass es dort
+  // eine gesperrte Option gibt, ohne dass ein Klick versehentlich "ins Leere"
+  // das Menü zuklappt wie bei einer echten Auswahl.
   function pick(fn: () => void, locked?: boolean) {
     if (locked) return;
     fn();
@@ -212,6 +222,10 @@ export default function Toolbar({
           <Info size={12} /> {warnCount} Hinweis{warnCount !== 1 ? "e" : ""}
         </div>
       )}
+      {/* Der grüne Haken erscheint nur, wenn überhaupt schon etwas platziert
+          wurde (hasItems) — bei einer komplett leeren Strecke wäre "0 Fehler,
+          0 Hinweise" kein sinnvolles "alles korrekt", sondern schlicht noch
+          nichts zu prüfen. */}
       {errorCount === 0 && warnCount === 0 && hasItems && (
         <span style={{ fontSize: 12, color: "#16a34a", fontWeight: 600 }}>✓</span>
       )}

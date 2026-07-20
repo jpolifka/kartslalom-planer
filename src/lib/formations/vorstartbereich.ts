@@ -6,6 +6,10 @@ import type { FormationDefinition } from "../../types";
 import { normalizeCones } from "../geometry";
 import { meter, standing } from "./common";
 
+// "Vorstartbereich": kein Fahr-Hindernis, sondern eine reine Flaechenmarkierung (4 Eck-
+// pylonen eines 3x3 m Quadrats + areaLabel/areaColor fuers Rendering als Zone) — der Bereich,
+// in dem Fahrer/Karts vor dem eigentlichen Start warten. hasStartLine zeigt die Linie an der
+// Einfahrt in diesen Bereich.
 export const vorstartbereich: FormationDefinition = {
   key: "vorstartbereich",
   label: "Vorstartbereich",

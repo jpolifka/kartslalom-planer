@@ -7,6 +7,9 @@ import { normalizeCones } from "../geometry";
 import { meter, sensor, standing } from "./common";
 
 // Start: Pylonentor 4m breit, Lichtschranken-Sensoren 0,3m außerhalb der Pylonen
+// Die Sensoren sitzen bewusst außerhalb der Pylonen (nicht in der Torebene), damit die
+// Lichtschranke von den Torpylonen selbst nicht verdeckt/ausgeloest wird; sie sind rein
+// virtuelle Zeitmesspunkte ohne physischen Pylon (siehe sensor() in common.ts).
 const GATE_WIDTH = 4.0;
 const SENSOR_OFFSET = 0.3;
 

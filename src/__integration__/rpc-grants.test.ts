@@ -79,12 +79,23 @@ describe("RPC-Grants: anon darf nur bewusst öffentliche RPCs ausführen", () =>
   // ist ein PostgREST-Implementierungsdetail, kein Sicherheitsunterschied.
   const ACCESS_DENIED_CODES = new Set(["42501", "PGRST202"]);
 
+  // create_track steht stellvertretend für die große Masse "normaler"
+  // authenticated-only RPCs: anon darf hierüber keine Tracks mit beliebigem/
+  // fehlendem Owner anlegen können. Die obige Katalog-Abfrage deckt zwar
+  // bereits ALLE Funktionen ab, aber dieser Test prüft zusätzlich das
+  // tatsächliche Verhalten eines echten RPC-Calls (nicht nur die Metadaten
+  // aus pg_proc), falls PostgREST und Postgres-Grants je auseinanderlaufen.
   it("anon bekommt einen Berechtigungsfehler bei einer nicht-öffentlichen RPC (create_track)", async () => {
     const { error } = await anon.rpc("create_track", { track_name: "sollte nie erstellt werden" });
     expect(error).not.toBeNull();
     expect(ACCESS_DENIED_CODES.has(error!.code)).toBe(true);
   });
 
+  // admin_delete_track als zweite Stichprobe aus einer separaten Risikoklasse:
+  // Admin-RPCs haben eigene, stärkere Prüfungen (is_current_user_admin())
+  // zusätzlich zu den regulären GRANTs. Dieser Test stellt sicher, dass anon
+  // schon auf der GRANT-Ebene abgewiesen wird und gar nicht erst bis zur
+  // Admin-Rollenprüfung in der Funktion vordringt.
   it("anon bekommt einen Berechtigungsfehler bei einer Admin-RPC (admin_delete_track)", async () => {
     const { error } = await anon.rpc("admin_delete_track", { p_track_id: "00000000-0000-0000-0000-000000000000" });
     expect(error).not.toBeNull();

@@ -6,6 +6,11 @@ export type DirectionMode = "cw" | "ccw" | "none";
 
 export type ConeKind = "standing" | "lying" | "sensor";
 
+// Fachliche Sonderrolle eines Pylonen innerhalb einer Formation. Aktuell tatsächlich
+// verwendet werden nur "normal" (Standard-Streckenpylon) und "direction" (liegender
+// Pylon als Fahrtrichtungsanzeige, siehe lying() in lib/formations/common.ts) —
+// "entry"/"exit"/"groupMarker" sind für künftige Formationen reserviert, aber
+// bisher an keiner Stelle im Code gesetzt oder ausgewertet.
 export type ConeRole =
   | "normal"
   | "direction"
@@ -67,6 +72,11 @@ export type FormationCategory =
   | "komplex"
   | "individuell";
 
+// Lebenszyklus einer eigenen Formation: "private" (nur Owner) → optional "shared"
+// (gezielt an einzelne Nutzer freigegeben, siehe useShareFormation) → "submitted"
+// (zur Aufnahme in die öffentliche Bibliothek eingereicht) → von einem Admin entweder
+// zu "library" promotet (siehe useAdminPromoteToLibrary, erzeugt eine Kopie) oder
+// "rejected". Der Statuswechsel selbst passiert serverseitig in den jeweiligen RPCs.
 export type CustomFormationStatus =
   | "private"
   | "shared"
@@ -97,6 +107,11 @@ export type PlacedFormation = {
   direction: DirectionMode;
   durationSeconds?: number;
   customFormationId?: string;
+  // Eingefrorene Kopie der Cones/Pfeile zum Platzierungszeitpunkt einer Custom-Formation.
+  // Nötig, weil eine platzierte Formation auf der Strecke unabhängig von späteren
+  // Änderungen/Löschungen der Quell-Formation (customFormationId) weiterbestehen soll —
+  // die Strecke referenziert also nicht live die aktuelle Formation, sondern trägt
+  // ihren eigenen Snapshot-Stand.
   customSnapshot?: {
     cones: ConePoint[];
     arrows: PlacedArrow[];
@@ -116,6 +131,11 @@ export type CustomFormationDefinition = {
   pylonCount: number;
   lichteBreite?: number;
   durationSeconds?: number;
+  // Herkunft dieser Formation, falls sie nicht komplett neu erstellt wurde:
+  // sourceFormationKey verweist auf eine mitgelieferte Standardformation (Basis für
+  // "als eigene Variante speichern"), sourceCustomFormationId auf eine andere Custom-
+  // Formation (Basis bei duplicateCustomFormation). Beide sind rein informativ/Audit —
+  // die Cones/Arrows dieser Formation sind unabhängige Kopien, keine Referenz.
   sourceFormationKey?: FormationKey;
   sourceCustomFormationId?: string;
   cones: ConePoint[];

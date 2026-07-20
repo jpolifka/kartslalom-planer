@@ -30,6 +30,10 @@ type Props = {
   issues: ValidationIssue[];
 };
 
+// Rechte Editor-Sidebar: Eigenschaften der aktuellen Auswahl (Formation oder
+// Pfeil), Gesamt-Kursdauer und Validierungshinweise. Wie LeftSidebar im
+// Desktop-Layout eine statische Grid-Spalte, im mobilen Layout eine
+// ausklappbare Schublade (mobileDrawerStyle).
 export default function RightPanel({
   isMobile, mobileOpen, onClose,
   selectedIds, selected, selectedArrow, selectedArrowId,
@@ -73,6 +77,11 @@ export default function RightPanel({
         {selectedArrow && (
           <div style={{ display: "grid", gap: 10 }}>
             <div style={{ fontWeight: 700 }}>Pfeil</div>
+            {/* Erklärt die Ziehpunkte, die TrackCanvas für den Pfeil rendert:
+                der orange Punkt ist der Bezier-Kontrollpunkt (cpX/cpY im
+                trackReducer-State), die weißen sind Start-/Endpunkt (startX/Y,
+                endX/Y) — direktes Bearbeiten der Werte gibt es hier bewusst
+                nicht, nur Löschen; die Geometrie wird per Maus auf dem Canvas verändert. */}
             <div style={{
               fontSize: 12, color: "#475569",
               background: "#f8fafc", borderRadius: 8, padding: 10, lineHeight: 1.7,
@@ -199,6 +208,9 @@ export default function RightPanel({
           <div style={{ display: "grid", gap: 7 }}>
             {issues.map((issue) => {
               const isErr = issue.severity === "error";
+              // Nicht jede Regelverletzung lässt sich einer einzelnen Formation
+              // zuordnen (z.B. globale Feldgrößen-Probleme) — nur dann ist der
+              // Eintrag klickbar und springt per onSelectFormation zur Formation.
               const clickable = !!issue.formationId;
               return (
                 <div

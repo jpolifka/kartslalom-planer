@@ -21,6 +21,9 @@ type Props = {
   onOpenShare?: () => void;
 };
 
+// Zeigt/bearbeitet den Streckennamen und bietet den Teilen-Button — nur im
+// Cloud-Modus für eine bereits existierende Strecke (Gast-Strecken haben
+// keinen Cloud-Namen zum Bearbeiten und keinen Share-Link).
 export default function EditorHeader({
   isMobile, isCloudMode, trackId,
   trackName, nameFocused, nameReadOnly,
@@ -37,6 +40,10 @@ export default function EditorHeader({
       <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#94a3b8", flexShrink: 0 }}>
         Strecke:
       </span>
+      {/* nameReadOnly = ein Admin betrachtet eine FREMDE Strecke (RLS würde
+          normalen Nutzern hier gar keine Daten liefern) — Umbenennen bliebe
+          serverseitig ohnehin blockiert, daher hier direkt als reiner Text
+          statt editierbarem Input dargestellt. */}
       {nameReadOnly ? (
         <div style={{
           display: "flex", alignItems: "center", gap: 6,

@@ -12,6 +12,15 @@ import {
   useFindShareableUser,
 } from "../hooks/useCustomFormations";
 
+// ACHTUNG — nicht mit den öffentlichen Track-Share-Links (/share/:token,
+// siehe SharedTrackPage.tsx) verwechseln, das ist ein anderes Feature:
+// Hier teilt der Eigentümer eine EIGENE Formation gezielt mit einem
+// bestimmten, per E-Mail gesuchten Nutzer-Account (find_shareable_user)
+// und vergibt ein Lese- oder Bearbeitungsrecht (share_custom_formation /
+// unshare_custom_formation). Es gibt keinen anonymen Link, kein Login-loses
+// Ansehen — der Empfänger muss selbst ein Konto haben und eingeloggt sein.
+// Track-Share-Links dagegen sind token-basiert, anonym und read-only für
+// jeden mit dem Link, unabhängig von einem Nutzerkonto.
 const s: Record<string, React.CSSProperties> = {
   page: { maxWidth: 560, margin: "0 auto", padding: "28px 20px", fontFamily: "system-ui, sans-serif" },
   title: { fontSize: 20, fontWeight: 800, color: "#111827", margin: "0 0 4px" },
@@ -74,6 +83,9 @@ export default function FormationSharePage() {
 
   async function handlePermissionChange(targetId: string, perm: "view" | "edit") {
     if (!id) return;
+    // Rechteänderung läuft über dieselbe share-RPC wie das Neu-Teilen —
+    // ein bestehender Share wird per Upsert einfach mit neuer permission
+    // überschrieben, es gibt keine separate "update"-Mutation.
     await shareMutation.mutateAsync({ formationId: id, targetId, permission: perm });
   }
 

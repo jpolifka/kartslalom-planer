@@ -11,6 +11,10 @@ type Props = {
   children: React.ReactNode;
 };
 
+// Generische Modal-Chrome für die Hilfe — bewusst inhaltsfrei (nimmt nur
+// `children`), damit GlobalNav hier je nach aktueller Route unterschiedlichen
+// Inhalt (TrackHelpContent vs. FormationHelpContent) einsetzen kann, ohne die
+// Fenster-Optik (Backdrop, Card, Titel, Schließen-Button) zu duplizieren.
 export default function HelpModal({ title, onClose, children }: Props) {
   return (
     <div

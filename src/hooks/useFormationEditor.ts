@@ -1,6 +1,21 @@
 // Kartslalom Streckenplaner
 // Copyright (c) Jens Polifka
 // All rights reserved.
+//
+// Reducer-basierter Undo/Redo-Zustand für den Formation-Editor (Cones + Pfeile).
+// Strategie: volle Snapshots (kein Diffing/Patches) — bei den überschaubaren
+// Datenmengen einer Formation (typischerweise < 100 Objekte) ist das einfach,
+// robust und schnell genug; past/future sind auf 30 Einträge gedeckelt, damit
+// der Speicher bei langen Sessions nicht unbegrenzt wächst.
+//
+// Wichtige Unterscheidung "live" vs. "commit":
+// Aktionen, die während eines Drags kontinuierlich feuern (MOVE_CONE, BATCH_MOVE beim
+// Verschieben mehrerer Cones, MOVE_ARROW_CP, MOVE_ARROW_ENDPOINT) schreiben nur den
+// aktuellen Zustand (live) und legen KEINEN Undo-Eintrag an — sonst würde jeder einzelne
+// Mausmove-Frame die History fluten. Erst ein expliziter CHECKPOINT (vom Canvas beim
+// Drag-Ende gefeuert) schiebt den bis dahin erreichten Stand als einen einzigen
+// Undo-Schritt in "past". Alle übrigen, diskreten Aktionen (Hinzufügen/Löschen/Rotieren/
+// Patch) committen dagegen sofort.
 
 import { useReducer } from "react";
 import type { ConePoint, PlacedArrow } from "../types";

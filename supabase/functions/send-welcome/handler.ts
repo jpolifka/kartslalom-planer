@@ -6,6 +6,15 @@
 // frischem Bearer-Token) von mehrfachen Willkommens-Mails an dieselbe Adresse.
 // Kein externer Import — nur fetch().
 //
+// Trigger-Mechanismus: KEIN DB-Trigger und KEIN Supabase-Auth-Webhook —
+// diese Function wird explizit vom Frontend aufgerufen, direkt nach dem
+// Login-Callback (src/pages/AuthCallbackPage.tsx, "fetch(functionsUrl(
+// 'send-welcome'))" mit dem frischen Session-Access-Token). Das bedeutet: der
+// Client entscheidet, WANN aufgerufen wird, aber nicht OB tatsächlich eine
+// Mail rausgeht — das entscheidet allein diese Function anhand von
+// account-Alter + Claim (s.u.), damit auch wiederholte/parallele Aufrufe
+// (Client-Retry, mehrere Tabs, o. Ä.) nicht zu Mehrfach-Mails führen.
+//
 // Einzige Quelle der Wahrheit für diese Function: main/index.ts (self-hosted
 // Fat-Router-Dispatcher, siehe dortiger Kommentar) importiert handler direkt
 // von hier statt die Logik zu duplizieren. index.ts bleibt der dünne
@@ -18,6 +27,12 @@ const RESEND_API_KEY   = Deno.env.get("RESEND_API_KEY") ?? "";
 const FROM_EMAIL       = Deno.env.get("FROM_EMAIL") ?? "noreply@cheezuscraizt.de";
 const SITE_URL         = Deno.env.get("SITE_URL") ?? "https://kart.cheezuscraizt.de";
 
+// CORS: gleiche Konvention wie in den übrigen Functions dieses Repos —
+// Origin wird nur für lokale Dev-Server gespiegelt, sonst immer SITE_URL.
+// Schützt nur browserseitig das Lesen der Antwort; die eigentliche
+// Zugriffskontrolle ist die Bearer-Prüfung weiter unten. Kong hat vor dieser
+// Function zusätzlich eine eigene statische CORS-Origin-Liste (siehe
+// docker/supabase/volumes/api/kong.yml, functions-v1-Route).
 function corsHeaders(req: Request) {
   const origin = req.headers.get("Origin") ?? "";
   const isLocal = origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:");
@@ -41,6 +56,11 @@ export async function handler(req: Request): Promise<Response> {
   if (!userRes.ok) return new Response(JSON.stringify({ error: "Invalid token" }), { status: 401, headers: cors });
   const user = await userRes.json();
 
+  // Erste Idempotenz-Schranke: nur "neue" Accounts (< 5 Minuten seit Signup)
+  // bekommen überhaupt eine Mail. Ein Aufruf mit einem alten, aber noch
+  // gültigen Bearer-Token (z. B. durch einen Angreifer mit gestohlenem
+  // Token, oder einfach ein Alt-Login Monate später) soll keine erneute
+  // Willkommens-Mail auslösen können.
   const ageMs = Date.now() - new Date(user.created_at).getTime();
   if (ageMs > 5 * 60 * 1000) {
     return new Response(JSON.stringify({ skipped: true, reason: "account_not_new" }), {
@@ -48,6 +68,11 @@ export async function handler(req: Request): Promise<Response> {
     });
   }
 
+  // Fail-open bei fehlender Mail-Konfiguration: eine unkonfigurierte
+  // RESEND_API_KEY (z. B. lokale Dev-/Test-Umgebung ohne echtes Mail-Setup)
+  // soll den Login-Flow des Users nicht blockieren. Der Claim (unten) wird
+  // hier bewusst NICHT gesetzt, damit ein späterer Aufruf mit korrekt
+  // konfiguriertem Key die Mail alsdann noch senden kann.
   if (!RESEND_API_KEY) {
     console.warn("RESEND_API_KEY not set, skipping welcome mail");
     return new Response(JSON.stringify({ skipped: true, reason: "no_resend_key" }), {

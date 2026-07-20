@@ -127,6 +127,18 @@ function buildTileSvg(mapConfig: PdfMapConfig, canvasW: number, canvasH: number)
             ` width="${layout.bgW.toFixed(1)}" height="${layout.bgH.toFixed(1)}" preserveAspectRatio="none"/>`,
         ];
 
+  // Die Kacheln/das WMS-Bild werden für eine unrotierte, überdimensionierte
+  // Box (layout.bgW/bgH, siehe computeBackgroundBox in mapRender.ts) geladen,
+  // die groß genug ist, um nach dem Zurückdrehen die tatsächliche
+  // (schmalere) Feldbox vollständig abzudecken. rotate(-rotationDeg, ...) um
+  // den Mittelpunkt dieser Box macht genau diese Drehung rückgängig: das
+  // SVG-rotate() dreht mathematisch gegen den Uhrzeigersinn bei positivem
+  // Winkel, während selection.rotationDeg "im Uhrzeigersinn" definiert ist
+  // (siehe areaSelection.ts) — das negative Vorzeichen gleicht das aus, damit
+  // Kartenausschnitt und Feld/Formationen (die dieselbe Rotation über ihre
+  // eigene Geometrie abbilden) übereinstimmend ausgerichtet erscheinen. Die
+  // äußere clipPath-Rect (id="mapClip", Feldgröße) schneidet anschließend den
+  // überstehenden Rand der Box wieder ab.
   return (
     `<g opacity="${mapConfig.opacity}" clip-path="url(#mapClip)">` +
     `<g transform="translate(${layout.left.toFixed(1)},${layout.top.toFixed(1)}) rotate(${-mapConfig.selection.rotationDeg},${(layout.bgW / 2).toFixed(1)},${(layout.bgH / 2).toFixed(1)})">` +
@@ -260,6 +272,13 @@ export function generateTrackSVG(
       : src;
     const fallbackCones = cones.length > 0 ? cones : [{ x: 0, y: 0, kind: "standing" as const }];
     const bounds = boundsFromCones(fallbackCones);
+    // Verschiebt die (bereits rotierten) Cones so, dass die Bounding-Box bei
+    // (0.4, 0.4) statt (0, 0) beginnt — der kleine Versatz reserviert Platz
+    // für das Formations-Label (siehe unten, "text x=3 y=-3" relativ zu
+    // diesem <g>), das sonst über den Rand der Pylonen hinaus in
+    // Nachbarformationen ragen könnte. item.x/item.y (gx/gy) verschieben die
+    // so normalisierte Formation anschließend an ihre eigentliche
+    // Platzierungsposition auf dem Feld.
     const normalized = cones.map((c) => ({
       ...c,
       x: c.x - bounds.minX + 0.4,
@@ -371,9 +390,35 @@ export function downloadSVG(svg: string, filename = "kartslalom.svg") {
   URL.revokeObjectURL(url);
 }
 
-// Renders the track (and, if given, the map background) as a
-// vector PDF and triggers a direct file download via jsPDF — no browser
-// print dialog involved.
+// Rendert die Strecke (und, falls angegeben, den Kartenhintergrund) als
+// ECHTEN Vektor-PDF-Export via jsPDF + svg2pdf.js und stößt direkt einen
+// Datei-Download an — kein Browser-Druckdialog, kein Rasterisieren zu PNG
+// zwischendurch. Pylone, Linien und Text bleiben im PDF als Vektorobjekte
+// (skalierbar, durchsuchbar/kopierbar bei Text) statt als Pixelraster.
+//
+// Technischer Ablauf:
+// 1. generateTrackSVG() baut denselben SVG-String wie der reine SVG-Export.
+// 2. Das SVG wird per innerHTML in einen <div> geschrieben und ins DOM
+//    gehängt (position: fixed, weit außerhalb des sichtbaren Viewports statt
+//    z. B. display:none) — svg2pdf.js braucht ein tatsächlich vom Browser
+//    gelayoutetes/gestyltes Element, um computed styles (z. B. vererbte
+//    font-family) korrekt auszulesen; ein nicht gerendertes (display:none
+//    oder gar nicht angehängtes) Element liefert dafür keine verwertbaren
+//    Werte. "position: fixed; left: -99999px" hält es dennoch layoutet, aber
+//    für den Nutzer unsichtbar (kein sichtbares Aufblitzen).
+// 3. jsPDF erzeugt ein A4-Querformat-Dokument, zeichnet Titel-/Maßangaben-
+//    Header manuell (Text/Linie), und berechnet danach die verfügbare
+//    Zeichenfläche (areaW × areaH) unterhalb des Headers, abzüglich Rand
+//    (margin) auf allen Seiten.
+// 4. fitScale = das kleinere der beiden Verhältnisse (areaW/SVG_WIDTH,
+//    areaH/svgH) — das SVG wird proportional (kein Verzerren) so weit
+//    skaliert, wie es in areaW × areaH hineinpasst ("contain"-Verhalten,
+//    analog zu CSS object-fit: contain); offsetX zentriert das Ergebnis
+//    horizontal in der verbleibenden Breite.
+// 5. doc.svg() (aus svg2pdf.js) übersetzt das DOM-SVG-Element direkt in
+//    PDF-Vektorbefehle an der berechneten Position/Größe.
+// 6. Der Container wird im finally-Block wieder aus dem DOM entfernt —
+//    unabhängig davon, ob die PDF-Erzeugung erfolgreich war oder warf.
 export async function exportPDF(
   fieldWidth: number,
   fieldLength: number,

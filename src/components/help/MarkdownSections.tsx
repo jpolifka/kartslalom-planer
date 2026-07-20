@@ -12,6 +12,11 @@ const kbdStyle: React.CSSProperties = {
   background: "#f8fafc", color: "#334155",
 };
 
+// Bildet Markdown-Elemente auf die bisherige, hartcodierte Hilfe-Optik ab, damit
+// der Umstieg von JSX-Prosa auf Markdown-Dateien optisch unsichtbar bleibt:
+// - h2 (die einzige Überschrift pro docs/user/*.md-Datei) → Kapitel-Titel-Look
+// - code (Inline-Backticks, z. B. `⌘ Z`) → dieselbe kbd-Optik wie zuvor für
+//   Tastaturkürzel, jetzt aber aus Markdown-Inhalt statt eigenem <span>-JSX.
 const mdComponents: Components = {
   h2: ({ children }) => (
     <h4 style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{children}</h4>
@@ -22,6 +27,13 @@ const mdComponents: Components = {
   code: ({ children }) => <span style={kbdStyle}>{children}</span>,
 };
 
+// Rendert eine Liste roher Markdown-Strings (je einer pro docs/user/*.md-Datei)
+// als Hilfe-Abschnitte. Jede Datei wird EINZELN durch react-markdown gejagt und
+// in ein eigenes <section> gewrappt, statt alle Dateien zu einem großen
+// Markdown-String zu verketten: react-markdown erzeugt aus einer `##`-Überschrift
+// und den folgenden Absätzen ein FLACHES Element-Array (Geschwister, kein
+// verschachtelter Baum) — ohne die Datei-Grenze als Section-Grenze zu nutzen,
+// ließe sich der Abstand zwischen den Kapiteln nicht sauber setzen.
 export default function MarkdownSections({ sections }: { sections: string[] }) {
   return (
     <>

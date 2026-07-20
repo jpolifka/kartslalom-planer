@@ -7,6 +7,11 @@ import { Navigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAuthStore } from "../store/authStore";
 
+// Passwortloser Login (Magic Link / OTP statt Passwort): kein Passwort-Reset-
+// Flow, kein Passwort-Leak-Risiko, keine wiederverwendeten schwachen
+// Passwörter — Supabase verschickt stattdessen einen einmaligen Link UND
+// einen 8-stelligen Code in derselben Mail. Der Link ist der Normalfall,
+// der Code ist der Fallback für den PKCE-Sonderfall (siehe unten).
 export default function LoginPage() {
   const { session } = useAuthStore();
   const [email, setEmail] = useState("");
@@ -26,6 +31,10 @@ export default function LoginPage() {
       options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
     });
     if (error) {
+      // Supabase liefert hier u. a. auch Rate-Limit-Fehler (zu viele
+      // Anfragen für dieselbe E-Mail/IP in kurzer Zeit) als normale
+      // error.message zurück — es gibt keine gesonderte Behandlung dafür,
+      // die Meldung wird einfach 1:1 im Fehlerblock unten angezeigt.
       setStatus("error");
       setErrorMsg(error.message);
       return;
@@ -37,6 +46,11 @@ export default function LoginPage() {
     e.preventDefault();
     setStatus("verifying");
     setErrorMsg("");
+    // Fallback für den Fall, dass der Magic-Link in einem anderen
+    // Browser/Gerät geöffnet wird als dem, in dem der Code angefordert wurde
+    // (PKCE braucht einen lokal gespeicherten code_verifier — siehe
+    // AuthCallbackPage). Der 8-stellige OTP-Code aus derselben Mail
+    // funktioniert dagegen browser-/geräteunabhängig.
     const { error } = await supabase.auth.verifyOtp({ email, token: otp.trim(), type: "email" });
     if (error) {
       setStatus("sent");

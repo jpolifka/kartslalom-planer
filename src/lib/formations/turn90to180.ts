@@ -6,6 +6,10 @@ import type { FormationDefinition } from "../../types";
 import { normalizeCones } from "../geometry";
 import { builder } from "./common";
 
+// "Wende 90-180 Grad": kein Tor/keine Gasse, sondern ein einzelner Wende-/Hindernispunkt aus
+// drei dicht beieinanderstehenden Pylonen (Faktoren 0,2-0,4 auf den Pylonenabstand statt 1,0,
+// also deutlich unter dem Regelabstand von 0,80 m) — sie bilden eine kompakte "Pyramide", um
+// die das Kart mit 90° bis 180° Lenkeinschlag herumfahren muss.
 export const turn90to180: FormationDefinition = {
   key: "turn90to180",
   label: "Wende 90-180 Grad",

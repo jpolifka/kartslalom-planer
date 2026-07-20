@@ -1,6 +1,11 @@
 // Kartslalom Streckenplaner
 // Copyright (c) Jens Polifka
 // All rights reserved.
+//
+// Rein geometrische Prüfungen anhand der Cone-Positionen: Ragt eine Formation über
+// den Fahrflächenrand hinaus, oder stehen Pylonen unterschiedlicher Formationen
+// (versehentlich) nahezu aufeinander? Enthält keine Fahrfluss-/Streckenlogik,
+// das übernimmt track.ts (siehe docs/validierung.md).
 
 import type { PlacedFormation } from "../../types";
 import { boundsFromCones, rotateConesAroundOwnCenter } from "../geometry";
@@ -53,6 +58,9 @@ export function validateGeometry(ctx: ValidationContext): ValidationIssue[] {
   for (const item of ctx.items) {
     const formation = resolveFormation(item);
     if (formation.arrow) {
+      // Pfeile sind reine Fahrtrichtungs-Markierungen ohne Pylonen — ein Überstand
+      // über den Rand ist visuell unschön, aber keine echte Regelverletzung der
+      // Strecke selbst. Deshalb "warning" statt "error", anders als unten bei Formationen.
       const width = formation.arrow.width;
       const height = formation.arrow.height;
       if (item.x < 0 || item.y < 0 || item.x + width > ctx.fieldWidth || item.y + height > ctx.fieldLength) {
@@ -79,6 +87,9 @@ export function validateGeometry(ctx: ValidationContext): ValidationIssue[] {
     const maxX = item.x + formW + 0.4;
     const maxY = item.y + formH + 0.4;
 
+    // Eine Formation (mit echten Pylonen) ausserhalb der Fläche ist ein "error":
+    // die Strecke ist so nicht abfahrbar/regelkonform, anders als eine reine
+    // Fahrtrichtungs-Markierung oben.
     if (minX < 0 || minY < 0 || maxX > ctx.fieldWidth || maxY > ctx.fieldLength) {
       issues.push({
         id: `bounds-${item.id}`,
@@ -91,6 +102,9 @@ export function validateGeometry(ctx: ValidationContext): ValidationIssue[] {
     }
   }
 
+  // Pylonen verschiedener Formationen näher als 0.2 m gelten als "praktisch identische
+  // Position" (Messungenauigkeit/Kollision beim Platzieren) — nur eine Warnung, da rein
+  // visuell/planerisch auffällig, aber kein hartes Streckenmaß verletzt.
   for (let i = 0; i < ctx.worldCones.length; i++) {
     for (let j = i + 1; j < ctx.worldCones.length; j++) {
       const a = ctx.worldCones[i];

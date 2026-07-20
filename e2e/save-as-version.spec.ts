@@ -1,6 +1,17 @@
 /**
  * Playwright E2E — "Speichern unter" (Save As) aus der Versionshistorie (Phase 2)
  *
+ * Getestetes Szenario: Aus einem alten Versions-Snapshot einer Strecke soll
+ * ein komplett neuer, unabhängiger Track entstehen, OHNE den Ursprungstrack
+ * zu verändern. Das ist als eigener E2E-Test sinnvoll, weil hier drei
+ * Systeme zusammenspielen, die jeweils für sich getestet sind, deren
+ * Zusammenspiel aber die eigentliche Fehlerquelle ist: das Dashboard (Snap-
+ * shot-Liste, Namensvorbelegung im Dialog), die Versionshistorie-RPCs
+ * (create_track_version/create_track_from_version, siehe security-smoke-
+ * test.ts für die Rechteprüfung) und der Editor (Laden des neuen Tracks vs.
+ * Fortbestehen des alten Zustands). Ein reiner Unit-/RPC-Test würde die
+ * Navigation zwischen Dashboard, Vorschau-Banner und Editor nicht abdecken.
+ *
  * Flow 1 (Dashboard-Einstieg):
  *   Snapshot bei Breite=18 erstellen → Breite auf 24 ändern + Autosave
  *   → Dashboard: "Als neue Strecke speichern" auf Version 1
