@@ -3,19 +3,34 @@
 // All rights reserved.
 
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { LogOut, MessageSquare, ShieldCheck } from "lucide-react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { LogOut, MessageSquare, ShieldCheck, HelpCircle } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { useAuthStore } from "../../store/authStore";
 import FeedbackDialog from "../FeedbackDialog";
+import HelpModal from "../help/HelpModal";
+import TrackHelpContent from "../help/TrackHelpContent";
+import FormationHelpContent from "../help/FormationHelpContent";
 
 const navLink: React.CSSProperties = { color: "#475569", textDecoration: "none", fontSize: 13 };
 const dim: React.CSSProperties = { color: "#94a3b8", fontSize: 13 };
 
+// /formations/new oder /formations/:id, aber nicht /formations (Liste) oder /formations/:id/share
+const FORMATION_EDITOR_PATH = /^\/formations\/[^/]+$/;
+
 export default function GlobalNav() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { session, profile } = useAuthStore();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+
+  const isTrackEditor = location.pathname.startsWith("/editor/");
+  const isFormationEditor = FORMATION_EDITOR_PATH.test(location.pathname);
+  // Dashboard/Einstellungen haben keinen eigenen Hilfe-Inhalt — die
+  // Track-Hilfe deckt Streckenliste, Versionen und Konto bereits ab.
+  const isGeneralHelp = location.pathname === "/dashboard" || location.pathname === "/settings";
+  const helpAvailable = isTrackEditor || isFormationEditor || isGeneralHelp;
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -62,6 +77,21 @@ export default function GlobalNav() {
         ) : (
           <Link to="/login" style={{ ...navLink, fontWeight: 600, color: "var(--c-primary)" }}>Anmelden</Link>
         )}
+        {helpAvailable && (
+          <>
+            <span style={{ width: 1, height: 16, background: "#e2e8f0" }} />
+            <button
+              onClick={() => setHelpOpen(true)}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 5,
+                border: "none", background: "none", padding: 0, cursor: "pointer",
+                color: "var(--c-primary)", fontSize: 13,
+              }}
+            >
+              <HelpCircle size={13} /> Hilfe
+            </button>
+          </>
+        )}
         <span style={{ width: 1, height: 16, background: "#e2e8f0" }} />
         <button
           onClick={() => setFeedbackOpen(true)}
@@ -77,6 +107,17 @@ export default function GlobalNav() {
         <Link to="/impressum" style={dim}>Impressum</Link>
       </nav>
       <FeedbackDialog isOpen={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+      {/* Nur 2 Inhalts-Varianten für 3 Routen-Fälle: isGeneralHelp (Dashboard/
+          Einstellungen) fällt bewusst in den Track-Hilfe-Zweig, da deren
+          "Konto"/"Versionen"-Kapitel dort bereits alles Nötige erklären
+          (siehe isGeneralHelp-Kommentar oben) — deshalb wird hier auf
+          isFormationEditor verzweigt (nicht isTrackEditor), damit sowohl
+          Editor als auch Dashboard/Einstellungen im else-Zweig landen. */}
+      {helpOpen && (
+        <HelpModal title="Hilfe" onClose={() => setHelpOpen(false)}>
+          {isFormationEditor ? <FormationHelpContent /> : <TrackHelpContent />}
+        </HelpModal>
+      )}
     </header>
   );
 }

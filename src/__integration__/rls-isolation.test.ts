@@ -3,6 +3,14 @@
 // All rights reserved.
 //
 // Integration: RLS-Isolation — User A kann Daten von User B nicht lesen oder schreiben.
+//
+// Wichtigster Sicherheitstest in diesem Verzeichnis: prüft, dass die
+// Row-Level-Security-Policies auf `tracks` (und die Versions-RPCs) wirklich
+// jeden Fremdzugriff verhindern — nicht nur "die App zeigt es nicht an",
+// sondern auf DB-Ebene, sodass auch ein manipulierter Client (eigener
+// API-Call statt UI) nicht durchkommt. Jeder Testfall unten kommentiert
+// konkret, welches Datenleck bzw. welche unautorisierte Schreiboperation er
+// ausschließt, wenn er grün ist.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
@@ -38,18 +46,28 @@ describe("RLS isolation (Tracks)", () => {
   });
 
   it("User A sieht eigenen Track", async () => {
+    // Kontrollfall: stellt sicher, dass die Policy nicht versehentlich ALLE
+    // Zugriffe blockiert (was die nachfolgenden "B sieht nichts"-Tests
+    // trivial grün machen würde, ohne echte Isolation zu belegen).
     const { data, error } = await clientA.from("tracks").select("id").eq("id", trackAId);
     assertNoError(error, "A sieht eigenen Track");
     expect(data).toHaveLength(1);
   });
 
   it("User B sieht Track von User A nicht", async () => {
+    // Verhindert horizontalen Datenzugriff über die Tabelle: ohne diese
+    // Policy könnte jeder eingeloggte Nutzer per SELECT auf tracks fremde
+    // Streckenpläne (inkl. state_json mit Pylonenlayout) mitlesen.
     const { data, error } = await clientB.from("tracks").select("id").eq("id", trackAId);
     assertNoError(error, "B liest Tracks");
     expect(data).toHaveLength(0);
   });
 
   it("User B kann nicht via save_track auf Track von A schreiben", async () => {
+    // Verhindert, dass ein fremder Nutzer über die RPC (statt direktes
+    // Tabellen-UPDATE) den Inhalt/State eines Tracks überschreibt, den er
+    // nicht besitzt — die Ownership-Prüfung muss auch serverseitig in der
+    // Funktion sitzen, nicht nur in RLS auf der Tabelle.
     const { error } = await clientB.rpc("save_track", {
       p_track_id:   trackAId,
       p_state_json: { items: [], arrows: [] },
@@ -63,7 +81,12 @@ describe("RLS isolation (Tracks)", () => {
   });
 
   it("User B kann Track von A nicht direkt löschen", async () => {
-    // RLS blockiert DELETE — kein Fehler, aber 0 Rows affected
+    // Verhindert destruktiven Fremdzugriff: ein DELETE auf eine fremde Zeile
+    // darf nicht "leise" durchgehen. Die Policy filtert die Zeile für B
+    // schlicht aus dem UPDATE/DELETE-Target heraus (0 rows affected, kein
+    // Error) — deshalb wird hier zusätzlich verifiziert, dass der Track aus
+    // Sicht von A tatsächlich noch existiert, statt nur auf "kein Fehler" zu
+    // vertrauen.
     const { error } = await clientB.from("tracks").delete().eq("id", trackAId);
     assertNoError(error, "B delete Track A (RLS silent)");
     // Track muss noch existieren für User A
@@ -72,6 +95,10 @@ describe("RLS isolation (Tracks)", () => {
   });
 
   it("direktes INSERT auf tracks ist gesperrt", async () => {
+    // Verhindert, dass ein Nutzer sich per direktem INSERT einen Track mit
+    // beliebigem owner_id unterschiebt (z. B. sich selbst als Owner eines
+    // Tracks einträgt, das eigentlich nur über create_track mit serverseitig
+    // gesetztem owner_id = auth.uid() entstehen darf).
     const { error } = await clientA
       .from("tracks")
       .insert({ name: "Direct Insert", owner_id: userIds[0] });
@@ -79,6 +106,15 @@ describe("RLS isolation (Tracks)", () => {
   });
 });
 
+// Verhindert, dass ein komplett unauthentifizierter Client (kein Login, nur
+// der öffentliche anon-Key) irgendeine der Versionshistorie-RPCs überhaupt
+// aufrufen kann — unabhängig davon, ob die übergebene ID real existiert.
+// Das ist die äußerste Verteidigungslinie vor RLS: fehlt hier das GRANT für
+// die Rolle "anon", würde jeder Aufruf schon an der Postgres-Berechtigung
+// scheitern, bevor überhaupt eine Owner-Prüfung greifen könnte. Eine
+// zufällige/geratene dummyId ist hier bewusst irrelevant für den Testzweck —
+// es geht nicht um "Datensatz nicht gefunden", sondern um "Rolle darf
+// Funktion gar nicht ausführen".
 describe("Versions-RPCs — Anon-Zugriff verweigert (permission denied)", () => {
   const dummyId = "00000000-0000-0000-0000-000000000000";
 

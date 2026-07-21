@@ -24,6 +24,11 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
   );
 }
 
+// Service-Role-Client — umgeht RLS vollständig. Wird hier nur für Dinge
+// gebraucht, die ein normaler Nutzer per Definition nicht darf: Testnutzer
+// anlegen/löschen, Rollen/Tier direkt in profiles setzen (statt über eine
+// RPC, die genau das prüfen soll), und als "Referenzblick" hinter RLS
+// vorbei, um zu verifizieren, dass ein Row wirklich (nicht) existiert.
 export const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   ...supabaseOptions,
   auth: { autoRefreshToken: false, persistSession: false },
@@ -46,6 +51,12 @@ export async function createTestUser(email: string, tier: "free" | "pro" | "team
   return data.user;
 }
 
+// Loggt einen Testnutzer ein, ohne dass Mailpit/SMTP im Testlauf beteiligt
+// sein muss: generateLink() erzeugt den Magic-Link-Token direkt per
+// Service Role, verifyOtp() tauscht ihn gegen eine echte Session auf einem
+// ANON-Client. Der zurückgegebene Client verhält sich danach exakt wie ein
+// im Browser eingeloggter Nutzer inkl. RLS/JWT-Claims — genau das brauchen
+// die Tests, um RLS-Policies (nicht nur Applikationslogik) zu prüfen.
 export async function loginAsUser(email: string): Promise<Client> {
   const { data, error } = await admin.auth.admin.generateLink({
     type: "magiclink",
@@ -68,6 +79,13 @@ export async function loginAsUser(email: string): Promise<Client> {
   return client;
 }
 
+// Best-effort-Cleanup: Promise.all feuert alle deleteUser()-Aufrufe parallel,
+// wartet aber nur bis zum ERSTEN Reject — schlägt einer fehl, wird der Fehler
+// weitergeworfen und afterAll() bricht ab, obwohl die übrigen Deletes u. U.
+// noch durchlaufen (sie werden nicht abgebrochen, ihr Ergebnis wird aber nicht
+// mehr geprüft). Es gibt also KEINE Garantie, dass nach einem Fehlschlag
+// wirklich alle Testnutzer weg sind — verwaiste "int-*@test.invalid"-Nutzer
+// nach einem roten Testlauf sind ein bekannter, in Kauf genommener Nebeneffekt.
 export async function cleanupUsers(ids: string[]) {
   await Promise.all(ids.map((id) => admin.auth.admin.deleteUser(id)));
 }

@@ -33,6 +33,9 @@ describe("getEffectiveDuration", () => {
     expect(getEffectiveDuration(42, "singlePylon")).toBe(42);
   });
 
+  // custom-Formationen haben keine feste Standarddauer in der Registry (ihre
+  // Geometrie kommt aus customSnapshot, nicht aus FORMATIONS) — ohne Override
+  // ist 0 der einzig sinnvolle Rückgabewert.
   it("returns 0 for custom key", () => {
     expect(getEffectiveDuration(undefined, "custom")).toBe(0);
   });
@@ -43,6 +46,8 @@ describe("getEffectiveDuration", () => {
   });
 });
 
+// Deckt beide Pfade von resolveFormation ab: gemeinsame Registry-Geometrie
+// (Standardformation) vs. pro Platzierung eingefrorener customSnapshot.
 describe("resolveFormation", () => {
   it("resolves a standard formation by key", () => {
     const result = resolveFormation(pf("singlePylon"));

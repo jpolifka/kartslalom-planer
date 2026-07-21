@@ -14,6 +14,11 @@ const mainzSelection: AreaSelection = {
   rotationDeg: 0,
 };
 
+// Prüft, dass computeMapRenderLayout() für beide Provider-Arten (xyz-Kachel-
+// Grid vs. wms-Einzelbild) dieselbe Hintergrund-Box (bgW/bgH/left/top)
+// liefert — nur die Bildquelle unterscheidet sich — und dass eine rotierte
+// Auswahl die Box vergrößert (Oversizing), damit nach dem Zurückdrehen per
+// CSS/SVG-rotate() keine unbedeckten Ecken im Feld-Canvas entstehen.
 describe("computeMapRenderLayout", () => {
   it("osm liefert ein Kachel-Grid (kind: xyz)", () => {
     const layout = computeMapRenderLayout({ selection: mainzSelection, providerId: "osm", opacity: 0.5 }, 900, 1350);

@@ -20,6 +20,12 @@ const SUPABASE_URL     = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const SITE_URL         = Deno.env.get("SITE_URL") ?? "https://kart.cheezuscraizt.de";
 
+// Resourcen-Schutz gegen Missbrauch/Kosten, nicht nur "sinnvolle Defaults":
+// riesige Breite/Höhe würde diese Function (und den WMS-Anbieter) unnötig
+// belasten; das Zeit-Limit verhindert, dass ein hängender Upstream-Request
+// den Edge-Function-Worker dauerhaft blockiert; das Byte-Limit deckelt, wie
+// viel ein (potenziell falsch konfigurierter) Provider-Eintrag an Traffic
+// durch diese Function schleusen kann.
 const MAX_WIDTH = 3000;
 const MAX_HEIGHT = 3000;
 const MAX_PIXELS = 6_000_000;
@@ -60,6 +66,12 @@ function mercatorYToLat(y: number): number {
   return (2 * Math.atan(Math.exp(y / WEB_MERCATOR_R)) - Math.PI / 2) * (180 / Math.PI);
 }
 
+// CORS: gleiche Konvention wie in den übrigen Functions dieses Repos —
+// Origin wird nur für lokale Dev-Server gespiegelt, sonst immer SITE_URL.
+// Schützt nur browserseitig das Lesen der Antwort; die eigentliche
+// Zugriffskontrolle sind Bearer-Prüfung + Tier-Check weiter unten. Kong hat
+// vor dieser Function zusätzlich eine eigene statische CORS-Origin-Liste
+// (siehe docker/supabase/volumes/api/kong.yml, functions-v1-Route).
 function corsHeaders(req: Request) {
   const origin = req.headers.get("Origin") ?? "";
   const isLocal = origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:");
@@ -91,6 +103,13 @@ export async function handler(req: Request): Promise<Response> {
   if (!userRes.ok) return json({ error: "invalid_token" }, 401, cors);
   const user = await userRes.json();
 
+  // Tier/is_deleted werden serverseitig per Service-Role-Key frisch aus der
+  // DB gelesen statt z. B. Claims aus dem JWT zu vertrauen — ein Client
+  // könnte einen alten/gecachten Token mit veraltetem Tier vorzeigen, oder
+  // der Account könnte zwischenzeitlich (soft-)gelöscht worden sein. Diese
+  // Prüfung ist zugleich die Monetarisierungsgrenze: Luftbilder sind ein
+  // Pro/Team-Feature (Bandbreiten-/Lizenzkosten gegenüber dem WMS-Anbieter),
+  // konsistent mit der Tarif-Gate-Logik in src/lib/mapProviders.ts im Frontend.
   const profileRes = await fetch(
     `${SUPABASE_URL}/rest/v1/profiles?id=eq.${user.id}&select=tier,is_deleted`,
     { headers: { "apikey": SERVICE_ROLE_KEY, "Authorization": `Bearer ${SERVICE_ROLE_KEY}` } },
@@ -125,6 +144,13 @@ export async function handler(req: Request): Promise<Response> {
   const east = mercatorXToLng(maxx);
   const south = mercatorYToLat(miny);
   const north = mercatorYToLat(maxy);
+  // Coverage-Check spiegelt die Abdeckung des Providers (hier: Rheinland-
+  // Pfalz), die auch dem Frontend in src/lib/mapProviders.ts bekannt ist
+  // (siehe mapProviderConfigDrift.test.ts, das genau diese Zahlen gegeneinander
+  // abgleicht). Verhindert unnötige/sinnlose Anfragen an den WMS-Dienst für
+  // Bereiche außerhalb seiner Zuständigkeit — kein Sicherheits-, sondern ein
+  // Korrektheits-/Ressourcen-Check, die eigentliche SSRF-Absicherung ist die
+  // PROVIDERS-Allowlist oben.
   const c = provider.coverage;
   const withinCoverage = west >= c.west && east <= c.east && south >= c.south && north <= c.north;
   if (!withinCoverage) return json({ error: "bbox_outside_coverage" }, 400, cors);

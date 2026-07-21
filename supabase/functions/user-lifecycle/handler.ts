@@ -1,6 +1,17 @@
 // user-lifecycle — Inaktivitäts-Reminders und Soft-Delete
-// Cron-Job: täglich aufrufen. Stufen: 150 / 170 / 180 Tage Inaktivität.
+// Cron-Job: täglich aufrufen. Stufen: 150 / 170 / 180 Tage Inaktivität
+// (siehe Datenschutzerklärung: erste Erinnerung ab 150 Tagen, letzte
+// Erinnerung ab 170 Tagen, automatische Deaktivierung ab 180 Tagen ohne
+// last_active_at-Update).
 // Kein externer Import — nur fetch().
+//
+// KEINE CORS-Header in dieser Function (anders als die übrigen Functions
+// hier): user-lifecycle wird nie von einem Browser aus aufgerufen, sondern
+// ausschließlich per serverseitigem Cron-Aufruf mit dem x-cron-secret-Header
+// (siehe CRON_SECRET-Prüfung unten). Der produktive Cron-Trigger selbst
+// (Systemd-Timer/Crontab/externer Scheduler o. Ä.) liegt außerhalb dieses
+// Repos und ist hier nicht sichtbar/konfiguriert — nur die CI (.github/
+// workflows/ci.yml) setzt testweise ein CRON_SECRET für die Ephemeral-Test-Umgebung.
 //
 // Einzige Quelle der Wahrheit für diese Function: main/index.ts (self-hosted
 // Fat-Router-Dispatcher, siehe dortiger Kommentar) importiert handler direkt
@@ -36,6 +47,10 @@ async function patchProfile(uid: string, patch: Record<string, unknown>) {
 export async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null);
 
+  // Fail-closed: ein leerer/nicht gesetzter CRON_SECRET verweigert IMMER
+  // (nicht etwa "kein Secret konfiguriert -> offen lassen"). Ohne dieses
+  // Secret könnte sonst jeder unauthentifiziert diese Function aufrufen und
+  // serverseitig massenhaft Accounts soft-deleten bzw. Massen-Mails auslösen.
   if (!CRON_SECRET || req.headers.get("x-cron-secret") !== CRON_SECRET) {
     return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 });
   }

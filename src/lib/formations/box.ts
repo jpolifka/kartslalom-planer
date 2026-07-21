@@ -6,6 +6,10 @@ import type { FormationDefinition } from "../../types";
 import { normalizeCones } from "../geometry";
 import { builder } from "./common";
 
+// "Kasten" (Box): ein rechteckiger Fahrkorridor aus zwei parallelen Pylonenreihen, den das
+// Kart entweder gerade durchfaehrt (boxStraight) oder in dem es an einem Ende um 90° abbiegen
+// muss (boxTurn). Die kurzen Endstuecke (move_lane) markieren die Ein-/Ausfahrt in Gassenbreite,
+// die Laengsseiten bestehen aus einzelnen Pylonen im Pylonenabstand (move_pylon).
 export const boxStraight: FormationDefinition = {
   key: "boxStraight",
   label: "Kasten Durchfahrt",
@@ -40,6 +44,9 @@ export const boxTurn: FormationDefinition = {
   cones: normalizeCones(
     builder()
       .at(0,0).standing()
+      // Faktor 1,1 statt 1,0 auf den Pylonenabstand (also ca. 0,88 m statt 0,80 m):
+      // etwas großzügigerer Abstand an der Kurven-Außenseite, damit das Kart trotz
+      // größerem Wenderadius nicht an die Pylonen kommt.
       .move_pylon(1.1,0).standing()
       .move_pylon(1.1,0).standing()
       .move_pylon(1.1,0).standing()

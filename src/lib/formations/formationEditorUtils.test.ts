@@ -6,6 +6,12 @@ import { describe, it, expect } from "vitest";
 import { applySnap, computeLinePylons, SNAP_THRESHOLD } from "./formationEditorUtils";
 import { PYLON_SPACING, LANE_SPACING } from "./common";
 
+// Deckt die zwei Kern-Verhalten des Formation-Editors ab: (1) applySnap rastet gezogene
+// Pylonen auf die regelkonformen Distanzen PYLON_SPACING (0,50 m LB) bzw. LANE_SPACING
+// (1,65 m LB) zur naechsten Nachbar-Pylone ein, sofern der Abstand innerhalb SNAP_THRESHOLD
+// liegt; (2) computeLinePylons erzeugt beim Ziehen einer ganzen Reihe gleichmaessig im
+// Regelabstand verteilte Pylonen samt Ausrichtungswinkel.
+
 // ─── applySnap ───────────────────────────────────────────────────────────────
 
 describe("applySnap", () => {

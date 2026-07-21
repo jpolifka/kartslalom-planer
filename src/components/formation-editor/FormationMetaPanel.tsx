@@ -48,6 +48,9 @@ const s: Record<string, React.CSSProperties> = {
   btnDanger: { flex: 1, padding: "6px 0", fontSize: 13, border: "1px solid #fca5a5", borderRadius: 6, cursor: "pointer", background: "#fef2f2", color: "#dc2626" },
 };
 
+// Sensoren (kind === "sensor") zählen bewusst nicht als Pylon — sie markieren
+// nur eine virtuelle Lichtschranken-/Zeitmess-Position, keinen physischen
+// Hütchen, der beim Streckenaufbau real hingestellt wird.
 const pylonCount = (cones: EditableCone[]) =>
   cones.filter((c) => c.kind === "standing" || c.kind === "lying").length;
 
@@ -90,7 +93,10 @@ export default function FormationMetaPanel({
 
       <div>
         <label style={s.label}>Kategorie</label>
-        {/* Kategorie ist festgelegt auf "individuell" — Admin-Funktion folgt später */}
+        {/* Kategorie ist festgelegt auf "individuell" — Admin-Funktion folgt später.
+            Nur eine Admin-Promotion in die geteilte Bibliothek (adminPromoteToLibrary,
+            siehe useCustomFormations) ordnet eine Formation aktuell einer der anderen
+            Kategorien zu; der Eigentümer selbst kann sie hier (noch) nicht ändern. */}
         <div style={{ ...s.input, color: "#6b7280", background: "#f9fafb", cursor: "default" }}>
           {CATEGORIES.find((c) => c.value === category)?.label ?? category}
         </div>
@@ -173,6 +179,11 @@ export default function FormationMetaPanel({
         </div>
       )}
 
+      {/* Mehrfachauswahl dreht sich nur relativ (Delta-Winkel um den
+          gemeinsamen Auswahl-Mittelpunkt, siehe ROTATE_SELECTION im
+          Formation-Editor-State) — anders als bei einer Einzelauswahl gibt es
+          hier keinen absoluten Zielwinkel, da jeder Cone einen anderen
+          Ausgangswinkel/eine andere Position relativ zum Zentrum hat. */}
       {isMultiSelect && (
         <div style={s.section}>
           <label style={s.label}>Auswahl drehen ({selectedConeIds.length} Pylone)</label>

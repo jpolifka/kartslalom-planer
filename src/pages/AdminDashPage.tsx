@@ -5,6 +5,14 @@
 import { useNavigate } from "react-router-dom";
 import { Library, Map, ShieldCheck } from "lucide-react";
 
+// Diese Seite (und /admin/* generell) wird durch AdminGuard (Router-Ebene)
+// geschützt: Zugriff erfordert eine gültige Session UND role='admin' in
+// profiles, geprüft per RPC is_current_user_admin(). Nicht-Admins werden
+// dort still zu /dashboard umgeleitet — hier selbst gibt es keine erneute
+// Prüfung. Die eigentliche Autorisierung passiert aber ohnehin nicht hier,
+// sondern serverseitig: alle Admin-RPCs (admin_list_*, admin_delete_*,
+// admin_promote_to_library) sind SECURITY DEFINER-Funktionen mit eigenem
+// role='admin'-Check — ein Client-seitiger Guard ist nur UX, kein Schutz.
 type AdminCard = {
   icon: React.ReactNode;
   title: string;
@@ -12,6 +20,11 @@ type AdminCard = {
   href: string;
 };
 
+// Was ein Admin hier kann, was ein normaler Nutzer nicht kann: fremde
+// Formationen/Strecken (nicht nur die eigenen) einsehen, löschen und
+// Formationen in die öffentliche Bibliothek befördern — alles über
+// eigentümerübergreifende RPCs, die für normale Nutzer per RLS/Rollen-Check
+// verweigert würden.
 const CARDS: AdminCard[] = [
   {
     icon: <Library size={22} color="#6366f1" />,

@@ -42,11 +42,16 @@ describe("getSharedTrack", () => {
     await expect(getSharedTrack("bad-token")).rejects.toThrow("TOKEN_INVALID");
   });
 
+  // Rate-Limit ist serverseitig pro Token/Stunde geregelt (siehe SQL-Migration
+  // der RPC); dieser Test stellt nur sicher, dass der Fehlercode korrekt auf
+  // einen für den UI-Layer verständlichen Fehler gemappt wird.
   it("maps rate_limit_exceeded error", async () => {
     mockRpc.mockResolvedValue(err("rate_limit_exceeded"));
     await expect(getSharedTrack("hot-token")).rejects.toThrow("RATE_LIMIT_EXCEEDED");
   });
 
+  // Leeres Ergebnis ohne SQL-Fehler (z.B. RLS-bedingt) muss denselben
+  // Fehlerfall wie ein explizit ungültiger Token auslösen.
   it("throws TOKEN_INVALID when no row is returned", async () => {
     mockRpc.mockResolvedValue(ok([]));
     await expect(getSharedTrack("x")).rejects.toThrow("TOKEN_INVALID");

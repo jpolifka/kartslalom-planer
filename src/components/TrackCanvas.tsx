@@ -48,6 +48,12 @@ type PreparedItem = {
   height: number;
 };
 
+// Koordinatensystem: das fachliche Modell (item.x/y, Cone-Koordinaten, Pfeil-Punkte,
+// fieldWidth/fieldLength) ist durchgehend in Metern; nur beim Rendern wird per `scale`
+// (Pixel pro Meter, s.u.) in CSS-/SVG-Pixel umgerechnet. Drag-Deltas aus Pointer-Events
+// werden entsprechend durch `scale` geteilt, bevor sie an die (Meter-basierten) Callbacks
+// wie onMove/onArrowCpMove gehen — damit Formationen/Pfeile beim Zoomen/Resizen des
+// Canvas exakt an der Mausposition kleben, statt sich schneller/langsamer zu bewegen.
 type DrawState = { startX: number; startY: number; currentX: number; currentY: number };
 
 const DEFAULT_CANVAS_WIDTH = 900;
@@ -71,6 +77,11 @@ function arrowHeadPts(ex: number, ey: number, cpx: number, cpy: number, size: nu
   ].join(" ");
 }
 
+// Hit-Test für einen Klick/Pointer nahe einer quadratischen Bezierkurve: es gibt keine
+// geschlossene Formel für den Abstand Punkt<->Bezierkurve, daher wird die Kurve stattdessen
+// grob mit 26 Stützstellen (Schrittweite 0.04 in t) abgetastet und der jeweils nächste
+// Abtastpunkt gegen den Schwellwert geprüft. Für die Größenordnung des Canvas reicht diese
+// Auflösung, ohne eine echte Kurvenprojektion berechnen zu müssen.
 function bezierNear(px: number, py: number, a: PlacedArrow, scale: number, thresh: number): boolean {
   const sx = a.startX * scale, sy = a.startY * scale;
   const ex = a.endX * scale, ey = a.endY * scale;
@@ -186,12 +197,17 @@ export default function TrackCanvas(props: TrackCanvasProps) {
     return () => ro.disconnect();
   }, []);
 
+  // containerWidth ist die Breite des GESAMTEN Wrappers inkl. Y-Lineal, daher RULER_SIZE
+  // abziehen; MIN_CANVAS_WIDTH verhindert ein unbrauchbar schmales Canvas in sehr engen
+  // Spalten (z.B. Mobile-Layout), bevor die Messung per ResizeObserver überhaupt greift.
   const CANVAS_WIDTH = containerWidth != null
     ? Math.max(MIN_CANVAS_WIDTH, Math.floor(containerWidth - RULER_SIZE))
     : DEFAULT_CANVAS_WIDTH;
 
   const scale = CANVAS_WIDTH / fieldWidth;
   const canvasHeight = fieldLength * scale;
+  // Untere Pixel-Grenze für Pylonen: bei großen/breiten Feldern (kleines `scale`) sollen
+  // Pylonen trotzdem noch sichtbar und als Ziel für Drag/Selektion treffbar bleiben.
   const pylonPx = Math.max(PYLON_MIN_PX, PYLON_SIZE_M * scale);
   const canvasRef = useRef<HTMLDivElement>(null);
   const [drawState, setDrawState] = useState<DrawState | null>(null);
@@ -227,6 +243,11 @@ export default function TrackCanvas(props: TrackCanvasProps) {
       : src;
     const fallback = cones.length > 0 ? cones : [{ x: 0, y: 0, kind: "standing" as const }];
     const bounds = boundsFromCones(fallback);
+    // +0.4 m Rand auf jeder Seite (= 0.8 m in width/height unten), damit ein Pylon am Rand
+    // der Formation nicht direkt an der Box-Kante/dem Dashed-Border klebt oder von ihr
+    // angeschnitten wirkt. Die Box selbst (boxW/boxH weiter unten) wird exakt in dieser
+    // aufgeweiteten Größe gerendert, "normalized" sind also die Cone-Koordinaten relativ
+    // zur linken oberen Ecke dieser Box.
     const normalized = cones.map((c) => ({ ...c, x: c.x - bounds.minX + 0.4, y: c.y - bounds.minY + 0.4 }));
     return { item, formation, normalized, width: bounds.width + 0.8, height: bounds.height + 0.8 };
   }), [items]);
@@ -454,6 +475,17 @@ export default function TrackCanvas(props: TrackCanvasProps) {
                 }}
               >
 
+                {/*
+                  Hinweis zur Rotation: die Pylonen selbst (normalized, oben) werden
+                  mathematisch vorrotiert gerendert (rotateConesAroundOwnCenter), um den
+                  CSS-Rotation-Clipping-Bug bei asymmetrischen Containern zu vermeiden
+                  (siehe Kommentar bei "prepared" weiter oben). Die Flächenmarkierung/
+                  Start-Ziel-Linien hier verwenden dagegen bewusst die UNROTIERTEN
+                  Quellkoordinaten (formation.cones) plus ein einfaches CSS
+                  `transform: rotate(item.rotationDeg)` auf ein zentriertes Rechteck —
+                  das ist für diese einfachen, meist symmetrischen Formen unproblematisch
+                  und spart die aufwändigere Vorrotation für reine Deko-Elemente.
+                */}
                 {formation.areaLabel && (() => {
                   const srcNonSensor = formation.cones.filter((c) => c.kind !== "sensor");
                   if (srcNonSensor.length === 0) return null;

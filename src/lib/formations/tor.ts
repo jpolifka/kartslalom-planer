@@ -6,6 +6,10 @@ import type { FormationDefinition } from "../../types";
 import { normalizeCones } from "../geometry";
 import { builder } from "./common";
 
+// "Tor": die atomare Grundeinheit fast aller anderen Formationen — zwei Pylonen im Abstand
+// einer Standard-Gassenbreite (LANE_SPACING, 1,65 m lichte Breite), die das Kart passieren
+// muss. Alle komplexeren Formationen (Ecken, Slalom, Kreisel, ...) reihen letztlich solche
+// Tore/Gassen aneinander.
 export const tor: FormationDefinition = {
   key: "tor",
   label: "Tor",

@@ -3,6 +3,13 @@
 // All rights reserved.
 //
 // Integration: set_display_name RPC + Sichtbarkeit in get_library_formations
+//
+// Szenario: Nutzer können einen freiwilligen Anzeigenamen setzen, der bei
+// ihren in die Bibliothek beförderten Formationen als Attribution ("von …")
+// auftaucht. Ohne Namen bleibt die Formation anonym (display_name = null),
+// nicht etwa mit E-Mail-Adresse oder sonstiger PII sichtbar — Validierung
+// (Länge, Trimmen) und Sichtbarkeit hängen an derselben RPC/Query wie in
+// Produktion, deshalb hier gegen die echte DB statt gemockt.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {

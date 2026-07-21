@@ -11,6 +11,9 @@ export const finishLane: FormationDefinition = {
   label: "Ziel (Gasse)",
   description: "2,5m breite Zielgasse, 8m lang, Pylonenabstand 50cm, Strich an Einfahrt und Ausfahrt.",
   defaultDirection: "none",
+  // Beide Striche gesetzt, weil die Zielgasse an Einfahrt UND Ausfahrt je eine Linie
+  // braucht ("Strich an Einfahrt und Ausfahrt" laut Beschreibung) — nicht weil hier
+  // gleichzeitig gestartet und gezielt wird.
   hasStartLine: true,
   hasFinishLine: true,
   cones: normalizeCones(

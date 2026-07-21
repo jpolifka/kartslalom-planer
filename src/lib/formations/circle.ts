@@ -16,6 +16,14 @@ function distance(a: { x: number; y: number }, b: { x: number; y: number }) {
   return Math.sqrt(dx * dx + dy * dy);
 }
 
+/**
+ * Verteilt Pylonen gleichmaessig auf einem Kreisbogen (Radius `radius` um den Mittelpunkt),
+ * mit ca. `targetSpacing` Meter Abstand zwischen benachbarten Pylonen entlang des Umfangs.
+ * Da der tatsaechliche Pylonenabstand nur ganzzahlig auf 360° aufgehen kann, wird die Anzahl
+ * gerundet (mindestens 12, damit auch kleine Kreise noch rund wirken) — der reale Abstand
+ * weicht dadurch minimal von targetSpacing ab. `skipRangesDeg` blendet Winkelbereiche aus
+ * (z. B. fuer Ein-/Ausfahrten, an denen stattdessen eigene Torpylonen gesetzt werden).
+ */
 function buildRing(
   centerX: number,
   centerY: number,
@@ -48,6 +56,11 @@ function buildRing(
   return points;
 }
 
+// "Kreisel" (Kreisverkehr-Uebung): zwei konzentrische Pylonenringe (innen/außen), zwischen
+// denen das Kart im Kreis faehrt — vergleichbar mit einem echten Kreisverkehr. Die Fahrspur
+// zwischen den Ringen entspricht der Standard-Gassenbreite (TASK_LANE_WIDTH). Eine eigene
+// Einfahrt (Torbreite 3 m) und Ausfahrt (Torbreite = Fahrspurbreite) durchbrechen die Ringe an
+// definierten Stellen; die IIFE unten baut Ringe, Tore und Richtungspfeile in einem Zug.
 export const circle: FormationDefinition = {
   key: "circle",
   label: "Kreisel",

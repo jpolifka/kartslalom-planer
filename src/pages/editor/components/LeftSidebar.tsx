@@ -48,6 +48,9 @@ type Props = {
   onAddCustomFormation?: (id: string) => void;
 };
 
+// Linke Editor-Sidebar: Streckenbereich (Karte oder manuelle Maße) + Formations-
+// Palette. Wird im Desktop-Layout als statische Grid-Spalte gerendert, im
+// mobilen Layout als ausklappbare Schublade (mobileDrawerStyle) über dem Inhalt.
 export default function LeftSidebar({
   isMobile, mobileOpen, onClose,
   areaSel, onOpenMapSelector, onClearArea,
@@ -65,6 +68,8 @@ export default function LeftSidebar({
     ? mobileDrawerStyle("left", mobileOpen)
     : { display: "grid", gap: 12, alignContent: "start", overflowY: "auto" as const, minHeight: 0 };
 
+  // Eigene Formationen des Nutzers vs. geteilte "Bibliotheks"-Formationen
+  // (von anderen Nutzern veröffentlicht) werden getrennt gruppiert dargestellt.
   const ownFormations = customFormations?.filter((f) => !f.isLibrary) ?? [];
   const libFormations = customFormations?.filter((f) => f.isLibrary) ?? [];
 
@@ -73,6 +78,10 @@ export default function LeftSidebar({
       {isMobile && <DrawerHeader title="Formationen" onClose={onClose} />}
 
       {/* Area section */}
+      {/* areaSel (Kartenauswahl) und manuelle Breite/Länge schließen sich fachlich
+          gegenseitig aus: sobald ein Kartenbereich gewählt wurde, bestimmt dieser
+          die Feldgröße; die manuellen Eingaben greifen nur, solange kein
+          Kartenbereich gesetzt ist (siehe fieldWidth/fieldLength in EditorPage). */}
       <section style={card}>
         <SectionLabel>Streckenbereich</SectionLabel>
         {areaSel ? (
@@ -102,6 +111,10 @@ export default function LeftSidebar({
                 {MAP_PROVIDERS.osm.label}
               </label>
               {(() => {
+                // Zwei unabhängige Gründe können diese Option sperren: Tarif
+                // (premiumProviderLocked, Cloud-Modus ohne Pro) oder geografische
+                // Abdeckung (!rlpCoversSelection — RLP-DOP20 deckt nur Rheinland-Pfalz).
+                // Die Meldungen darunter unterscheiden die beiden Fälle.
                 const rlpLocked = premiumProviderLocked || !rlpCoversSelection;
                 return (
                   <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: rlpLocked ? "default" : "pointer", opacity: rlpLocked ? 0.55 : 1 }}>

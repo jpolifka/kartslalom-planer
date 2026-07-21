@@ -3,6 +3,16 @@
 // All rights reserved.
 //
 // Integration: H4 Admin-Lifecycle — Rollenprüfung, CRUD, Paginierung
+//
+// Szenario: Ein Admin-Account (profiles.role = 'admin') verwaltet fremde
+// Custom-Formationen — auflisten/filtern/paginieren, in die öffentliche
+// Bibliothek befördern, editieren, löschen — während ein ganz normaler
+// Nutzer genau dieselben RPCs aufruft und daran scheitern muss. Das ist
+// zwingend ein Integrationstest statt Unit-Test: die Autorisierungslogik
+// steckt nicht im Frontend, sondern in `SECURITY DEFINER`-RPCs bzw.
+// RLS-Policies in Postgres (is_current_user_admin(), EXISTS-Subqueries).
+// Ohne echte DB-Verbindung könnte man diese Prüfungen nur mocken — und würde
+// damit genau das nicht testen, was tatsächlich vor Rechteausweitung schützt.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
@@ -145,6 +155,10 @@ describe("H4: Admin-Lifecycle", () => {
   });
 
   // ─── admin_promote_to_library ───
+  // Promotion arbeitet bewusst per Kopie, nicht per In-Place-Update: der
+  // Nutzer behält seine private Formation unverändert (kann sie weiter
+  // bearbeiten/löschen), während die Bibliothek eine vom Admin kuratierte,
+  // vom Original entkoppelte Kopie erhält (eigene Kategorie, eigener Owner).
 
   it("admin_promote_to_library erstellt Library-Kopie, Original bleibt unverändert", async () => {
     const { data: newId, error } = await adminClient.rpc("admin_promote_to_library", {

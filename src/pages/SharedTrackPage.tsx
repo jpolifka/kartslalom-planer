@@ -16,6 +16,13 @@ function svgToImgSrc(svg: string): string {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
+// Öffentliche, login-lose Nur-Lese-Ansicht einer geteilten Strecke unter
+// /share/:token. Die Token-Prüfung passiert vollständig serverseitig per RPC
+// get_track_by_share_token (anon darf sie laut Grants explizit ausführen);
+// ungültige/abgelaufene/widerrufene Tokens liefern serverseitig einheitlich
+// einen "token_invalid"-Fehler zurück (kein Unterschied nach außen, damit man
+// per Trial-and-Error nichts über existierende Tokens erfährt). Zusätzlich
+// serverseitiges Rate-Limiting pro Token/Stunde.
 export default function SharedTrackPage() {
   const { token } = useParams<{ token: string }>();
   const { data, isLoading, error } = useSharedTrack(token);

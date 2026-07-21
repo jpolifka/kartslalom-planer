@@ -12,6 +12,15 @@ import {
 } from "../hooks/useCustomFormations";
 import type { CustomFormationRow } from "../lib/api/customFormations";
 
+// Diese Seite listet Formationen ALLER Nutzer (nicht nur die eigenen) und
+// erlaubt Löschen/Promoten fremder Datensätze. Das funktioniert nur, weil
+// useAdminFormationList/useAdminDeleteFormation/useAdminPromoteToLibrary im
+// Hintergrund auf admin_list_custom_formations / admin_delete_custom_formation /
+// admin_promote_to_library rufen — allesamt SECURITY DEFINER-RPCs, die
+// serverseitig auf profiles.role = 'admin' prüfen (raise exception bei
+// fehlender Berechtigung). Es gibt hier keinen client-seitigen Admin-Check;
+// ohne Admin-Rolle liefern die RPCs schlicht einen Fehler statt Daten.
+
 const STATUS_LABELS: Record<string, string> = {
   private: "Privat",
   shared: "Geteilt",
@@ -177,6 +186,9 @@ export default function AdminFormationsPage() {
                   <td style={{ ...tdStyle, color: "#94a3b8", whiteSpace: "nowrap" }}>
                     {new Date(f.updated_at).toLocaleDateString("de-DE")}
                   </td>
+                  {/* "Audit"-Spalte: zeigt, wenn zuletzt ein ADMIN (nicht der
+                      Eigentümer) diese Formation bearbeitet hat — wichtig zur
+                      Nachvollziehbarkeit, da Admins hier fremde Daten anfassen. */}
                   <td style={{ ...tdStyle, color: "#94a3b8", fontSize: 11, whiteSpace: "nowrap" }}>
                     {f.edited_by_admin_at ? (
                       <span title={`Admin: ${f.edited_by_admin_email ?? f.edited_by_admin_id ?? "–"}`}>
@@ -195,7 +207,9 @@ export default function AdminFormationsPage() {
                         <ExternalLink size={13} />
                       </button>
 
-                      {/* In Bibliothek aufnehmen */}
+                      {/* In Bibliothek aufnehmen — erzeugt laut Dialogtext unten
+                          eine KOPIE in der öffentlichen Bibliothek, das Original
+                          bleibt beim Ersteller unverändert (daher kein "Verschieben"). */}
                       {!f.is_library && (
                         <button
                           title="In Bibliothek aufnehmen"

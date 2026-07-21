@@ -6,6 +6,10 @@ import type { FormationDefinition } from "../../types";
 import { normalizeCones } from "../geometry";
 import { builder } from "./common";
 
+// Schikane: eine Fahrgasse, die per Pylonenreihe seitlich versetzt wird, sodass das Kart
+// einen S-Schlag fahren muss statt geradeaus durchzufahren. Die lange Pylonenreihe (8x
+// move_pylon) bildet die Versatzstrecke, die abschließenden zwei Pylonen (ab .at(0,0) erneut
+// gesetzt) markieren einen zusätzlichen Bezugspunkt/Versatz-Pylon fuer die Darstellung.
 export const chicane: FormationDefinition = {
   key: "chicane",
   label: "Schikane",

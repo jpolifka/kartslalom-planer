@@ -88,6 +88,9 @@ describe("map-background-image", () => {
     expect((await res.json()).error).toBe("unknown_provider");
   });
 
+  // Kern des SSRF-Schutzes: der Client kann NUR eine bekannte providerId
+  // wählen, nie eine URL selbst -- die tatsächliche WMS-Basis-URL kommt immer
+  // aus der serverseitigen PROVIDERS-Allowlist in handler.ts.
   it("akzeptiert keine beliebige URL statt providerId (SSRF-Schutz)", async () => {
     mockAuthAndProfile("pro");
     const res = await handler(
@@ -178,6 +181,9 @@ describe("map-background-image", () => {
     expect((await res.json()).error).toBe("upstream_error");
   });
 
+  // Fake-Timer statt eines echten 10s-Waits: testet den AbortController-Pfad
+  // (UPSTREAM_TIMEOUT_MS in handler.ts) deterministisch und ohne die
+  // Test-Suite künstlich zu verlangsamen.
   it("returns 504 upstream_timeout wenn der WMS-Dienst nicht rechtzeitig antwortet", async () => {
     vi.useFakeTimers();
     try {

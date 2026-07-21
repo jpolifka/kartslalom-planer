@@ -44,6 +44,10 @@ export async function saveTrackArea(
   });
   if (sessionErr) throw new Error(`Session setzen fehlgeschlagen: ${sessionErr.message}`);
 
+  // Bewusst der echte save_track()-RPC statt eines direkten Table-Updates:
+  // Der Test durchläuft damit dieselben Server-seitigen Prüfungen (Ownership,
+  // Tier-Gate für map_provider_id) wie die App im Browser — ein direktes
+  // Table-Write wäre ohnehin per REVOKE gesperrt (siehe security-smoke-test.ts).
   const { error } = await client.rpc("save_track", {
     p_track_id: trackId,
     p_state_json: { items: [], arrows: [] },

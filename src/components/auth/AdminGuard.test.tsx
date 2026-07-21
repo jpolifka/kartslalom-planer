@@ -13,6 +13,10 @@ const mockSession = { user: { id: "u1" } };
 let authState: { session: typeof mockSession | null } = { session: null };
 let adminQueryState: { data: boolean | undefined; isLoading: boolean } = { data: undefined, isLoading: false };
 
+// Store und RPC-Hook werden komplett gemockt statt echtem Zustand/React-Query-Provider —
+// AdminGuard hängt von zwei unabhängigen Zuständen ab (Session + Admin-RPC-Ergebnis),
+// die hier gezielt in allen vier Kombinationen (siehe Tests unten) durchgespielt werden,
+// ohne einen echten Supabase-Client aufzusetzen.
 vi.mock("../../store/authStore", () => ({
   useAuthStore: () => authState,
 }));

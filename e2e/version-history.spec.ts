@@ -1,6 +1,14 @@
 /**
  * Playwright E2E — Versionshistorie (Phase 2)
  *
+ * Getestetes Szenario: Ein Snapshot ("Version") einer Strecke wird erstellt,
+ * danach wird die Strecke weiter bearbeitet (Autosave überschreibt den
+ * aktuellen Stand) — der Snapshot selbst muss davon unberührt bleiben. Die
+ * Vorschau eines Snapshots muss schreibgeschützt sein (kein versehentliches
+ * Überschreiben durch Autosave während man sich eine alte Version ansieht),
+ * das Wiederherstellen muss den fachlichen Zustand (hier: Breite) korrekt
+ * zurückspielen, und ein gelöschter Snapshot muss aus der Liste verschwinden.
+ *
  * Flow:
  *   Snapshot bei Breite=18 erstellen
  *   → Preview-URL sofort beim Dashboard-Besuch sichern (kein zweiter Dashboard-Umweg)

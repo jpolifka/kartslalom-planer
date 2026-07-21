@@ -4,6 +4,10 @@
 
 import { X } from "lucide-react";
 
+// Kopfzeile mit Schließen-Button, nur für die mobile Schubladen-Ansicht von
+// LeftSidebar ("Formationen") und RightPanel ("Eigenschaften") gerendert —
+// im Desktop-Layout sind diese Sidebars dauerhaft sichtbare Spalten und
+// brauchen keinen expliziten Schließen-Button.
 export default function DrawerHeader({ title, onClose }: { title: string; onClose: () => void }) {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>

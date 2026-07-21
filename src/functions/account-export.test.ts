@@ -64,6 +64,9 @@ describe("account-export", () => {
     expect(body.exported_at).toBeDefined();
   });
 
+  // Verifiziert genau die Performance-/Korrektheits-Optimierung aus
+  // handler.ts (trackIds.length > 0 Check): kein vierter Request, wenn der
+  // User keine Strecken hat -- exakt 3 statt 4 fetch()-Aufrufe.
   it("skips versions fetch when user has no tracks", async () => {
     mockFetch
       .mockResolvedValueOnce(fetchOk({ id: "uid-1" }))
@@ -79,6 +82,8 @@ describe("account-export", () => {
     expect(mockFetch).toHaveBeenCalledTimes(3);
   });
 
+  // Stellt sicher, dass der Export als Datei-Download beim Nutzer ankommt
+  // (Browser zeigt die JSON-Antwort nicht einfach im Tab an).
   it("includes Content-Disposition attachment header", async () => {
     mockFetch
       .mockResolvedValueOnce(fetchOk({ id: "uid-1" }))

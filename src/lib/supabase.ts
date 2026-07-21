@@ -4,6 +4,15 @@
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+// Erwartete Env-Variablen (Vite, zur Build-Zeit eingebettet):
+// VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY. Es gibt hier bewusst KEINE
+// eigene Validierung/Fehlerbehandlung für fehlende Werte — bei fehlender
+// Konfiguration erhält createClient() `undefined` (as string erzwungen) und
+// schlägt erst beim ersten echten Netzwerkzugriff fehl (z. B. ungültige
+// Fetch-URL), nicht schon beim Import dieses Moduls. Das ist ausreichend für
+// dieses Projekt, da die Variablen über die Deploy-Pipeline gesetzt werden
+// und ihr Fehlen ein Build-/Deploy-Konfigurationsfehler wäre, kein zur
+// Laufzeit vom Nutzer auslösbarer Zustand.
 export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
 export function functionsUrl(name: string): string {

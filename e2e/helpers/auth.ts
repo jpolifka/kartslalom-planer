@@ -15,7 +15,11 @@ export function loadCredentials(): E2ECredentials {
  * Registriert eine page.route(), die alle localhost:8000-Anfragen (baked VITE_SUPABASE_URL)
  * auf host.docker.internal:8000 (erreichbarer Kong) umleitet.
  * Interception auf Playwright/Node.js-Ebene → kein CORS-Problem.
- * Nur aktiv wenn PLAYWRIGHT_BASE_URL gesetzt (Docker-Modus).
+ * Nur aktiv wenn PLAYWRIGHT_BASE_URL gesetzt (Docker-Modus): Läuft der
+ * Playwright-Browser selbst im Container (docker/run-playwright-local.sh),
+ * liegt "localhost" aus Sicht des Browsers im eigenen Netzwerk-Namespace —
+ * Kong ist dort nur über host.docker.internal erreichbar. Lokal ohne Docker
+ * zeigt localhost:8000 bereits korrekt auf den Host, daher keine Umleitung nötig.
  */
 export async function patchSupabaseUrl(page: Page) {
   if (!process.env.PLAYWRIGHT_BASE_URL) return;
@@ -38,6 +42,10 @@ export async function loginWithSession(page: Page) {
 
   await patchSupabaseUrl(page);
 
+  // addInitScript statt page.evaluate() NACH goto(): Das Script muss laufen,
+  // bevor der App-Code (und damit der Supabase-Client) initialisiert wird —
+  // sonst sieht die App beim ersten Render keine Session und rendert kurz
+  // den Login-Screen, was Folge-Assertions race-anfällig machen würde.
   await page.addInitScript(({ session }) => {
     // Supabase JS v2: Schlüssel = sb-<hostname>-auth-token
     // hostname aus VITE_SUPABASE_URL (http://localhost:8000) → "localhost"

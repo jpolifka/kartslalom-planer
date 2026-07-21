@@ -3,7 +3,7 @@
 // All rights reserved.
 
 import React from "react";
-import { HelpCircle, Pencil, Share2 } from "lucide-react";
+import { Pencil, Share2 } from "lucide-react";
 import { iconBtnLabel } from "../editorStyles";
 
 type Props = {
@@ -17,26 +17,22 @@ type Props = {
   onNameFocus: () => void;
   onNameBlur: () => void;
   onNameKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
-  onShowHelp: () => void;
   shareLocked?: boolean;
   onOpenShare?: () => void;
 };
 
+// Zeigt/bearbeitet den Streckennamen und bietet den Teilen-Button — nur im
+// Cloud-Modus für eine bereits existierende Strecke (Gast-Strecken haben
+// keinen Cloud-Namen zum Bearbeiten und keinen Share-Link).
 export default function EditorHeader({
   isMobile, isCloudMode, trackId,
   trackName, nameFocused, nameReadOnly,
   onSetTrackName, onNameFocus, onNameBlur, onNameKeyDown,
-  onShowHelp, shareLocked, onOpenShare,
+  shareLocked, onOpenShare,
 }: Props) {
   if (!isCloudMode || !trackId) {
-    // Gast-Modus: nur Hilfe-Button
-    return (
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: isMobile ? 8 : 12, flexShrink: 0 }}>
-        <button onClick={onShowHelp} style={{ ...iconBtnLabel, color: "var(--c-primary)", borderColor: "var(--c-primary-border)" }} title="Hilfe öffnen">
-          <HelpCircle size={14} /><span>Hilfe</span>
-        </button>
-      </div>
-    );
+    // Gast-Modus: kein zusätzlicher Header-Inhalt (Hilfe sitzt im globalen Nav)
+    return null;
   }
 
   return (
@@ -44,6 +40,10 @@ export default function EditorHeader({
       <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#94a3b8", flexShrink: 0 }}>
         Strecke:
       </span>
+      {/* nameReadOnly = ein Admin betrachtet eine FREMDE Strecke (RLS würde
+          normalen Nutzern hier gar keine Daten liefern) — Umbenennen bliebe
+          serverseitig ohnehin blockiert, daher hier direkt als reiner Text
+          statt editierbarem Input dargestellt. */}
       {nameReadOnly ? (
         <div style={{
           display: "flex", alignItems: "center", gap: 6,
@@ -90,9 +90,6 @@ export default function EditorHeader({
           <Share2 size={14} />{!isMobile && <span>Teilen{shareLocked && " (Pro)"}</span>}
         </button>
       )}
-      <button onClick={onShowHelp} style={{ ...iconBtnLabel, color: "var(--c-primary)", borderColor: "var(--c-primary-border)" }} title="Hilfe öffnen">
-        <HelpCircle size={14} />{!isMobile && <span>Hilfe</span>}
-      </button>
     </div>
   );
 }

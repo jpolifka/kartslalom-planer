@@ -11,6 +11,12 @@ import {
 } from "./mapProviders";
 import type { GeoBounds } from "./geo";
 
+// Deckt die drei "Vertrags"-Punkte der Kartenanbieter-Abstraktion ab, auf die
+// sich mapRender.ts/exportSVG.ts verlassen: (1) korrekte URL-Bauformeln pro
+// Providertyp (xyz/wms), (2) die Legacy-Boolean→Provider-ID-Migration und
+// (3) providerCoversBounds als Gate gegen WMS-Anfragen außerhalb der
+// amtlichen RLP-DOP20-Abdeckung (dort läge sonst nur eine leere/graue Antwort
+// vor statt einer klaren Fehlermeldung im Editor).
 describe("mapProviders", () => {
   it("OSM-Tile-URL entspricht dem Standard-Schema zoom/x/y", () => {
     expect(MAP_PROVIDERS.osm.xyzTileUrl!(12, 34, 56)).toBe(

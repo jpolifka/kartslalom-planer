@@ -5,6 +5,17 @@
 // Integration: Versionshistorie (Phase 2) gegen lokale Supabase.
 // create_track_version → get_track_versions → get_track_version_detail
 // → restore_track_version → delete_track_version
+//
+// Deckt den kompletten Lebenszyklus der Versionshistorie ab (Pro-Feature):
+// Snapshots anlegen/auflisten/lesen/wiederherstellen/löschen, das Free/Pro-
+// Tier-Gate, RLS-Isolation zwischen Nutzern (eine Version ist so sensibel wie
+// der Track selbst — sie enthält denselben State), Race-Sicherheit bei
+// parallelen Snapshot-/Track-Erstellungen (FOR UPDATE-Sperren gegen doppelt
+// vergebene Versionsnummern bzw. über das Tier-Limit hinaus angelegte
+// Tracks) sowie "Speichern unter" (create_track_from_version), das aus einem
+// historischen Snapshot einen komplett neuen, eigenständigen Track erzeugt.
+// All das hängt an echten RPCs mit SECURITY DEFINER, Row-Locking und
+// RLS-Policies — ohne laufende Postgres-Instanz nicht sinnvoll prüfbar.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
@@ -166,6 +177,10 @@ describe("Versionshistorie — Pro-User", () => {
   });
 });
 
+// Versionshistorie ist ein Pro-exklusives Feature — ein Free-Nutzer darf
+// keine Snapshots anlegen können, auch wenn er einen validen eigenen Track
+// besitzt. Die Prüfung sitzt in der RPC selbst (nicht im Frontend-Gating),
+// da sonst ein direkter API-Call das Limit umgehen könnte.
 describe("Versionshistorie — Free-User abgelehnt", () => {
   let client: Awaited<ReturnType<typeof loginAsUser>>;
   const userIds: string[] = [];
@@ -190,6 +205,12 @@ describe("Versionshistorie — Free-User abgelehnt", () => {
   });
 });
 
+// Eine Version ist kein separates, schwächer geschütztes Objekt — sie
+// enthält denselben state_json wie der Track selbst (Pylonenlayout, Maße,
+// Kartenausschnitt) und muss daher exakt dieselbe Owner-Isolation wie der
+// Track genießen. Ohne diese Tests könnte ein RLS-Policy-Gap speziell auf der
+// Versions-Tabelle unbemerkt bleiben, obwohl `tracks` selbst korrekt isoliert
+// ist (rls-isolation.test.ts prüft nur Letzteres).
 describe("Versionshistorie — RLS Fremdzugriff", () => {
   let clientA: Awaited<ReturnType<typeof loginAsUser>>;
   let clientB: Awaited<ReturnType<typeof loginAsUser>>;
@@ -389,6 +410,12 @@ describe("Versionshistorie — Gleitendes Limit (Pro=10)", () => {
   });
 });
 
+// "Speichern unter" erzeugt aus einem historischen Snapshot einen
+// komplett neuen, eigenständigen Track (eigene Zeile, eigene ID) statt den
+// Ursprungstrack zu überschreiben — vergleichbar mit "Speichern unter…" in
+// einer Desktop-Anwendung. Kernanforderung ist die Entkopplung: Änderungen
+// am Ursprungstrack nach dem Speichern-unter dürfen die Kopie nicht mehr
+// beeinflussen und umgekehrt.
 describe("Versionshistorie — Speichern unter (create_track_from_version)", () => {
   let client: Awaited<ReturnType<typeof loginAsUser>>;
   const userIds: string[] = [];
@@ -499,6 +526,11 @@ describe("Versionshistorie — Speichern unter (create_track_from_version)", () 
   });
 });
 
+// Ein bereits als gelöscht markierter Account (is_deleted = true, siehe
+// account-Löschungsfluss in library-and-deletion.test.ts) darf über
+// "Speichern unter" keinen neuen Track mehr anlegen können — sonst könnte ein
+// Nutzer nach Einleiten der Kontolöschung über eine noch gültige Session
+// weiterhin neue Daten erzeugen.
 describe("Versionshistorie — Speichern unter: gelöschter Account", () => {
   let client: Awaited<ReturnType<typeof loginAsUser>>;
   const userIds: string[] = [];
@@ -537,6 +569,9 @@ describe("Versionshistorie — Speichern unter: gelöschter Account", () => {
   });
 });
 
+// "Speichern unter" erzeugt einen zusätzlichen Track und muss deshalb genauso
+// gegen das Tier-Limit (Anzahl Tracks pro Nutzer) zählen wie create_track —
+// sonst wäre das Limit über den Save-As-Umweg umgehbar.
 describe("Versionshistorie — Speichern unter: Tier-Limit greift", () => {
   let client: Awaited<ReturnType<typeof loginAsUser>>;
   const userIds: string[] = [];

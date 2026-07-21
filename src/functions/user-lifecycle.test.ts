@@ -43,6 +43,9 @@ describe("user-lifecycle", () => {
     expect(res.status).toBe(200);
   });
 
+  // Diese Function hat keine User-Auth (kein Bearer-Token) -- CRON_SECRET
+  // ist die einzige Zugriffskontrolle. Ohne sie könnte jeder unauthentifiziert
+  // Massen-Soft-Deletes und Massen-Mails auslösen (siehe handler.ts).
   it("returns 403 when cron secret is wrong", async () => {
     const res = await handler(req("wrong-secret"));
     expect(res.status).toBe(403);

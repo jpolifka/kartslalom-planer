@@ -35,6 +35,9 @@ export default function FeedbackDialog({ isOpen, onClose }: Props) {
   function handleSend() {
     const lines = [
       `Seite: ${location.pathname}`,
+      // __APP_VERSION__ wird zur Build-Zeit von Vite eingesetzt (siehe vite.config.ts /
+      // vite-env.d.ts) — kein Laufzeit-Import, daher taucht die Konstante hier ohne
+      // Import auf.
       `App-Version: ${__APP_VERSION__}`,
       "",
       `Was wolltest du machen?\n${wanted || "-"}`,

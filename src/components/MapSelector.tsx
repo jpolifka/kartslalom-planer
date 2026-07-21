@@ -11,8 +11,8 @@ import { MAP_PROVIDERS } from "../lib/mapProviders";
 
 const VP_W = 900;
 const VP_H = 560;
-const TILE_SIZE = 256;
-const SNAP_PX = 14;
+const TILE_SIZE = 256; // Standard-Kachelgröße von XYZ-Tile-Servern (z.B. OSM)
+const SNAP_PX = 14; // Fangradius (Viewport-Pixel) um den ersten Polygonpunkt zum Schliessen per Klick
 
 type Props = {
   initialLat?: number;
@@ -58,14 +58,17 @@ export default function MapSelector({
   const tapRef = useRef<{ mx: number; my: number; t: number } | null>(null);
   const dragHandleRef = useRef<number | null>(null);
 
-  const HANDLE_R = 9;
+  const HANDLE_R = 9; // Radius der Eckpunkt-Ziehgriffe (Hit-Test unten toleriert zusätzlich +5px)
 
   // Map geometry
+  // "Global pixel"-Koordinaten (Web-Mercator-Pixelraum bei aktuellem Zoom, siehe lib/geo.ts) —
+  // darüber lassen sich Kartenmittelpunkt, Viewport-Ausschnitt und Kachel-Indizes einheitlich
+  // in derselben linearen Einheit verrechnen, unabhängig von der Nichtlinearität von Lat/Lng.
   const cgx = lngToGlobalX(centerLng, zoom);
   const cgy = latToGlobalY(centerLat, zoom);
   const topLeftGx = cgx - VP_W / 2;
   const topLeftGy = cgy - VP_H / 2;
-  const n = Math.pow(2, zoom);
+  const n = Math.pow(2, zoom); // Anzahl Kacheln pro Achse bei diesem Zoom (2^zoom, Standard-XYZ-Schema)
 
   const tileMinX = Math.floor(topLeftGx / TILE_SIZE);
   const tileMinY = Math.floor(topLeftGy / TILE_SIZE);
@@ -77,10 +80,15 @@ export default function MapSelector({
     return { x: e.clientX - r.left, y: e.clientY - r.top };
   }
 
+  // Viewport-Pixel (relativ zur Container-Ecke) -> Lat/Lng, über den globalen
+  // Pixelraum als Zwischenschritt (topLeftGx/Gy = obere linke Ecke des Viewports darin).
   function vpToLatLng(vx: number, vy: number): LatLng {
     return { lat: globalYToLat(topLeftGy + vy, zoom), lng: globalXToLng(topLeftGx + vx, zoom) };
   }
 
+  // Umkehrung von vpToLatLng — wird für alle SVG-Overlay-Positionen (Punkte, Handles,
+  // Bounding-Box) gebraucht, da die Auswahl in Lat/Lng gespeichert ist, aber in
+  // Viewport-Pixeln gezeichnet werden muss.
   function latLngToVP(lat: number, lng: number): VP {
     return { x: lngToGlobalX(lng, zoom) - topLeftGx, y: latToGlobalY(lat, zoom) - topLeftGy };
   }
@@ -155,6 +163,10 @@ export default function MapSelector({
       return;
     }
     const vp = getVP(e);
+    // Ein "Tap" (Punkt setzen) liegt nur vor, wenn Pointer-Down/Up nah beieinander UND
+    // schnell hintereinander liegen — sonst würde jedes Ziehen zum Verschieben der Karte
+    // (im Polygon-Modus gleichzeitig auch Pan, siehe onPointerMove) fälschlich einen
+    // zusätzlichen Polygonpunkt setzen.
     const isTap =
       tapRef.current !== null &&
       Math.hypot(e.clientX - tapRef.current.mx, e.clientY - tapRef.current.my) < 5 &&
@@ -195,9 +207,12 @@ export default function MapSelector({
   function onWheel(e: React.WheelEvent) {
     e.preventDefault();
     const vp = getVP(e);
+    // Zoom-um-Cursor: erst die Lat/Lng unter dem Mauszeiger im alten Zoom merken, nach dem
+    // Zoomwechsel den neuen Kartenmittelpunkt so verschieben, dass genau dieser Punkt wieder
+    // unter dem Cursor liegt — sonst würde jeder Zoom die Karte spürbar "wegspringen" lassen.
     const latUnder = globalYToLat(topLeftGy + vp.y, zoom);
     const lngUnder = globalXToLng(topLeftGx + vp.x, zoom);
-    const newZoom = Math.min(19, Math.max(1, zoom + (e.deltaY < 0 ? 1 : -1)));
+    const newZoom = Math.min(19, Math.max(1, zoom + (e.deltaY < 0 ? 1 : -1))); // 19 = übliches Max-Zoom vieler XYZ-Anbieter (u.a. OSM)
     const newCgx = lngToGlobalX(lngUnder, newZoom) - vp.x + VP_W / 2;
     const newCgy = latToGlobalY(latUnder, newZoom) - vp.y + VP_H / 2;
     setZoom(newZoom);
@@ -348,6 +363,8 @@ export default function MapSelector({
           Array.from({ length: tileMaxX - tileMinX + 1 }, (_, xi) => {
             const tx = tileMinX + xi;
             const ty = tileMinY + yi;
+            // X-Kachelindex modulo Kachelanzahl (mit Korrektur für negative tx via +n):
+            // erlaubt Panning über die 180°-Meridian-Grenze hinweg, ohne dass Kacheln fehlen.
             const wrappedTx = ((tx % n) + n) % n;
             return (
               <img

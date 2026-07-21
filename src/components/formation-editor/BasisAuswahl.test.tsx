@@ -6,7 +6,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import BasisAuswahl from "./BasisAuswahl";
 
-// Mock hooks mit Supabase-Abhängigkeit — isoliert BasisAuswahl vollständig
+// Mock hooks mit Supabase-Abhängigkeit — isoliert BasisAuswahl vollständig.
+// Da `session` hier immer null ist, wird der Modus "own" (eigenes Hindernis
+// duplizieren) nie angezeigt/getestet — der Button dafür erscheint in der
+// Komponente nur bei vorhandener Session. Diese Suite deckt also gezielt nur
+// "empty" und "standard" ab.
 vi.mock("../../hooks/useCustomFormations", () => ({
   useCustomFormationList: () => ({ data: undefined }),
 }));

@@ -21,6 +21,12 @@ const SUPABASE_URL     = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const SITE_URL         = Deno.env.get("SITE_URL") ?? "https://kart.cheezuscraizt.de";
 
+// CORS: gleiche Konvention wie in den übrigen Functions dieses Repos — der
+// Origin wird nur für lokale Dev-Server gespiegelt, sonst wird immer
+// SITE_URL gesendet (schützt nur browserseitig das Lesen der Antwort, kein
+// Ersatz für die Bearer-Prüfung unten). Kong hat vor dieser Function
+// zusätzlich eine eigene statische CORS-Origin-Liste (siehe
+// docker/supabase/volumes/api/kong.yml, functions-v1-Route).
 function corsHeaders(req: Request) {
   const origin = req.headers.get("Origin") ?? "";
   const isLocal = origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:");
@@ -39,7 +45,12 @@ export async function handler(req: Request): Promise<Response> {
   const bearer = req.headers.get("authorization");
   if (!bearer) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: cors });
 
-  // 1. User-Token validieren → uid ermitteln
+  // 1. User-Token validieren → uid ermitteln. Es gibt bewusst KEINEN
+  //    Request-Parameter für "welchen Account löschen" — die uid kommt
+  //    ausschließlich aus dem serverseitig verifizierten Token. Dadurch
+  //    existiert kein clientseitig kontrollierbares Feld, über das ein User
+  //    das Konto eines anderen löschen könnte (IDOR wäre nur möglich, wenn
+  //    hier eine User-ID aus Body/Query übernommen würde).
   const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
     headers: { "apikey": SERVICE_ROLE_KEY, "Authorization": bearer },
   });
@@ -50,8 +61,17 @@ export async function handler(req: Request): Promise<Response> {
   // 2. Atomische DB-Bereinigung via SECURITY DEFINER RPC:
   //    - Soft-Delete des Profils (Audit-Trail)
   //    - Löschen aller nicht-Library-Formationen
-  //    Wird mit dem User-Bearer aufgerufen, damit auth.uid() im RPC korrekt gesetzt ist.
+  //    Wird mit dem User-Bearer (nicht dem Service-Role-Key) aufgerufen,
+  //    damit auth.uid() innerhalb der SECURITY-DEFINER-Funktion korrekt auf
+  //    den anfragenden User gesetzt ist — das RPC bekommt also selbst auch
+  //    keine User-ID als Parameter, sondern ermittelt sie serverseitig aus
+  //    dem Token (zweite Absicherung gegen "fremdes Konto löschen").
   //    Library-Formationen erhalten owner_id=null später über ON DELETE SET NULL.
+  //    Reihenfolge wichtig: DIESER Schritt muss vor dem Hard-Delete (3.)
+  //    laufen, weil er auth.uid() braucht — nach dem Hard-Delete existiert
+  //    der auth.users-Eintrag nicht mehr, das RPC könnte den User dann nicht
+  //    mehr identifizieren. Der Soft-Delete-Flag dient außerdem als
+  //    Wiederherstellungspunkt, falls Schritt 3 fehlschlägt (siehe Rollback unten).
   const cleanupRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/delete_account_data`, {
     method: "POST",
     headers: {
@@ -66,8 +86,19 @@ export async function handler(req: Request): Promise<Response> {
     return new Response(JSON.stringify({ error: "cleanup_failed" }), { status: 500, headers: cors });
   }
 
-  // 3. Hard-Delete via Admin-API — ON DELETE SET NULL für Library-Formationen
-  //    (ON DELETE CASCADE entfernt formation_shares, tracks-Referenzen bleiben als Snapshot)
+  // 3. Hard-Delete via Admin-API (erfordert Service-Role-Key, kein User-Token
+  //    kann das) — löscht den auth.users-Eintrag tatsächlich und unwider-
+  //    ruflich. Das löst laut aktueller Migration (supabase/migrations/
+  //    20260615120000_app_schema.sql, 20260622000001_h0_schema.sql) eine
+  //    ganze FK-Kaskade aus, NICHT nur die Library-Formationen:
+  //      auth.users --cascade--> profiles --cascade--> tracks --cascade--> track_versions
+  //                             `--set null--> custom_formations.owner_id (Library bleibt ownerlos)
+  //                             `--cascade--> formation_shares (shared_with_id/shared_by_id)
+  //    D.h. Tracks und Track-Versionen werden HIER (über den Profil-Cascade),
+  //    nicht als Snapshot erhalten — ein früherer Kommentar an dieser Stelle
+  //    behauptete das Gegenteil und war schlicht falsch; korrigiert.
+  //    Nicht-Library-Formationen wurden bereits in Schritt 2 per RPC entfernt,
+  //    bevor der Owner selbst (und damit alles andere) hier verschwindet.
   const deleteRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${uid}`, {
     method: "DELETE",
     headers: { "apikey": SERVICE_ROLE_KEY, "Authorization": `Bearer ${SERVICE_ROLE_KEY}` },

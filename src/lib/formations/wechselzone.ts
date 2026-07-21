@@ -6,6 +6,10 @@ import type { FormationDefinition } from "../../types";
 import { normalizeCones } from "../geometry";
 import { meter, standing } from "./common";
 
+// "Wechselzone": wie vorstartbereich.ts eine reine 3x3 m Flaechenmarkierung (kein Pylonentor),
+// diesmal fuer den Fahrer-/Kart-Wechsel in Staffel-Disziplinen. Sowohl Einfahrts- als auch
+// Ausfahrtslinie sind gesetzt, weil die Zone sowohl betreten (Wechsel rein) als auch wieder
+// verlassen (Wechsel raus) wird.
 export const wechselzone: FormationDefinition = {
   key: "wechselzone",
   label: "Wechselzone",

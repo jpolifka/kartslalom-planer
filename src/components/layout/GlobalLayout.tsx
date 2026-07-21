@@ -6,6 +6,10 @@ import { Outlet } from "react-router-dom";
 import GlobalNav from "./GlobalNav";
 import { useProfile } from "../../hooks/useProfile";
 
+// Äußerster Layout-Rahmen für ALLE Routen (auch Login, Editor, öffentliche
+// Share-Seiten) — GlobalNav (inkl. der kontextabhängigen Hilfe) ist dadurch
+// überall sichtbar, unabhängig davon, ob die jeweilige Seite AuthGuard-
+// geschützt ist oder nicht.
 export default function GlobalLayout() {
   useProfile(); // Profil global laden — auch außerhalb AppShell verfügbar
 

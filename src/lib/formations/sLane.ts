@@ -6,6 +6,10 @@ import type { FormationDefinition } from "../../types";
 import { normalizeCones } from "../geometry";
 import { builder } from "./common";
 
+// "S-Spurgasse": zwei parallele Fahrspuren (obere/untere Reihe), die jeweils in der Mitte
+// um einen halben Pylonenabstand (0,5-facher Faktor statt 1,0) seitlich versetzt werden.
+// Dadurch macht die Gasse insgesamt einen leichten S-Schlag, bleibt aber durchgehend
+// befahrbar (kein harter Winkel wie bei der Schikane).
 export const sLane: FormationDefinition = {
   key: "sLane",
   label: "S-Spurgasse",

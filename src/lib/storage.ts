@@ -38,6 +38,26 @@ export type SavedState = {
 // haben weiterhin nur ein Boolean. CURRENT_VERSION bleibt bewusst 1 (kein
 // Format-Bruch, der bestehende Gast-Saves ungültig machen würde);
 // normalizeSavedState() übersetzt beim Lesen transparent.
+// Würde CURRENT_VERSION künftig tatsächlich erhöht (echter, nicht mehr per
+// normalizeSavedState()-Migration auflösbarer Formatbruch), betrifft das
+// mehrere Stellen, die synchron gehalten werden müssen:
+// - loadState()/parseImportFile() vergleichen `parsed.version !== CURRENT_VERSION`
+//   strikt und lehnen sonst komplett ab (kein "ist mindestens Version X"-
+//   Vergleich) — ältere Saves/Exporte würden ohne eine neue, an die alte
+//   Versionsnummer angepasste Normalisierungsfunktion (analog
+//   normalizeSavedState) ersatzlos verworfen (loadState -> null,
+//   parseImportFile -> Error "Inkompatible Version").
+// - saveState()/exportAsFile() schreiben CURRENT_VERSION direkt in
+//   JSON.stringify({ ...state, version: CURRENT_VERSION }) — jede neue
+//   Version braucht eine eigene LegacySavedStateVN-Typdefinition plus
+//   Normalisierungslogik für den Übergang von der vorherigen Version.
+// - storage.test.ts hat mehrere Tests, die CURRENT_VERSION lokal duplizieren
+//   (siehe dortige Konstante) und bei einer Änderung mit angepasst werden
+//   müssen, sonst schlagen sie fälschlich fehl.
+// Die reine Boolean→Provider-ID-Migration unten braucht das nicht: sie ist
+// rückwärtskompatibel ohne Formatbruch lösbar (normalizeSavedState erkennt
+// alte wie neue Form am vorhandenen Feld), daher bleibt CURRENT_VERSION
+// bewusst bei 1.
 type LegacySavedStateV1 = Omit<SavedState, "mapProviderId"> & { mapSatellite: boolean };
 
 function normalizeSavedState(raw: SavedState | LegacySavedStateV1): SavedState {

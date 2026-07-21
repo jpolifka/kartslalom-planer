@@ -4,6 +4,12 @@
 
 import type React from "react";
 
+// Mobile Variante von LeftSidebar/RightPanel: statt einer festen Grid-Spalte
+// wird die Sidebar als fixierte Schublade über den Inhalt gelegt und per
+// translateX rein-/rausgeschoben (Slide-in). 110% statt 100% schiebt sie
+// sicher komplett aus dem sichtbaren Bereich (inkl. boxShadow-Rand).
+// zIndex 160 liegt über dem Backdrop (siehe EditorPage, zIndex 150), damit die
+// Schublade über dem abgedunkelten Hintergrund liegt, aber unter Modals (200).
 export function mobileDrawerStyle(side: "left" | "right", open: boolean): React.CSSProperties {
   return {
     position: "fixed", top: 0, bottom: 0, [side]: 0,
@@ -33,6 +39,8 @@ export const outlineBtn: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
+// Rot (#fecaca/#b91c1c) kennzeichnet destruktive Aktionen (Löschen) — konsistent
+// mit den Fehler-Farben in badge()/Validierungsanzeige weiter unten.
 export const dangerBtn: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
   width: "100%", borderRadius: 10,
@@ -74,6 +82,8 @@ export function iconBtn(disabled: boolean): React.CSSProperties {
   };
 }
 
+// Farbcodierung der Validierungshinweise: Rot = error (Regelverstoß, blockierend
+// gedacht), Gelb/Amber = warning (Hinweis, aber nicht zwingend falsch).
 export function badge(type: "error" | "warning"): React.CSSProperties {
   return {
     display: "inline-flex", alignItems: "center", gap: 5,

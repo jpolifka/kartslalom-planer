@@ -17,6 +17,10 @@ function dispatch(state: HistState, action: TrackAction): HistState {
   return trackReducer(state, action);
 }
 
+// Fokus dieser Tests: die Undo/Redo-Mechanik (past/present/future), nicht die
+// einzelnen Formation-Operationen selbst — insbesondere die Unterscheidung
+// zwischen commit()-Actions (erzeugen einen Undo-Schritt) und live()-Actions
+// wie MOVE_FORMATION (verändern nur `present`, siehe trackReducer.ts).
 describe("trackReducer", () => {
   it("add item", () => {
     const s = dispatch(empty, { type: "ADD_FORMATION", formation: formation("a") });

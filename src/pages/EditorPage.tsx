@@ -4,7 +4,7 @@
 
 import React, { useMemo, useReducer, useRef, useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { X, HelpCircle, RotateCcw, Eye } from "lucide-react";
+import { X, RotateCcw, Eye } from "lucide-react";
 import TrackCanvas from "../components/TrackCanvas";
 import type { MapConfig } from "../components/TrackCanvas";
 import MapSelector from "../components/MapSelector";
@@ -32,8 +32,21 @@ import EditorHeader from "./editor/components/EditorHeader";
 import LeftSidebar from "./editor/components/LeftSidebar";
 import Toolbar from "./editor/components/Toolbar";
 import RightPanel from "./editor/components/RightPanel";
-import HelpContent from "./editor/components/HelpContent";
 
+// ── Überblick ────────────────────────────────────────────────────────────
+// EditorPage ist der zentrale Streckeneditor und läuft in zwei grundlegend
+// verschiedenen Modi:
+//  - Gast-Modus (kein Supabase-Login, isCloudMode=false): der Zustand lebt
+//    nur im Browser. _initialSaved (localStorage) dient als Lazy-Init für
+//    alle relevanten useState-Aufrufe, Autosave schreibt zurück in localStorage.
+//  - Cloud-Modus (eingeloggt): der Zustand wird per React-Query von Supabase
+//    geladen (useTrack) und dort auch gespeichert (useSaveTrack); Tarif-Gates
+//    (useTier) schalten Premium-Kartenanbieter, Share-Links und PNG-Export frei/zu.
+// Zusätzlich existiert ein Versionsvorschau-Modus (URL-Query `?previewVersion=<id>`):
+// dabei wird ein historischer Snapshot geladen und Autosave gezielt deaktiviert
+// (siehe Autosave-Effect weiter unten) — der Editor bleibt aber weiterhin
+// bedienbar, es gibt keine echte Eingabesperre, nur keine Persistierung.
+//
 // Load once at startup, shared across all useState lazy initializers (Gast-Modus)
 let _initialSaved = loadState();
 
@@ -44,8 +57,11 @@ export default function EditorPage() {
   const previewVersionId = searchParams.get("previewVersion") ?? undefined;
   const { session, profile } = useAuthStore();
   const isAdmin = profile?.role === "admin";
-  const isCloudMode = !!session;
+  const isCloudMode = !!session; // Kern-Unterscheidung Gast- vs. Cloud-Modus für die ganze Seite
   const { canUsePremiumMapProviders, canShareLinks, canExportPng } = useTier();
+  // Tarif-Gates greifen nur im Cloud-Modus — im Gast-Modus gibt es keinen Account
+  // und damit keinen Tarif, also sind dort alle Funktionen frei nutzbar.
+  // SVG-/PDF-Export sind unabhängig davon immer ungated.
   const premiumMapProviderLocked = isCloudMode && !canUsePremiumMapProviders;
   const shareLocked = isCloudMode && !canShareLinks;
   const [showShareDialog, setShowShareDialog] = useState(false);
@@ -69,14 +85,20 @@ export default function EditorPage() {
   const createFromVersionMutation = useCreateTrackFromVersion();
   const [showSaveAsDialog, setShowSaveAsDialog] = useState(false);
   const [saveAsError, setSaveAsError] = useState<string | null>(null);
+  // createCalledRef/cloudAppliedRef verhindern doppeltes Ausführen der Cloud-Effects
+  // unten (z.B. bei React-StrictMode-Doppel-Mount oder Refetches) — ohne die Guards
+  // würde z.B. beim Anlegen einer neuen Strecke zweimal ein Datensatz erzeugt.
   const createCalledRef = useRef(false);
   const cloudAppliedRef = useRef(false);
+  // Im Gast-Modus gibt es nichts vom Server zu laden, daher direkt "geladen".
   const [cloudLoaded, setCloudLoaded] = useState(!isCloudMode);
 
   // Area / map
+  // Lazy-Init (Funktion statt Wert) liest _initialSaved nur beim allerersten Mount.
+  // Im Cloud-Modus werden diese Werte kurz danach vom "apply loaded track data"-
+  // Effect weiter unten überschrieben, sobald die Serverdaten eintreffen.
   const [areaSel, setAreaSel] = useState<AreaSelection | null>(() => _initialSaved?.areaSel ?? null);
   const [showMapSelector, setShowMapSelector] = useState(false);
-  const [showHelp, setShowHelp] = useState(false);
   const [manualWidth, setManualWidth] = useState(() => _initialSaved?.manualWidth ?? 18);
   const [manualLength, setManualLength] = useState(() => _initialSaved?.manualLength ?? 36);
   const [manualWidthInput, setManualWidthInput] = useState(() => String(_initialSaved?.manualWidth ?? 18));
@@ -110,6 +132,9 @@ export default function EditorPage() {
     : null;
 
   // Track + history
+  // Dritter Parameter von useReducer (Lazy-Init) läuft nur einmal beim Mount und
+  // übernimmt bei vorhandenem _initialSaved (Gast-Modus) direkt items/arrows,
+  // sonst den leeren INITIAL_TRACK. Undo/Redo-Strategie siehe trackReducer.ts.
   const [hist, dispatch] = useReducer(
     trackReducer,
     null,
@@ -133,6 +158,8 @@ export default function EditorPage() {
   const [mode, setMode] = useState<"select" | "drawArrow">("select");
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
   const [subMenuKey, setSubMenuKey] = useState<string | null>(null);
+  // Speicherstatus fürs Toolbar-Badge: "pending" während der Debounce-Wartezeit/
+  // des Requests, "saved" kurz danach (blendet sich nach 2s selbst wieder auf "idle" aus)
   const [saveStatus, setSaveStatus] = useState<"idle" | "pending" | "saved">("idle");
   const [trackName, setTrackName] = useState("Neue Strecke");
   const [nameFocused, setNameFocused] = useState(false);
@@ -189,6 +216,8 @@ export default function EditorPage() {
           const pasted = clipboardRef.current.map((it) => ({
             ...it,
             id: crypto.randomUUID(),
+            // Leicht versetzt einfügen (+1m), damit die Kopie nicht exakt auf dem
+            // Original liegt und sofort sichtbar/verschiebbar ist.
             x: it.x + 1,
             y: it.y + 1,
           }));
@@ -231,6 +260,9 @@ export default function EditorPage() {
   }, [isCloudMode, isNewTrack]);
 
   // Cloud: apply loaded track data once (own track or admin fallback)
+  // cloudAppliedRef sorgt dafür, dass dies wirklich nur einmal passiert: ein
+  // Refetch von useTrack (z.B. nach Fokuswechsel des Tabs) darf lokale,
+  // noch nicht gespeicherte Änderungen NICHT überschreiben.
   useEffect(() => {
     if (!isCloudMode || isNewTrack || !effectiveTrackData || cloudAppliedRef.current) return;
     cloudAppliedRef.current = true;
@@ -277,8 +309,14 @@ export default function EditorPage() {
   // Autosave — debounced 1 s after last change
   useEffect(() => {
     if (!cloudLoaded) return;
-    if (previewVersionId) return; // kein Autosave im Vorschau-Modus
+    // kein Autosave im Vorschau-Modus — das ist der einzige "Schreibschutz":
+    // die Formationen bleiben technisch weiter bearbeitbar (kein UI-Lock auf
+    // Inputs/Canvas), es werden nur keine Änderungen persistiert.
+    if (previewVersionId) return;
     if (isAdminViewingForeignTrack) return; // Admin kann fremde Strecken nicht speichern
+    // Debounce: jede Änderung an einer der Dependencies unten setzt den Timer
+    // zurück, sodass erst 1s nach der letzten Änderung tatsächlich gespeichert
+    // wird (verhindert einen Request pro Tastendruck/Drag-Frame).
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     if (savedFadeRef.current) clearTimeout(savedFadeRef.current);
     setSaveStatus("pending");
@@ -290,6 +328,9 @@ export default function EditorPage() {
             state: { items, arrows, manualWidth, manualLength, mapProviderId, mapOpacity, areaSel },
           });
         } catch (err) {
+          // Server lehnt Luftbild-Provider nachträglich ab (z.B. Tarif-Downgrade
+          // zwischen Laden und Speichern) — lokal auf OSM zurückfallen, damit der
+          // nächste Autosave-Versuch wieder durchgeht.
           if (err instanceof Error && err.message === "MAP_PROVIDER_REQUIRES_PRO") {
             setMapProviderId("osm");
             alert("Luftbilder sind ab dem Pro-Tarif verfügbar.");
@@ -334,6 +375,9 @@ export default function EditorPage() {
       direction: (f.default_direction as DirectionMode | null) ?? "none",
       durationSeconds: f.duration_seconds ?? undefined,
       customFormationId: f.id,
+      // Snapshot friert cones/arrows/label zum Zeitpunkt des Platzierens ein:
+      // spätere Bearbeitung oder Löschung der Formationsvorlage durch den
+      // Nutzer darf bereits platzierte Instanzen in dieser Strecke nicht verändern.
       customSnapshot: {
         cones: f.cones_json,
         arrows: f.arrows_json,
@@ -462,7 +506,6 @@ export default function EditorPage() {
     if (!confirm("Strecke zurücksetzen und gespeicherten Stand löschen?")) return;
     clearSavedState();
     _initialSaved = null;
-    dispatch({ type: "UNDO" }); // force re-render workaround
     window.location.reload();
   }
 
@@ -510,29 +553,6 @@ export default function EditorPage() {
               onSelect={(sel) => { setAreaSel(sel); setShowMapSelector(false); }}
               onCancel={() => setShowMapSelector(false)}
             />
-          </div>
-        </div>
-      )}
-
-      {/* ── Modal: Hilfe ────────────────────────────────────────────── */}
-      {showHelp && (
-        <div
-          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, boxSizing: "border-box" }}
-          onClick={() => setShowHelp(false)}
-        >
-          <div
-            style={{ background: "white", borderRadius: 20, padding: 22, width: "min(720px, 96vw)", maxHeight: "90vh", overflow: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.35)", boxSizing: "border-box" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-              <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
-                <HelpCircle size={20} color="var(--c-primary)" /> Hilfe
-              </h3>
-              <button onClick={() => setShowHelp(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", display: "flex", padding: 4 }} title="Schließen">
-                <X size={20} />
-              </button>
-            </div>
-            <HelpContent />
           </div>
         </div>
       )}
@@ -651,7 +671,6 @@ export default function EditorPage() {
           onNameFocus={() => setNameFocused(true)}
           onNameBlur={handleNameBlur}
           onNameKeyDown={handleNameKeyDown}
-          onShowHelp={() => setShowHelp(true)}
           shareLocked={shareLocked}
           onOpenShare={trackId ? () => setShowShareDialog(true) : undefined}
         />
@@ -716,6 +735,8 @@ export default function EditorPage() {
               warnCount={warnCount}
               hasItems={items.length > 0}
               saveStatus={saveStatus}
+              // SVG-/PDF-Export sind für alle frei zugänglich; nur der PNG-Export
+              // ist tier-gated (pngLocked, s.o. bei useTier).
               onExportSVG={() => {
                 buildExportMapConfig().then(
                   (cfg) => downloadSVG(generateTrackSVG(fieldWidth, fieldLength, items, arrows, cfg)),

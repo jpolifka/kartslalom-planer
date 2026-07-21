@@ -53,6 +53,9 @@ export default function SaveAsDialog({ isOpen, initialName, isPending, errorMess
         <input
           ref={inputRef}
           aria-label="Name der neuen Strecke"
+          // 100 Zeichen spiegelt die serverseitige Prüfung in den Track-RPCs
+          // (length(trim(name)) > 100 -> 'invalid_name'), damit ein zu langer Name
+          // schon clientseitig gar nicht erst eingegeben und dann vom Server abgelehnt wird.
           maxLength={100}
           value={name}
           onChange={(e) => setName(e.target.value)}

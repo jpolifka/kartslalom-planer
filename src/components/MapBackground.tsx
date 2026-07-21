@@ -15,6 +15,10 @@ type Props = {
   opacity: number;
 };
 
+// Reines Rendering — die eigentliche Geometrie (Kachel-/BBox-Berechnung, Rotation,
+// Oversizing der Hintergrundfläche) steckt in computeMapRenderLayout() (lib/mapRender.ts),
+// die sich diese Komponente mit dem SVG/PDF-Export (exportSVG.ts) teilt. So bleibt
+// sichergestellt, dass Editor-Vorschau und Export exakt denselben Kartenausschnitt zeigen.
 export default function MapBackground({ selection, canvasWidthPx, canvasHeightPx, providerId, opacity }: Props) {
   const layout = useMemo(
     () => computeMapRenderLayout({ selection, providerId, opacity }, canvasWidthPx, canvasHeightPx),
@@ -31,15 +35,22 @@ export default function MapBackground({ selection, canvasWidthPx, canvasHeightPx
           width: layout.bgW,
           height: layout.bgH,
           overflow: "hidden",
+          // Die Hintergrundfläche wird oversized und achsen-parallel zu Lat/Lng gerendert
+          // (siehe computeMapRenderLayout/computeBackgroundBox), das Feld selbst ist aber
+          // um selection.rotationDeg gegen Norden gedreht. Deshalb hier gegenläufig
+          // (negatives Vorzeichen) zurückdrehen, damit der Kartenausschnitt nach der
+          // Drehung wieder exakt unter dem unrotierten Streckenfeld liegt.
           transform: `rotate(${-selection.rotationDeg}deg)`,
           transformOrigin: "50% 50%",
         }}
       >
         {layout.kind === "xyz" ? (
+          // XYZ-Kachel-Pyramide (z.B. OSM): mehrere quadratische Kacheln, individuell positioniert.
           layout.tiles.map(({ url, x, y, w, h }) => (
             <img key={`${x}-${y}`} src={url} alt="" draggable={false} style={{ position: "absolute", left: x, top: y, width: w, height: h }} />
           ))
         ) : (
+          // WMS-Anbieter (z.B. RLP-DOP20): ein einzelnes Bild für die gesamte BBox statt Kacheln.
           <img
             src={layout.imageUrl}
             alt=""

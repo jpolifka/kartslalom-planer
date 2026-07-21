@@ -3,6 +3,15 @@
 // All rights reserved.
 //
 // Integration: Custom-Formation-Lifecycle + Payload-Validierung.
+//
+// Deckt vier Szenarien ab, die alle auf echten RLS-Policies/RPC-Berechtigungs-
+// prüfungen in Postgres beruhen und sich daher nicht sinnvoll unit-testen
+// lassen: (1) kompletter Lebenszyklus einer eigenen Formation
+// (erstellen/lesen/ändern/löschen, inkl. RLS-Isolation gegenüber anderen
+// Nutzern), (2) Teilen einer Formation mit gestuften Rechten (view/edit) und
+// Widerruf, (3) serverseitige Validierung des Formation-Payloads (Limits für
+// Cones/Pfeile/Namen etc., die ausschließlich in der RPC geprüft werden),
+// (4) Premium-Gate + Sperre für bereits gelöschte Accounts.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {

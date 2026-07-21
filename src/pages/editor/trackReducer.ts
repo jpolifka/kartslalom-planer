@@ -27,6 +27,20 @@ export type HistState = { past: TrackState[]; present: TrackState; future: Track
 
 export const INITIAL_TRACK: TrackState = { items: [], arrows: [] };
 
+// Undo/Redo-Strategie: klassischer History-Stack aus past/present/future.
+// Zwei Arten, wie eine Action den Zustand ändert:
+//  - live(): ersetzt nur `present`, OHNE einen Undo-Schritt zu erzeugen.
+//    Wird für kontinuierliche Änderungen genutzt (Formation/Pfeil-Endpunkt
+//    ziehen), damit nicht pro Drag-Frame ein eigener Undo-Schritt entsteht.
+//  - commit(): schiebt den bisherigen `present` auf `past` (Undo-Schritt) und
+//    leert `future` (Redo-Historie verfällt bei jeder neuen Änderung).
+//    Wird für diskrete Aktionen genutzt (Hinzufügen/Löschen/Werte-Update).
+// CHECKPOINT: wird von der UI vor Drag-Beginn (onFormationDragStart) gefeuert,
+// um EINMALIG den Stand vor dem Ziehen zu sichern — die nachfolgenden
+// MOVE_*-Actions laufen dann über live() und erzeugen selbst keine weiteren
+// Undo-Schritte. So ergibt ein ganzer Drag genau einen Undo-Schritt.
+// past.slice(-29) begrenzt die Undo-Tiefe auf 30 Einträge (29 + aktueller
+// Stand), um den Speicherverbrauch der History nicht unbegrenzt wachsen zu lassen.
 export function trackReducer(s: HistState, action: TrackAction): HistState {
   const { past, present, future } = s;
 
@@ -83,6 +97,9 @@ export function trackReducer(s: HistState, action: TrackAction): HistState {
       });
 
     case "CHECKPOINT":
+      // Sichert `present` unverändert auf `past`, ohne selbst etwas am Zustand
+      // zu ändern — wird direkt vor einer Serie von live()-Änderungen (Drag)
+      // dispatcht, damit diese als EIN Undo-Schritt rückgängig gemacht werden können.
       return { past: [...past.slice(-29), present], present, future: [] };
 
     case "ADD_ARROW":
@@ -123,6 +140,9 @@ export function trackReducer(s: HistState, action: TrackAction): HistState {
       return { past: [...past, present], present: future[0], future: future.slice(1) };
 
     case "RESET":
+      // Kompletter Ersatz des Tracks (Import, Cloud-Laden, Versionsvorschau) —
+      // History wird bewusst geleert, ein Undo darf nicht in den alten,
+      // fachlich unabhängigen Zustand zurückspringen.
       return { past: [], present: action.state, future: [] };
   }
 }

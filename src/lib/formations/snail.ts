@@ -6,6 +6,11 @@ import type { FormationDefinition } from "../../types";
 import { normalizeCones } from "../geometry";
 import { builder } from "./common";
 
+// "Schneckenhaus": eine spiralfoermige Anordnung aus mehreren parallelen kurzen Pylonen-
+// reihen (je 4 Pylonen), die mit wachsendem Lane-Abstand nach außen "aufgewickelt" werden
+// und am Ende in eine laengere Verbindungsreihe (die "Schale") uebergehen. Weil die
+// Reihenfolge der Ein-/Ausfahrten frei waehlbar ist (siehe description), gibt es keine feste
+// "Start"-Pylone in der Geometrie — die Formation ist bewusst richtungsneutral aufgebaut.
 export const snail: FormationDefinition = {
   key: "snail",
   label: "Schneckenhaus",

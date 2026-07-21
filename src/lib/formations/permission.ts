@@ -18,6 +18,13 @@ export type FormationAccess = {
 // Erweiterung auch is_library=true als 'view'). Admins duerfen zusaetzlich jede
 // fremde Formation bearbeiten, weil admin_update_custom_formation nur die Admin-
 // Rolle prueft, keine Owner/Share-Beziehung.
+//
+// Rechte-Hierarchie (schwaechste zuerst): null (kein Zugriff, ausser Admin) < view
+// (nur lesen, z. B. Library-Formation ohne expliziten Edit-Share) < edit (Bearbeitung
+// per Share erlaubt) < owner (volle Kontrolle, eigene Formation). Ein Admin bekommt
+// unabhaengig von der eigentlichen Permission immer effektiv "edit" auf fremde
+// Formationen, weil er sonst Library-/Moderations-Aufgaben (z. B. eingereichte
+// Formationen pruefen/korrigieren) nicht erledigen koennte.
 export function resolveFormationAccess(params: {
   isEdit: boolean;
   isAdmin: boolean;
