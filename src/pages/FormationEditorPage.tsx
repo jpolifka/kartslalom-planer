@@ -448,7 +448,7 @@ export default function FormationEditorPage() {
             disabled={saveStatus === "saving" || !name.trim()}
             title={saveStatus === "saved" ? "Gespeichert ✓" : saveStatus === "error" ? "Fehler beim Speichern" : undefined}
           >
-            {saveStatus === "saving" ? "Speichern…" : isCloudMode ? "In Cloud speichern" : "Lokal speichern"}
+            {saveStatus === "saving" ? "Speichern…" : isCloudMode ? "Im Konto speichern" : "Lokal speichern"}
           </button>
         )}
       </header>

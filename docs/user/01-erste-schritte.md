@@ -1,6 +1,6 @@
 ## 1. Erste Schritte
 
-Du kannst den Streckenplaner **ohne Anmeldung** nutzen — deine Strecke wird dann nur lokal in diesem Browser gespeichert. Meldest du dich an (Anmeldung per Magic Link an deine E-Mail-Adresse), werden deine Strecken zusätzlich in der Cloud gespeichert, im **Dashboard** verwaltet und sind von jedem Gerät aus erreichbar (mehr dazu unter „Speichern" und „Konto").
+Du kannst den Streckenplaner **ohne Anmeldung** nutzen — deine Strecke wird dann nur lokal in diesem Browser gespeichert. Meldest du dich an (Anmeldung per Magic Link an deine E-Mail-Adresse), werden deine Strecken zusätzlich in deinem Benutzerkonto gespeichert, im **Dashboard** verwaltet und sind von jedem Gerät aus erreichbar (mehr dazu unter „Speichern" und „Konto").
 
 Über **„Neu"** in der Werkzeugleiste oder über **„Neue Strecke"** im Dashboard startest du eine leere Strecke.
 

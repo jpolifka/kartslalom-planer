@@ -7,4 +7,4 @@ Je nach Zugriffsrecht zeigt die Kopfzeile beim Bearbeiten einen Status:
 - **Nur Ansicht** — du darfst das Hindernis nicht verändern (z. B. eine fremde Bibliotheksformation). Über **„Als Kopie speichern"** übernimmst du es als eigenes, bearbeitbares Hindernis.
 - **Bearbeitungszugriff** — ein anderer Nutzer hat dir Bearbeitungsrechte für sein Hindernis eingeräumt.
 - **Admin-Bearbeitung** — du bearbeitest als Administrator ein fremdes Hindernis.
-- **Nicht eingeloggt** / **Feature nicht freigeschaltet** — deine Änderungen bleiben nur lokal in diesem Browser gespeichert, ohne Cloud-Sicherung.
+- **Nicht eingeloggt** / **Feature nicht freigeschaltet** — deine Änderungen bleiben nur lokal in diesem Browser gespeichert, ohne zusätzliche Sicherung in deinem Benutzerkonto.
