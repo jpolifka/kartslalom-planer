@@ -1,5 +1,12 @@
 # Dependencies
 node_modules/
+# Lokaler iCloud-Sync-Workaround (.nosync-Trick, siehe project-Memory zu
+# wiederkehrenden " 2.ext"-Konfliktkopien): node_modules liegt real unter
+# node_modules.nosync/, node_modules selbst ist nur noch ein Symlink darauf.
+# Ohne Slash, weil "node_modules/" als Verzeichnis-Pattern einen Symlink
+# gleichen Namens nicht matcht.
+node_modules
+node_modules.nosync/
 
 # Build output
 dist/
