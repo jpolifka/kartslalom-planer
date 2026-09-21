@@ -35,13 +35,13 @@ Entwicklung (gitignored, wird ueber `include: ... env_file:` eingebunden).
 Entwicklung vorkonfiguriert — Magic-Link-Mails landen in Mailpit statt an
 eine echte Adresse.
 
-Das App-Schema (Phase 0.5–0.7: `profiles`, `tracks`, `track_versions`, RLS,
-`create_track()`, `save_track()`, `touch_last_active()`) wird beim ersten
-Start automatisch ueber Init-Skripte in
-[`docker/supabase/volumes/db/init/`](../docker/supabase/volumes/db/init/)
-angelegt. Diese laufen nur bei **leerem** Datenverzeichnis
-(`docker/supabase/volumes/db/data/`) — fuer Schemaaenderungen entweder
-`sh reset.sh` (Daten weg) oder die SQL manuell ueber Studio/`psql` nachziehen.
+Das App-Schema kommt aus [`supabase/migrations/`](../supabase/migrations/): beim
+ersten Start fuehrt [`docker/supabase/migrate.sh`](../docker/supabase/migrate.sh)
+alle Migrationen automatisch aus und vermerkt sie in `public._applied_migrations`.
+Das passiert nur bei **leerem** Datenverzeichnis (`docker/supabase/volumes/db/data/`) —
+fuer neue Migrationen auf einem bestehenden Stack `sh docker/supabase/apply-migrations.sh`
+ausfuehren (ueberspringt bereits vermerkte Dateien), oder mit `sh reset.sh`
+(Daten weg) komplett neu anlegen.
 
 `.env.local` im Projekt-Root verweist die App auf die lokale Instanz (Browser
 greift direkt auf den per Kong veroeffentlichten Port zu, daher `localhost`
@@ -351,20 +351,22 @@ Cron/systemd-Timer einplanen, z. B.:
 0 3 * * * cd /pfad/zum/repo/docker/supabase && sh backup.sh >> backup.log 2>&1
 ```
 
-## Alte Referenz: nginx-Konfiguration des App-Containers
+## App-Container: Dockerfile und nginx-Konfiguration
 
 [`docker/Dockerfile`](../docker/Dockerfile) beschreibt einen zweistufigen Build:
 
-1. **Builder-Stage** (`node:20-alpine`): Abhängigkeiten installieren
-   (`npm ci --ignore-scripts`), `npm run build` ausführen.
-2. **Serve-Stage** (`nginx:1.27-alpine`): nur das Build-Ergebnis (`dist/`)
-   sowie die nginx-Konfiguration werden in das finale Image übernommen.
+1. **Builder-Stage** (`node:22-alpine`): Abhängigkeiten installieren
+   (`npm ci --ignore-scripts`), `npm run build` ausführen (die `VITE_*`-Werte
+   kommen als Build-Args).
+2. **Serve-Stage** (`nginxinc/nginx-unprivileged`): läuft als non-root auf Port
+   8080; nur das Build-Ergebnis (`dist/`) sowie die nginx-Konfiguration werden in
+   das finale Image übernommen.
 
 [`docker/nginx.conf`](../docker/nginx.conf) konfiguriert:
 
 - **SPA-Routing**: `try_files $uri $uri/ /index.html` — alle Pfade landen auf
-  `index.html`, das clientseitige Routing übernimmt React (aktuell gibt es
-  noch kein Routing, siehe Hinweis unten).
+  `index.html`, das clientseitige Routing übernimmt React Router (siehe
+  [architektur.md](architektur.md#routing-und-zugriffszonen)).
 - **Caching/Kompression**: Gzip für Text-/JSON-/SVG-Inhalte, `Cache-Control: immutable`
   für Assets unter `/assets/` (Vite versieht sie mit Content-Hash).
 - **Security-Header**: `X-Frame-Options`, `X-Content-Type-Options`,

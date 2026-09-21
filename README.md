@@ -4,7 +4,7 @@ Web-Applikation zum Entwerfen, Validieren und Exportieren von Kartslalom-Strecke
 (Pylonen-Formationen auf einer rechteckigen Fläche, optional über einem Kartenausschnitt).
 
 Unterstützt Offline-Nutzung (localStorage) sowie Server-Speicherung (self-hosted
-Supabase) mit Account, Dashboard und Tier-System (Free / Pro).
+Supabase) mit Account, Dashboard und Tier-System (Free / Pro / Team).
 
 > Eine Anleitung für **Endnutzer:innen** befindet sich direkt in der App
 > (Hilfe-Button in der Werkzeugleiste). Die hier verlinkte Dokumentation
@@ -29,7 +29,7 @@ backend:
   auth:          Supabase Auth (Magic Link)
   api:           PostgREST + RPC-Funktionen
   speicher:      Server (self-hosted Supabase) + localStorage (Fallback / Offline)
-  tiers:         Free / Pro (serverseitig enforced via RLS & RPC)
+  tiers:         Free / Pro / Team (serverseitig enforced via RLS & RPC)
 ```
 
 ## Entwicklung
@@ -73,10 +73,13 @@ Für eine containerisierte Dev-Umgebung mit HMR siehe
 | Kartenintegration (OSM-Kacheln, Bereichsauswahl) | [docs/kartenintegration.md](docs/kartenintegration.md) |
 | Validierung (Geometrie- & Streckenregeln) | [docs/validierung.md](docs/validierung.md) |
 | Persistenz (Autosave, Server-Sync, JSON-Import/-Export) | [docs/persistenz.md](docs/persistenz.md) |
+| Öffentliche Share-Links für Strecken | [docs/track-share-links.md](docs/track-share-links.md) |
 | Export (SVG/PDF) | [docs/export.md](docs/export.md) |
 | Bedienung (responsives Layout, Tastaturkürzel) | [docs/bedienung.md](docs/bedienung.md) |
 | Build & Deployment (Docker, nginx) | [docs/build-und-deployment.md](docs/build-und-deployment.md) |
 | Architekturentscheidungen (ADRs) | [docs/adr/](docs/adr/) |
+| Roadmap und Pilotphase | [docs/roadmap.md](docs/roadmap.md), [docs/pilot-testplan.md](docs/pilot-testplan.md) |
+| Beitragen (Tests, Migrations-Checkliste, Sicherheitsregeln) | [CONTRIBUTING.md](CONTRIBUTING.md) |
 
 ## Lizenz
 

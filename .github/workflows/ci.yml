@@ -6,16 +6,19 @@ on:
   # bei jedem Commit doppelt. Ueber den PR-Trigger laeuft der Check trotzdem
   # bei jedem Push auf einen Branch mit offenem PR (Branch-Protection
   # verlangt ohnehin einen PR vor dem Merge).
+  #
+  # Bewusst KEIN paths-ignore: build und security-smoke sind Required Checks
+  # (Branch-Protection, auch fuer Admins). Ein Pfadfilter auf Workflow-Ebene
+  # startet die Jobs bei reinen Doku-PRs gar nicht -- die Checks bleiben dann
+  # ewig "Expected" und der PR ist nicht mergebar. Ausserdem sind
+  # docs/user/**/*.md keine reine Doku, sondern werden per ?raw in die App
+  # gebuendelt und von Tests geprueft. Ein Filter innerhalb der Jobs wuerde
+  # bei einem Fehler still ueberspringen (fail-open) -- bei einem Sicherheits-
+  # Gate ist ein Lauf zu viel die bessere Fehlerrichtung.
   push:
     branches: [main]
-    paths-ignore:
-      - "docs/**"
-      - "**/*.md"
   pull_request:
     branches: [main]
-    paths-ignore:
-      - "docs/**"
-      - "**/*.md"
   workflow_dispatch:
 
 jobs:
