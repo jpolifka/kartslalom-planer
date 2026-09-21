@@ -327,6 +327,13 @@ sh apply-migrations.sh
 (`push-to-prod.sh` war für die alte Supabase-Cloud-Anbindung gedacht und wird
 nicht mehr gebraucht.)
 
+**Betreiber-Konto:** Die Migration `20260921000002_owner_account_privileges.sql`
+setzt `jens@polifka.info` (nur mit bestätigter E-Mail) automatisch auf
+`role=admin` / `tier=team` — bei der Bestätigung und bei jedem Login. Nach einer
+Neuinstallation reicht also Registrieren + Magic-Link-Klick, kein manuelles SQL.
+Das ist nur sicher, solange `ENABLE_EMAIL_AUTOCONFIRM=false` gilt;
+`preflight-check.sh` (und damit `deploy-prod.sh`) bricht sonst ab.
+
 ### 5. Backups
 
 ```bash
