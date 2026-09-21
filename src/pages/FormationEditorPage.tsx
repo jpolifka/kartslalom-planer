@@ -140,9 +140,9 @@ export default function FormationEditorPage() {
   const [lichteBreite, setLichteBreite] = useState<number | null>(draft?.lichteBreite ?? null);
   const [sourceFormationKey, setSourceFormationKey] = useState<FormationKey | undefined>(draft?.sourceFormationKey);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
-  // Sichtbare Fehlermeldung des letzten Speicherversuchs (Cloud oder lokal). Bleibt
-  // stehen, bis ein Speichern wieder klappt — auch bei stillem Autosave, damit
-  // ein Fehler nie unbemerkt bleibt (siehe Banner unter dem Header).
+  // Sichtbare Fehlermeldung eines fehlgeschlagenen Speicherversuchs (Cloud oder lokal).
+  // Bleibt bewusst dauerhaft stehen — auch wenn ein späterer Autosave klappt —
+  // und verschwindet nur, wenn der Nutzer sie wegklickt (Banner unter dem Header).
   const [saveError, setSaveError] = useState<string | null>(null);
   const [visibleM, setVisibleM] = useState(20);
   const [clipboard, setClipboard] = useState<EditableCone[]>([]);
@@ -218,12 +218,10 @@ export default function FormationEditorPage() {
           source_custom_formation_id: null,
         });
         clearDraft();
-        setSaveError(null);
         navigate(`/formations/${newId}`, { replace: true });
         if (!silent) setSaveStatus("saved");
         return;
       }
-      setSaveError(null);
       if (!silent) setSaveStatus("saved");
     } catch (err) {
       // Auch beim stillen Autosave melden: sonst gehen Änderungen unbemerkt verloren.
@@ -245,7 +243,6 @@ export default function FormationEditorPage() {
       if (!silent) setSaveStatus("error");
       return;
     }
-    setSaveError(null);
     if (!silent) {
       setSaveStatus("saved");
       setTimeout(() => setSaveStatus("idle"), 2000);
