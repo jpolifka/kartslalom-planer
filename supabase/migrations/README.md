@@ -1,30 +1,30 @@
 # Migrationen
 
-Diese SQL-Dateien sind die einzige Quelle fuer das App-Schema
-(`profiles`, `tracks`, `track_versions`, RLS-Policies, SECURITY DEFINER
-Funktionen — Phase 0.5-0.7, siehe `docs/planning/IMPLEMENTATION_PLAN.md`).
+Diese SQL-Dateien sind die einzige Quelle für das App-Schema
+(`profiles`, `tracks`, `track_versions`, `custom_formations`, `formation_shares`,
+`app_config`, RLS-Policies, SECURITY-DEFINER-Funktionen). Die ersten drei Dateien
+(`20260615120000_app_schema.sql` bis `…120002_app_functions.sql`) legen die
+Grundstruktur an, siehe `docs/planning/IMPLEMENTATION_PLAN.md`.
 
-- **Lokal (Docker):** `docker/supabase/docker-compose.yml` mountet diesen
-  gesamten Ordner (`../../supabase/migrations:/app-migrations:ro`) in den
-  Postgres-Container; `migrate.sh` fuehrt beim ersten Start (leeres
-  `docker/supabase/volumes/db/data/`) alle `*.sql`-Dateien in Sortier-
-  Reihenfolge aus. Neue Dateien hier werden automatisch erfasst — **kein**
-  zusaetzlicher Mount-Eintrag in `docker-compose.yml` noetig.
-- **Supabase Cloud (Produktion):** Dateien in dieser Reihenfolge im
-  SQL-Editor des Supabase-Projekts (Region Frankfurt, `eu-central-1`)
-  ausfuehren:
-  1. `20260615120000_app_schema.sql`
-  2. `20260615120001_app_rls.sql`
-  3. `20260615120002_app_functions.sql`
+Das Schema läuft ausschließlich auf dem **self-hosted Supabase-Stack**
+(`docker/supabase/`), lokal wie in Produktion — es gibt kein Supabase-Cloud-Projekt
+mehr (siehe `docs/adr/0001-self-hosted-supabase.md`).
 
-  Alternativ mit der Supabase CLI: `supabase link` auf das Cloud-Projekt,
-  dann `supabase db push` — die CLI fuehrt alle Dateien hier in
-  Datumsreihenfolge aus.
+- **Frischer Stack (leeres `docker/supabase/volumes/db/data/`):**
+  `docker/supabase/docker-compose.yml` mountet diesen Ordner
+  (`../../supabase/migrations:/app-migrations:ro`) in den Postgres-Container;
+  `migrate.sh` führt beim ersten Start alle `*.sql`-Dateien in Sortierreihenfolge
+  aus und vermerkt jede in `public._applied_migrations`. Neue Dateien hier werden
+  automatisch erfasst — **kein** zusätzlicher Mount-Eintrag nötig.
+- **Laufender Stack (Produktion, bestehender Dev-Stack):** Die Init-Skripte laufen
+  nur bei leerem Datenverzeichnis. Neue Migrationen werden auf dem Docker-Host mit
+  `sh docker/supabase/apply-migrations.sh` angewendet; bereits in
+  `public._applied_migrations` vermerkte Dateien werden übersprungen.
+- **Lokal von vorn beginnen:** `sh docker/supabase/reset.sh` (löscht die Daten und
+  führt alle Migrationen erneut aus).
 
-## Neue Migrationen hinzufuegen
+## Neue Migrationen hinzufügen
 
-Neue Datei mit Timestamp-Praefix `YYYYMMDDHHMMSS_beschreibung.sql` anlegen
-(Reihenfolge = Ausfuehrungsreihenfolge). Kein weiterer Schritt fuer den
-lokalen Docker-Stack noetig — Init-Skripte laufen aber nur bei leerem
-Datenverzeichnis (`sh docker/supabase/reset.sh` fuer einen Neustart mit
-leerem Schema und erneutem Ausfuehren aller Migrationen).
+Neue Datei mit Timestamp-Präfix `YYYYMMDDHHMMSS_beschreibung.sql` anlegen
+(Reihenfolge = Ausführungsreihenfolge). Vor dem Merge gilt das Pflichttest-Protokoll
+und die Migrations-Checkliste in `CONTRIBUTING.md`.

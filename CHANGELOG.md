@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- CI läuft wieder bei reinen Dokumentationsänderungen: der Pfadfilter (`paths-ignore` für
+  `docs/**` und `**/*.md`) ist entfernt. Er ließ die Required Checks `build` und
+  `security-smoke` bei Doku-PRs ausfallen, sodass diese nicht mergebar waren; zudem sind
+  `docs/user/**/*.md` per `?raw` in die App gebündelt. Löst die entsprechende Aussage unter
+  2.6.1 ab.
+- Vite-Chunking (`manualChunks`) gezielt statt per Substring-Match auf `"react"`: React,
+  Router/Query/Supabase/Markdown und Icons liegen in stabilen Fremdcode-Chunks
+  (`react`, `vendor`), der App-Chunk sinkt von ca. 450 kB auf ca. 240 kB. Gesamtgröße
+  unverändert, Export-Bibliotheken bleiben lazy.
+- `docs/architektur.md` an den aktuellen Stand angepasst; `CLAUDE.md` und PR-Vorlage mit
+  Dokumentationsprüfung ergänzt; veraltete Angaben in `build-und-deployment.md`,
+  `supabase/migrations/README.md`, `CONTRIBUTING.md` und `.env.test.example` korrigiert.
+
+### Removed
+- Ungenutzter Prototyp `src/mvp.react`, ungenutzte Komponente `AppShell`, veraltete
+  Qualitäts-Notiz `memory/project_quality_baseline.md`.
+
 ## 2.6.1
 
 ### Security

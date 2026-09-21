@@ -8,7 +8,7 @@ vor dem Mergen die lokale Ausführung aller drei Test-Suites.
 ### 1. Unit-Tests (immer)
 
 ```sh
-docker compose -f docker/docker-compose.unit.yml up --build --exit-code-from test
+docker compose -f docker/docker-compose.unit.yml up --build --exit-code-from unit-test
 ```
 
 Muss grün sein bevor Integration oder Smoke gestartet wird.
@@ -23,7 +23,6 @@ sh docker/run-integration-test-local.sh
 - Neue oder geänderte Migrationen (`.sql`-Dateien in `supabase/migrations/`)
 - Neue oder geänderte RLS-Policies
 - Neue oder geänderte SECURITY DEFINER Funktionen
-- Änderungen an `supabase/config.toml`
 
 Die Integrationstests laufen gegen eine lokale Supabase-Instanz und prüfen echte
 Datenbankoperationen — kein Mocking.
