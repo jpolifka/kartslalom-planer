@@ -14,18 +14,27 @@ aufgebaut.
 
 [`formationRegistry.ts`](../src/lib/formationRegistry.ts) sammelt alle
 Definitionen in `RAW_FORMATIONS`, ergänzt formation-spezifische
-Standard-Durchfahrzeiten (`DEFAULT_DURATIONS`) und stellt zwei zentrale
-Funktionen bereit:
+Standard-Durchfahrzeiten (`DEFAULT_DURATIONS`) und exportiert das Ergebnis als
+`FORMATIONS`. Zentrale Funktionen:
 
-- `getFormation(key)` — liefert die `FormationDefinition` zu einem `FormationKey`
+- `getFormation(key)` — liefert die `FormationDefinition` einer eingebauten Formation
 - `getEffectiveDuration(durationSecondsOverride, key)` — liefert die wirksame
-  Durchfahrzeit (Override der Instanz oder Formation-Standard)
+  Durchfahrzeit (Override der Instanz oder Formation-Standard; eigene Formationen
+  ohne Override: 0)
+- `resolveFormation(placedFormation)` — liefert die zu rendernde Geometrie einer
+  platzierten Formation: für eingebaute Formationen die gemeinsame Definition, für
+  eigene (`key: "custom"`) den eingefrorenen `customSnapshot`
 
-In der Toolbox der App sind die Formationen zusätzlich in Gruppen
-(„Start/Ziel“, „Basis“, „Kurven“, „Komplex“ — siehe `FORMATION_GROUPS` in
-[App.tsx](../src/App.tsx)) organisiert; Formationen mit Drehrichtung können
-dort über ein Submenü mit vordefinierter Rotation (0°/90°/180°/270°)
-eingefügt werden.
+In der Palette des Streckeneditors sind die Formationen in Gruppen organisiert
+(„Start / Ziel“, „Basis“, „Kurven“, „Komplex“ sowie „Individuell“ für eigene
+Formationen — siehe `FORMATION_GROUPS` in
+[`pages/editor/editorConstants.ts`](../src/pages/editor/editorConstants.ts));
+Formationen mit Drehrichtung (Gruppe „Kurven“) können dort über ein Submenü mit
+vordefinierter Rotation (0°/90°/180°/270°) eingefügt werden.
+
+Zusätzlich zu den eingebauten Formationen gibt es **eigene Formationen**, die
+Nutzer:innen im Formation-Editor anlegen und in der Datenbank speichern — Lebenszyklus,
+Freigaben und Berechtigungen siehe [architektur.md](architektur.md#formationen).
 
 ## Neue Formation hinzufügen
 
@@ -35,5 +44,5 @@ eingefügt werden.
 2. Den neuen `FormationKey` in [`types.ts`](../src/types.ts) ergänzen.
 3. Die Definition in `RAW_FORMATIONS` (`formationRegistry.ts`) registrieren
    und bei Bedarf einen Eintrag in `DEFAULT_DURATIONS` vornehmen.
-4. Die Formation einer Gruppe in `FORMATION_GROUPS` (`App.tsx`) zuordnen,
-   damit sie in der Palette erscheint.
+4. Die Formation einer Gruppe in `FORMATION_GROUPS`
+   (`pages/editor/editorConstants.ts`) zuordnen, damit sie in der Palette erscheint.

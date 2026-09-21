@@ -12,6 +12,9 @@ Wechsle über das Stift-Symbol in den Pfeil-Modus und ziehe einen Pfeil auf die 
 - `⌘ ⇧ Z` / `Strg Y` — Wiederherstellen
 - `Esc` — Zurück in den Auswahl-Modus
 - `Entf` / `⌫` — Auswahl löschen (Formation oder Pfeil)
+- `⌘ A` / `Strg A` — Alle Formationen auswählen
+- `⌘ C` / `Strg C` — Auswahl kopieren
+- `⌘ V` / `Strg V` — Einfügen (mit 1 m Versatz)
 - `⇧` + Klick — Mehrfachauswahl von Formationen
 
 **Mobile Bedienung:** Auf schmalen Bildschirmen wird die Ansicht einspaltig dargestellt. Über die Schaltflächen **„Formationen"** und **„Eigenschaften"** in der Werkzeugleiste blendest du die jeweiligen Bereiche als seitliche Schublade ein und aus.

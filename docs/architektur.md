@@ -133,8 +133,9 @@ Function `send-welcome` auf (idempotent, die Function entscheidet über den Vers
 Drei Tarife: `free`, `pro`, `team`. Zwei rein clientseitige UX-Mechanismen:
 
 - `useTier`: fest einkompilierte Limits (Strecken: 3 / 50 / unbegrenzt) und
-  Feature-Flags (Premium-Kartenanbieter, Polygon-Ausschnitt, Share-Links,
-  Versionshistorie, PNG-Export — für `free` gesperrt).
+  Feature-Flags (Premium-Kartenanbieter, Share-Links, Versionshistorie, PNG-Export —
+  für `free` gesperrt). `canUsePolygonArea` ist definiert, wird aber aktuell nirgends
+  ausgewertet; der Polygon-Modus im Kartenauswahl-Dialog ist nicht gesperrt.
 - `useFeatureGate`: der nötige Tarif für ein Feature steht in `app_config`
   (serverseitig änderbar, ohne Deploy), aktuell für eigene Formationen
   (`custom_formations_required_tier`).
@@ -193,11 +194,13 @@ auch die Dauern-Overrides).
 
 **Eigene Formationen** (`custom_formations`) entstehen im Formation-Editor
 (`/formations/*`), optional auf Basis einer eingebauten Formation (`BasisAuswahl`).
-Lebenszyklus (`status`): `private` → optional `shared` (gezielte Freigabe an einzelne
-Nutzer mit `view`/`edit`, Tabelle `formation_shares`) → `submitted` (zur öffentlichen
-Bibliothek eingereicht) → vom Admin zu `library` (erzeugt eine Kopie mit
-`is_library = true`) oder `rejected`. Statuswechsel passieren in den jeweiligen RPCs.
-Bibliotheks-Formationen sind auch ohne Login lesbar (`get_library_formations`).
+Lebenszyklus (`status`): `private` → `shared`, sobald die Formation gezielt an einzelne
+Nutzer freigegeben wird (`view`/`edit`, Tabelle `formation_shares`). In die öffentliche
+Bibliothek gelangt sie nur durch einen Admin (`admin_promote_to_library` erzeugt eine
+Kopie mit `is_library = true`). Die Status `submitted` und `rejected` sind im Schema und
+in den Admin-Filtern vorgesehen, werden aber von keinem Client-Ablauf gesetzt (es gibt
+keine „Einreichen“-Funktion für Nutzer). Statuswechsel passieren serverseitig in den
+RPCs. Bibliotheks-Formationen sind auch ohne Login lesbar (`get_library_formations`).
 
 Die Zugriffslogik im Client ([`lib/formations/permission.ts`](../src/lib/formations/permission.ts))
 folgt der Hierarchie `null < view < edit < owner`; Admins haben auf fremde Formationen
@@ -219,8 +222,9 @@ Streckenregeln (Vorstartbereich, Wechselzone, getrennte Bereiche, Abstände). Si
   `map_provider_id`. Außerhalb der Abdeckung eines Anbieters fällt das **Rendering**
   auf OSM zurück, die gespeicherte Auswahl bleibt unverändert. Premium-Anbieter sind
   tarifgesperrt (`MAP_PROVIDER_REQUIRES_PRO` vom Server).
-- **Kartenausschnitt** (`AreaSelection`, `lib/areaSelection.ts`): rotierbares Rechteck
-  oder Polygon; die **effektive Feldgröße** kommt aus dem Ausschnitt, nicht aus
+- **Kartenausschnitt** (`AreaSelection`, `lib/areaSelection.ts`): rotierbares Rechteck,
+  entweder direkt gewählt oder aus einem gezeichneten Polygon abgeleitet; die
+  **effektive Feldgröße** kommt aus dem Ausschnitt, nicht aus
   `manual_width`/`manual_length` (die gelten nur ohne Ausschnitt).
 - **Rendering** des Hintergrunds teilen sich Editor (`MapBackground`) und Export über
   `lib/mapRender.ts`.
