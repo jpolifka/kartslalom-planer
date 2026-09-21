@@ -81,6 +81,13 @@ esac
 cron_secret="$(read_var CRON_SECRET)"
 [ -z "$cron_secret" ] && add_problem "CRON_SECRET fehlt -- user-lifecycle kann nicht aufgerufen werden"
 
+# Autoconfirm hart pruefen: die Migration 20260921000002_owner_account_privileges.sql
+# macht die BESTAETIGTE E-Mail jens@polifka.info automatisch zu Admin/Team. Bei
+# GOTRUE_MAILER_AUTOCONFIRM=true waere jede Registrierung sofort "bestaetigt" -- dann
+# koennte sich jeder mit dieser Adresse als Admin registrieren.
+autoconfirm="$(read_var ENABLE_EMAIL_AUTOCONFIRM)"
+[ "$autoconfirm" = "true" ] && add_problem "ENABLE_EMAIL_AUTOCONFIRM=true -- gefaehrlich: die Betreiber-E-Mail wird automatisch Admin (Migration 20260921000002), ohne Bestaetigung koennte jeder diese Adresse registrieren"
+
 if [ -n "$problems" ]; then
   echo "Fehler: $ENV_FILE enthaelt noch Demo-/Platzhalter-Secrets oder fehlende Pflichtwerte:" >&2
   printf '%s' "$problems" >&2
