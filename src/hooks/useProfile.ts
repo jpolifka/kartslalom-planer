@@ -7,13 +7,10 @@
 // bewusst getrennte Ladevorgänge, weil die Session synchron beim App-Start verfügbar
 // ist (main.tsx), das Profil aber erst per Query nachgeladen wird.
 //
-// Wird an mehreren Stellen aufgerufen, nicht nur einmal zentral in AppShell:
-// AppShell wrappt nur die AuthGuard-geschützten Routen (Dashboard, Settings, Formations-
-// Liste). Routen außerhalb von AppShell — z. B. /formations/:id (FormationEditorPage),
-// die auch ohne Login nutzbar ist, dort aber profile.tier für das Feature-Gate braucht —
-// müssen den Hook daher selbst aufrufen. Dank gleichem React-Query-Key ("profile", userId)
-// ist das mehrfache Aufrufen unschädlich: es wird nur einmal pro Session tatsächlich
-// nachgeladen, nicht pro Aufrufer.
+// Wird zentral in GlobalLayout aufgerufen, das alle Routen umschließt — auch die ohne
+// AuthGuard (z. B. /formations/:id, die ohne Login nutzbar ist, aber profile.tier für das
+// Feature-Gate braucht). Seiten müssen den Hook daher nicht selbst aufrufen; ein zusätzlicher
+// Aufruf wäre dank gleichem React-Query-Key ("profile", userId) aber unschädlich.
 
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";

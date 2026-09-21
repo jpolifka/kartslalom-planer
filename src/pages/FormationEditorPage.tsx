@@ -13,7 +13,6 @@ import { resolveFormationAccess, isAccessDenied } from "../lib/formations/permis
 import { describeSaveError } from "../lib/formations/saveErrorMessage";
 import { useFeatureGate } from "../hooks/useFeatureGate";
 import { useAuthStore } from "../store/authStore";
-import { useProfile } from "../hooks/useProfile";
 import { normalizeCones, boundsFromCones, translateCones } from "../lib/geometry";
 import type { FormationCategory, FormationKey, ConePoint } from "../types";
 import { TASK_LANE_WIDTH, PYLON_FOOT_SIZE } from "../lib/formations/common";
@@ -84,7 +83,6 @@ export default function FormationEditorPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id?: string }>();
   const { session, profile } = useAuthStore();
-  useProfile(); // Lädt profile.tier in den AuthStore — nötig da diese Route außerhalb AppShell liegt
   const { allowed } = useFeatureGate("custom_formations");
   const isAdmin = profile?.role === "admin";
 

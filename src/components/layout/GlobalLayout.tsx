@@ -11,7 +11,7 @@ import { useProfile } from "../../hooks/useProfile";
 // überall sichtbar, unabhängig davon, ob die jeweilige Seite AuthGuard-
 // geschützt ist oder nicht.
 export default function GlobalLayout() {
-  useProfile(); // Profil global laden — auch außerhalb AppShell verfügbar
+  useProfile(); // Profil global laden — für alle Routen, auch die ohne AuthGuard
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "#f1f5f9" }}>
