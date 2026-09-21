@@ -85,9 +85,10 @@ Skalierung) bei Supabase Cloud. Jetzt liegt es vollständig beim Betreiber:
 - Aktives Monitoring/Alerting (Container-Zustände, Disk, Auth-Fehler,
   Zertifikats-/Tunnel-Ablauf).
 - Einheitliches Migrations-Tracking: aktuell zwei Wege (`migrate.sh` für die
-  Erstinstallation, `apply-migrations.sh` mit einer manuell gepflegten
-  `LEGACY`-Liste für alles danach) — funktioniert, wird aber mit jeder
-  weiteren Migration wartungsanfälliger.
+  Erstinstallation, `apply-migrations.sh` für alles danach). Beide schreiben
+  seit 2026-09-21 in dieselbe Tabelle `public._applied_migrations`; die manuell
+  gepflegte `LEGACY`-Liste in `apply-migrations.sh` bleibt nur für Altbestände
+  aus der Zeit vor dem Tracking nötig.
 
 ## Zukünftige Richtung
 

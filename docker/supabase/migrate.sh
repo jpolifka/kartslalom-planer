@@ -71,9 +71,23 @@ psql -v ON_ERROR_STOP=1 --no-password --no-psqlrc -U supabase_admin -c 'SELECT e
 # Neue Dateien werden automatisch ohne docker-compose-Änderung übernommen.
 if ls /app-migrations/*.sql > /dev/null 2>&1; then
     echo "$0: === App-Migrationen ==="
+    # Jede hier ausgeführte Migration wird in public._applied_migrations vermerkt —
+    # dieselbe Tabelle (und derselbe DDL) wie in apply-migrations.sh. Ohne den Vermerk
+    # würde apply-migrations.sh nach einer Neuinstallation alle Migrationen erneut
+    # ausführen und an nicht wiederholbaren (z. B. "add column", "drop column") scheitern.
+    # Tabelle/Inserts als postgres, wie in apply-migrations.sh, damit dieses Skript
+    # später ohne Rechteprobleme darauf schreiben kann.
+    psql -v ON_ERROR_STOP=1 --no-password --no-psqlrc -U postgres -c "
+      CREATE TABLE IF NOT EXISTS public._applied_migrations (
+        filename   text        PRIMARY KEY,
+        applied_at timestamptz NOT NULL DEFAULT now()
+      );"
     for sql in $(ls /app-migrations/*.sql | sort); do
         echo "$0: running $sql"
         psql -v ON_ERROR_STOP=1 --no-password --no-psqlrc -U supabase_admin -f "$sql"
+        # Dateinamen enthalten nur [A-Za-z0-9_.] — sicher für das Inline-Quoting
+        psql -v ON_ERROR_STOP=1 --no-password --no-psqlrc -U postgres -c \
+          "INSERT INTO public._applied_migrations (filename) VALUES ('$(basename "$sql")') ON CONFLICT DO NOTHING;"
     done
     echo "$0: === App-Migrationen fertig ==="
 fi
