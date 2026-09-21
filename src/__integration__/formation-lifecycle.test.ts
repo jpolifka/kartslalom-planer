@@ -347,15 +347,26 @@ describe("Formation payload validation", () => {
     await cleanupUsers(userIds);
   });
 
-  it("zu viele Cones (> 40) → too_many_cones", async () => {
-    const cones = Array.from({ length: 41 }, (_, i) => ({
-      id: `c${i}`, x: i * 0.5, y: 0, kind: "standing", angleDeg: 0,
-    }));
+  // Limit: 100 Cones (Migration 20260921000001; vorher 40 → Speichern grösserer Hindernisse scheiterte)
+  const makeCones = (n: number) => Array.from({ length: n }, (_, i) => ({
+    id: `c${i}`, x: (i % 50) * 0.5, y: Math.floor(i / 50) * 0.5, kind: "standing", angleDeg: 0,
+  }));
+
+  it("genau 100 Cones werden akzeptiert", async () => {
+    const { data, error } = await client.rpc("create_custom_formation", {
+      ...BASE_FORMATION,
+      p_cones_json: makeCones(100),
+    });
+    assertNoError(error, "100 cones");
+    expect(data).toBeTruthy();
+  });
+
+  it("zu viele Cones (> 100) → too_many_cones", async () => {
     const { error } = await client.rpc("create_custom_formation", {
       ...BASE_FORMATION,
-      p_cones_json: cones,
+      p_cones_json: makeCones(101),
     });
-    assertRpcError(error, "too_many_cones", "41 cones");
+    assertRpcError(error, "too_many_cones", "101 cones");
   });
 
   it("zu viele Pfeile (> 100) → too_many_arrows", async () => {
