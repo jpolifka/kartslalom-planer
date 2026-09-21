@@ -261,14 +261,14 @@ begin
     end if;
   end if;
 
-  -- Abuse-Schutz: max. 100 eigene Custom-Formationen, max. 40 Cones je Formation
+  -- Abuse-Schutz: max. 100 eigene Custom-Formationen, max. 100 Cones je Formation
   select count(*) into v_count from public.custom_formations where owner_id = auth.uid();
   if v_count >= 100 then
     raise exception 'custom_formation_limit_reached';
   end if;
 
   select jsonb_array_length(p_cones_json) into v_cone_count;
-  if v_cone_count > 40 then
+  if v_cone_count > 100 then
     raise exception 'too_many_cones';
   end if;
 
@@ -346,7 +346,7 @@ begin
     raise exception 'not_authorized';
   end if;
 
-  if jsonb_array_length(p_cones_json) > 40 then
+  if jsonb_array_length(p_cones_json) > 100 then
     raise exception 'too_many_cones';
   end if;
 
@@ -649,7 +649,7 @@ begin
   if jsonb_typeof(p_arrows_json) <> 'array' then
     raise exception 'invalid_arrows_json';
   end if;
-  if jsonb_array_length(p_cones_json) > 40 then
+  if jsonb_array_length(p_cones_json) > 100 then
     raise exception 'too_many_cones';
   end if;
 
@@ -998,7 +998,7 @@ private Originale entwickeln sich unabhängig weiter.
   `create_custom_formation`, siehe 2.6) — analog zum `track_limit`-Pattern aus
   `IMPLEMENTATION_PLAN.md`. Sollte ein Premium-Tier eingeführt werden, kann
   dieser Wert tier-abhängig gestaffelt werden.
-- max. 40 Cones pro Formation (Server-Check in create/update RPC).
+- max. 100 Cones pro Formation (Server-Check in create/update RPC).
 
 ### 9.4 DSGVO / Account-Löschung
 

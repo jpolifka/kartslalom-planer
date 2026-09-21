@@ -10,6 +10,7 @@ import FormationMetaPanel from "../components/formation-editor/FormationMetaPane
 import BasisAuswahl from "../components/formation-editor/BasisAuswahl";
 import { useCustomFormation, useCreateCustomFormation, useUpdateCustomFormation, useFormationPermission, useDuplicateCustomFormation, useAdminFormation, useAdminUpdateFormation } from "../hooks/useCustomFormations";
 import { resolveFormationAccess, isAccessDenied } from "../lib/formations/permission";
+import { describeSaveError } from "../lib/formations/saveErrorMessage";
 import { useFeatureGate } from "../hooks/useFeatureGate";
 import { useAuthStore } from "../store/authStore";
 import { useProfile } from "../hooks/useProfile";
@@ -74,6 +75,8 @@ const s: Record<string, React.CSSProperties> = {
   saveStatus: { fontSize: 12, color: "#9ca3af" },
   undoBtn: { padding: "5px 10px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 6, cursor: "pointer", background: "white" },
   headerBtn: { padding: "5px 12px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 6, cursor: "pointer", background: "white" },
+  errorBanner: { display: "flex", alignItems: "center", gap: 12, padding: "8px 16px", background: "#fef2f2", borderBottom: "1px solid #fecaca", color: "#991b1b", fontSize: 13, flexShrink: 0 },
+  errorBannerClose: { border: "none", background: "transparent", color: "#991b1b", fontSize: 18, lineHeight: 1, cursor: "pointer", padding: "0 4px" },
   saveBtn: { padding: "5px 12px", fontSize: 13, border: "none", borderRadius: 6, cursor: "pointer", background: "var(--c-primary)", color: "white", fontWeight: 600 },
 };
 
@@ -137,6 +140,10 @@ export default function FormationEditorPage() {
   const [lichteBreite, setLichteBreite] = useState<number | null>(draft?.lichteBreite ?? null);
   const [sourceFormationKey, setSourceFormationKey] = useState<FormationKey | undefined>(draft?.sourceFormationKey);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  // Sichtbare Fehlermeldung eines fehlgeschlagenen Speicherversuchs (Cloud oder lokal).
+  // Bleibt bewusst dauerhaft stehen — auch wenn ein späterer Autosave klappt —
+  // und verschwindet nur, wenn der Nutzer sie wegklickt (Banner unter dem Header).
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [visibleM, setVisibleM] = useState(20);
   const [clipboard, setClipboard] = useState<EditableCone[]>([]);
   const [guides, setGuides] = useState<GuideLine[]>([]);
@@ -216,7 +223,10 @@ export default function FormationEditorPage() {
         return;
       }
       if (!silent) setSaveStatus("saved");
-    } catch {
+    } catch (err) {
+      // Auch beim stillen Autosave melden: sonst gehen Änderungen unbemerkt verloren.
+      console.error("Hindernis konnte nicht gespeichert werden:", err);
+      setSaveError(describeSaveError(err));
       if (!silent) setSaveStatus("error");
     }
     if (!silent) setTimeout(() => setSaveStatus("idle"), 2500);
@@ -224,7 +234,15 @@ export default function FormationEditorPage() {
 
   const saveToLocalStorage = useCallback(({ silent = false }: { silent?: boolean } = {}) => {
     const data: DraftData = { snap, name, description, category, durationSeconds, lichteBreite, sourceFormationKey };
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
+    } catch (err) {
+      // z. B. Speicher voll oder Browser blockiert lokalen Speicher
+      console.error("Entwurf konnte nicht lokal gespeichert werden:", err);
+      setSaveError("Lokales Speichern fehlgeschlagen: Der Browser-Speicher ist voll oder blockiert. Bitte die Seite nicht schließen, bis der Fehler behoben ist.");
+      if (!silent) setSaveStatus("error");
+      return;
+    }
     if (!silent) {
       setSaveStatus("saved");
       setTimeout(() => setSaveStatus("idle"), 2000);
@@ -452,6 +470,13 @@ export default function FormationEditorPage() {
           </button>
         )}
       </header>
+
+      {saveError && (
+        <div role="alert" style={s.errorBanner}>
+          <span style={{ flex: 1 }}>{saveError}</span>
+          <button style={s.errorBannerClose} onClick={() => setSaveError(null)} aria-label="Meldung schließen">×</button>
+        </div>
+      )}
 
       <div style={s.body}>
         <div style={s.left}>

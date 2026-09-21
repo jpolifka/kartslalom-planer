@@ -314,8 +314,10 @@ einmal ein anderer Zugriffsweg als über den Reverse-Proxy gebraucht wird.
 ### 4. Migrationen
 
 Erstinstallation (leeres Datenverzeichnis) legt das Schema automatisch über
-`docker/supabase/migrate.sh` an. Für alle folgenden Migrationen, direkt auf
-dem Docker-Host ausführen:
+`docker/supabase/migrate.sh` an und vermerkt dabei jede Migration in
+`public._applied_migrations` (dieselbe Tabelle wie `apply-migrations.sh`).
+Für alle folgenden Migrationen, direkt auf dem Docker-Host ausführen — bereits
+vermerkte Migrationen werden übersprungen:
 
 ```bash
 cd docker/supabase
