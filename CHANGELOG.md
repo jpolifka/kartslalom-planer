@@ -16,6 +16,14 @@
   Dokumentationsprüfung ergänzt; veraltete Angaben in `build-und-deployment.md`,
   `supabase/migrations/README.md`, `CONTRIBUTING.md` und `.env.test.example` korrigiert.
 
+- Fachdokumentation gegen den Code abgeglichen und korrigiert: `persistenz.md`,
+  `kartenintegration.md`, `bedienung.md`, `zeichenflaeche.md`, `formationen.md`,
+  `export.md`, `validierung.md` (u. a. veraltete `App.tsx`-Verweise, fehlende
+  Kartenanbieter/WMS, Tastaturkürzel). Nutzerhilfe (`docs/user/`): Speichern mit
+  Anmeldung ersetzt den Browser-Stand statt ihn zu ergänzen, fehlende Kürzel
+  (Alles auswählen, Kopieren, Einfügen), Kontolöschung inkl. eigener Formationen,
+  Kartenhintergrund nur in SVG/PDF.
+
 ### Removed
 - Ungenutzter Prototyp `src/mvp.react`, ungenutzte Komponente `AppShell`, veraltete
   Qualitäts-Notiz `memory/project_quality_baseline.md`.

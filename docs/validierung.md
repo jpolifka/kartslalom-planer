@@ -3,15 +3,16 @@
 `runValidation(fieldWidth, fieldLength, items)`
 ([`lib/validation/index.ts`](../src/lib/validation/index.ts)) kombiniert zwei
 unabhängige Prüfungen zu einer gemeinsamen Liste von `ValidationIssue`
-(`severity: "error" | "warning"`, optional mit `formationId` für Klick-Fokus
-in der UI).
+(`severity: "error" | "warning" | "info"`, optional mit `formationId` für Klick-Fokus
+in der UI). Rot dargestellt werden `error`, gelb `warning` und `info`.
 
 ## Geometrie ([geometry.ts](../src/lib/validation/geometry.ts))
 
 Prüft rein anhand der Cone-Positionen:
 
 - ob Markierungen oder ganze Formationen über den Rand der Fläche
-  hinausragen,
+  hinausragen (Formationen mit Pylonen: `error`; reine Pfeil-/Richtungs-
+  markierungen: nur `warning`),
 - ob Pylonen unterschiedlicher Formationen nahezu aufeinanderstehen.
 
 ## Strecken-Logik ([track.ts](../src/lib/validation/track.ts))
@@ -29,14 +30,16 @@ Rekonstruiert anhand der Cone-Positionen einen groben Fahrfluss
 - ob die Strecke dadurch in mehrere voneinander getrennte Bereiche zerfällt
   (`buildConnectedComponents`, derselbe 10-m-Schwellwert, aber auf
   Formations-Mittelpunkte statt einzelner Pylonen angewendet),
-- ob ein Start-/Zielbereich am Rand der Fläche erkennbar ist,
+- ob ein Start-/Zielbereich am Rand der Fläche erkennbar ist (nur `info`),
 - ob ein **Vorstartbereich** (3×3 m) bzw. eine **Wechselzone** (3×3 m)
   vorhanden sind — beide sind laut Regelwerk Pflicht.
 
 ## Darstellung in der UI
 
-Die Sektion „Prüfung“ in [EditorPage.tsx](../src/pages/EditorPage.tsx) zeigt Fehler (rot) und
-Hinweise (gelb) an. Ein Klick auf eine Meldung mit gesetzter `formationId`
+`EditorPage.tsx` berechnet die Liste per `useMemo(runValidation(...))`; die Sektion
+„Prüfung“ im [`RightPanel`](../src/pages/editor/components/RightPanel.tsx) zeigt Fehler
+(rot) und Hinweise (gelb) an, `TrackCanvas` hebt die betroffenen Formationen farbig
+hervor. Ein Klick auf eine Meldung mit gesetzter `formationId`
 selektiert die betroffene Formation auf der Zeichenfläche.
 
 ## Neue Prüfregel ergänzen
