@@ -14,7 +14,7 @@ import { builder } from "./common";
 export const ypsilon: FormationDefinition = {
   key: "ypsilon",
   label: "Ypsilon",
-  description: "Y-foermige Kreuzung mit drei Ausfahrten.",
+  description: "Y-förmige Kreuzung mit drei Ausfahrten.",
   defaultDirection: "none",
   cones: normalizeCones(
     builder()

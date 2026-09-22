@@ -13,7 +13,7 @@ import { builder } from "./common";
 export const cross: FormationDefinition = {
   key: "cross",
   label: "Kreuz",
-  description: "Kreuz gemaess deiner ASCII-Skizze.",
+  description: "Kreuz gemäß deiner ASCII-Skizze.",
   defaultDirection: "none",
   cones: normalizeCones(
     builder()

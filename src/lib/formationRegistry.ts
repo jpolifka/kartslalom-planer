@@ -48,7 +48,7 @@ const DEFAULT_DURATIONS: Partial<Record<FormationKey, number>> = {
 export const singlePylon: FormationDefinition = {
   key: "singlePylon",
   label: "Einzelpylone",
-  description: "Nur stehende Pylone. Richtungspfeil wird spaeter als separate Markierung oder Eigenschaft gefuehrt, nicht immer fest an der Formation.",
+  description: "Nur stehende Pylone. Richtungspfeil wird später als separate Markierung oder Eigenschaft geführt, nicht immer fest an der Formation.",
   defaultDirection: "none",
   cones: normalizeCones([standing(meter(0), meter(0))]),
 };
