@@ -163,7 +163,7 @@ export function validateTrack(ctx: ValidationContext): ValidationIssue[] {
       id: "empty-track",
       severity: "warning",
       scope: "track",
-      message: "Es sind noch keine Hindernisse auf der Flaeche platziert.",
+      message: "Es sind noch keine Hindernisse auf der Fläche platziert.",
     });
     return issues;
   }
@@ -197,7 +197,7 @@ export function validateTrack(ctx: ValidationContext): ValidationIssue[] {
         formationId: task.item.id,
         formationKey: task.item.key,
         message: "Pylonen verschiedener Formationen stehen fast aufeinander.",
-        details: `Naechste Pylone nur ${nearest.toFixed(2)} m entfernt.`,
+        details: `Nächste Pylone nur ${nearest.toFixed(2)} m entfernt.`,
       });
     }
 
@@ -209,7 +209,7 @@ export function validateTrack(ctx: ValidationContext): ValidationIssue[] {
         formationId: task.item.id,
         formationKey: task.item.key,
         message: "Zwei Hindernisse liegen zu weit auseinander.",
-        details: `Kuerzester geometrischer Abstand ${nearest.toFixed(2)} m, erlaubt sind hoechstens 10.00 m.`,
+        details: `Kürzester geometrischer Abstand ${nearest.toFixed(2)} m, erlaubt sind höchstens 10.00 m.`,
       });
     }
   }
@@ -227,7 +227,7 @@ export function validateTrack(ctx: ValidationContext): ValidationIssue[] {
       id: "track-components",
       severity: "warning",
       scope: "track",
-      message: "Die Strecke zerfaellt in mehrere voneinander getrennte Aufgabenbereiche.",
+      message: "Die Strecke zerfällt in mehrere voneinander getrennte Aufgabenbereiche.",
       details: `${components.length} getrennte Bereiche erkannt.`,
     });
   }
@@ -250,7 +250,7 @@ export function validateTrack(ctx: ValidationContext): ValidationIssue[] {
         severity: "warning",
         scope: "track",
         message: "Im angenommenen Fahrfluss liegt ein sehr grosser Sprung zwischen zwei Aufgaben.",
-        details: `Geschaetzter Sprung ${d.toFixed(2)} m.`,
+        details: `Geschätzter Sprung ${d.toFixed(2)} m.`,
       });
     }
   }
@@ -278,7 +278,7 @@ export function validateTrack(ctx: ValidationContext): ValidationIssue[] {
       id: "track-no-edge-anchor",
       severity: "info",
       scope: "track",
-      message: "Es ist kein klarer Start- oder Zielbereich am Rand der Flaeche erkennbar.",
+      message: "Es ist kein klarer Start- oder Zielbereich am Rand der Fläche erkennbar.",
     });
   }
 
