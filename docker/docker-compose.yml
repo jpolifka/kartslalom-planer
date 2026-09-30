@@ -54,9 +54,8 @@ services:
     # PROD-RISK: VITE_SUPABASE_URL/ANON_KEY werden zur Build-Zeit fest in das
     # Vite-Bundle eingebacken (kein Laufzeit-Env). Ändert sich die Domain oder
     # der Key, reicht ein Container-Restart NICHT — es braucht
-    # `docker compose -f docker/docker-compose.yml up -d --build`.
+    # `docker compose -f docker/docker-compose.yml -f docker/docker-compose.edge.yml up -d --build`.
 
-  kong:
-    networks:
-      - default
-      - edge
+# kong ans edge-Netz haengen: bewusst NICHT hier als zweiter services.kong-Block,
+# siehe docker-compose.edge.yml fuer den Grund (Kompatibilitaet aelterer
+# Docker-Compose-Versionen mit `include`).

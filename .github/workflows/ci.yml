@@ -121,7 +121,7 @@ jobs:
           VITE_SUPABASE_URL: http://localhost:8000
           VITE_SUPABASE_ANON_KEY: ci-placeholder
         run: |
-          docker compose -f docker/docker-compose.yml config -q
+          docker compose -f docker/docker-compose.yml -f docker/docker-compose.edge.yml config -q
           docker compose -f docker/docker-compose.dev.yml config -q
 
       - name: Stack starten

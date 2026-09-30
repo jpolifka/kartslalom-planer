@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### Fixed
+- `docker-compose.yml` (Produktion) liess sich mit mehreren Docker-Compose-Versionen
+  (bis mindestens 2.29.7, u. a. dem damaligen GitHub-Actions-Runner-Image) nicht
+  validieren/starten: `services.kong conflicts with imported resource`. Ursache: ein
+  zweiter `services.kong:`-Block direkt in `docker-compose.yml`, gedacht als Ergänzung
+  um das `edge`-Netz für den bereits per `include` eingebundenen Kong-Service — von
+  diesen Compose-Versionen nicht als Merge, sondern als Namenskonflikt behandelt. Der
+  `full-test`-CI-Workflow (`workflow_dispatch`) scheiterte dadurch schon im
+  Validierungsschritt, bevor überhaupt ein Stack startete oder eine Migration lief;
+  dasselbe Kommando läuft unverändert bei jedem `sh docker/deploy-prod.sh` — je nach
+  Compose-Version auf dem Docker-Host potenziell auch dort. Behoben durch Auslagern der
+  Netz-Ergänzung in eine separate Datei (`docker/docker-compose.edge.yml`), die per
+  klassischem Mehrdatei-Merge (`-f docker-compose.yml -f docker-compose.edge.yml`) statt
+  über `include` ergänzt wird — dieser Mechanismus ist über alle getesteten
+  Compose-Versionen hinweg kompatibel.
+
 ### Added
 - Formationen können jetzt tatsächlich zur öffentlichen Bibliothek eingereicht werden
   (`submit_custom_formation`, Button „Zur Bibliothek einreichen" im Formation-Editor).
