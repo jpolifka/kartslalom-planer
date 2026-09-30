@@ -19,7 +19,12 @@ mehr (siehe `docs/adr/0001-self-hosted-supabase.md`).
 - **Laufender Stack (Produktion, bestehender Dev-Stack):** Die Init-Skripte laufen
   nur bei leerem Datenverzeichnis. Neue Migrationen werden auf dem Docker-Host mit
   `sh docker/supabase/apply-migrations.sh` angewendet; bereits in
-  `public._applied_migrations` vermerkte Dateien werden übersprungen.
+  `public._applied_migrations` vermerkte Dateien werden übersprungen. Jede Datei
+  läuft primär als Rolle `supabase_admin` (dieselbe wie bei `migrate.sh`), `postgres`
+  ist nur Fallback. Am Ende prüft das Skript automatisch, dass `anon` weiterhin nur
+  auf die zwei bewusst öffentlichen RPCs Zugriff hat, und bricht sonst ab — siehe
+  Kommentar in `apply-migrations.sh` und die Migrations-Checkliste in
+  `CONTRIBUTING.md`.
 - **Lokal von vorn beginnen:** `sh docker/supabase/reset.sh` (löscht die Daten und
   führt alle Migrationen erneut aus).
 

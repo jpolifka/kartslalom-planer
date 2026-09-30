@@ -21,6 +21,15 @@
   gilt nur für die Rolle, die diese Anweisung ausgeführt hat, nicht für eine frisch per
   `apply-migrations.sh` angelegte Funktion, wenn deren erster Ausführungsversuch (als
   Rolle `postgres`) ohne Owner-Konflikt sofort durchläuft. Am lokalen Stack verifiziert.
+- `apply-migrations.sh` führte neue Migrationen zuerst als Rolle `postgres` aus. Eine
+  dabei neu angelegte Funktion konnte dadurch zusätzlich `anon`-EXECUTE erben
+  (Postgres' PUBLIC-Default für `postgres`, anders als für `supabase_admin` seit der
+  Grant-Härtung); außerdem konnte ein `revoke`-Statement in einer Migration unbemerkt
+  wirkungslos bleiben, wenn `postgres` das Zielobjekt nicht besitzt. Primärrolle jetzt
+  `supabase_admin` (wie bei der Erstinstallation), `postgres` nur noch Fallback. Neuer
+  Grant-Audit am Skriptende bricht ab, falls `anon` doch Zugriff auf eine nicht dafür
+  vorgesehene RPC hätte. `debug_list_function_grants()` bekommt zusätzlich ein eigenes,
+  explizites Revoke.
 
 ### Changed
 - Polygon-Auswahl im Kartenausschnitt-Dialog ist jetzt wie die anderen Premium-Features
