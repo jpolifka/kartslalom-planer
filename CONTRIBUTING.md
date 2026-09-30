@@ -69,6 +69,15 @@ Siehe `src/__integration__/track-lifecycle.test.ts` als Muster.
 - [ ] SQL-Datei nach Schema `YYYYMMDDHHMMSS_beschreibung.sql` benennen
 - [ ] `security definer set search_path = public` bei jeder neuen Funktion
 - [ ] `grant execute on function ... to authenticated` (oder `anon` wenn nötig)
+- [ ] **`revoke execute on function ... from public, anon` direkt bei jeder neuen Funktion**,
+      zusätzlich zum `grant`, auch wenn `anon` ohnehin nicht gewollt ist. Nicht auf das globale
+      `alter default privileges ...` aus `20260713000002_harden_public_function_grants.sql`
+      verlassen — dessen Wirkung gilt nur für die Rolle, die diese Anweisung ausgeführt hat, nicht
+      für jede Rolle, die künftig eine Migration ausführt (siehe Kommentar in
+      `docker/supabase/apply-migrations.sh`). `apply-migrations.sh` prüft das am Ende automatisch
+      gegen die Allowlist in `src/__integration__/rpc-grants.test.ts`
+      (`get_library_formations`, `get_track_by_share_token`) und bricht bei einem Fund ab —
+      als Backstop, nicht als Ersatz für das explizite `revoke` in der Migration selbst.
 - [ ] `revoke insert, update on public.<neue_tabelle> from anon, authenticated` wenn Table nur via RPC beschrieben werden soll
 - [ ] RLS-Policy für SELECT anlegen (owner-scoped)
 - [ ] Integrationstest für neue RPC ergänzen

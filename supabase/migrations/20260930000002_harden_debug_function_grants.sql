@@ -1,0 +1,17 @@
+-- Defensive Härtung: debug_list_function_grants() explizit vor anon/PUBLIC sperren
+--
+-- Ergänzt 20260930000001_formation_library_submission.sql und den
+-- apply-migrations.sh-Fix in dieser Migrations-Runde: eine neu angelegte
+-- Funktion kann PostgreSQLs eingebauten PUBLIC-Default (EXECUTE für alle,
+-- auch anon) erben, abhängig davon, welche Rolle sie tatsächlich angelegt
+-- hat und ob ein nachträgliches REVOKE auf das Objekt überhaupt greift (siehe
+-- Kommentar in apply-migrations.sh) — beides nicht zuverlässig an der
+-- Migrationsdatei selbst ablesbar. debug_list_function_grants() wurde in
+-- 20260713000005_debug_function_grants_introspection.sql ohne ein eigenes
+-- explizites `revoke` definiert und verließ sich damit stillschweigend auf
+-- Rahmenbedingungen außerhalb dieser Datei. Diese Migration schließt die
+-- Lücke defensiv und unabhängig davon, ob sie aktuell tatsächlich ausnutzbar
+-- ist. debug_list_function_grants() liefert ohnehin nur ACL-Metadaten (keine
+-- Nutzerdaten), ist aber wie jede interne Introspektions-Funktion bewusst nur
+-- für service_role gedacht, nicht für anon.
+revoke execute on function public.debug_list_function_grants() from public, anon;
