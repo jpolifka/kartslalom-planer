@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+### Added
+- Formationen können jetzt tatsächlich zur öffentlichen Bibliothek eingereicht werden
+  (`submit_custom_formation`, Button „Zur Bibliothek einreichen" im Formation-Editor).
+  Bisher gab es dafür keinen Weg: `status="submitted"`/`"rejected"` existierten im Schema
+  und in der Admin-Übersicht (`/admin/formations`, Filter „Eingereicht"), aber kein
+  Client-Ablauf setzte sie je, wodurch der Filter nie etwas anzeigte. Neu außerdem
+  `admin_reject_custom_formation` als Gegenstück zum bestehenden „In Bibliothek
+  aufnehmen" — Ablehnung ist kein Löschen, die Formation bleibt beim Owner und kann
+  überarbeitet und erneut eingereicht werden. `admin_promote_to_library` setzt den
+  Review-Status des Originals nach dem Aufnehmen zurück (`shared`/`private`), statt es
+  für immer als „submitted" in der Queue hängen zu lassen.
+
+### Security
+- Die beiden neuen RPCs (und die redefinierte `admin_promote_to_library`) revoken
+  `EXECUTE` von `public`/`anon` explizit, statt sich allein auf das globale
+  `alter default privileges` aus der Grant-Härtung (2.6.1) zu verlassen — dessen Wirkung
+  gilt nur für die Rolle, die diese Anweisung ausgeführt hat, nicht für eine frisch per
+  `apply-migrations.sh` angelegte Funktion, wenn deren erster Ausführungsversuch (als
+  Rolle `postgres`) ohne Owner-Konflikt sofort durchläuft. Am lokalen Stack verifiziert.
+
 ### Changed
 - CI läuft wieder bei reinen Dokumentationsänderungen: der Pfadfilter (`paths-ignore` für
   `docs/**` und `**/*.md`) ist entfernt. Er ließ die Required Checks `build` und

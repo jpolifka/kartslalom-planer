@@ -195,12 +195,17 @@ auch die Dauern-Overrides).
 **Eigene Formationen** (`custom_formations`) entstehen im Formation-Editor
 (`/formations/*`), optional auf Basis einer eingebauten Formation (`BasisAuswahl`).
 Lebenszyklus (`status`): `private` → `shared`, sobald die Formation gezielt an einzelne
-Nutzer freigegeben wird (`view`/`edit`, Tabelle `formation_shares`). In die öffentliche
-Bibliothek gelangt sie nur durch einen Admin (`admin_promote_to_library` erzeugt eine
-Kopie mit `is_library = true`). Die Status `submitted` und `rejected` sind im Schema und
-in den Admin-Filtern vorgesehen, werden aber von keinem Client-Ablauf gesetzt (es gibt
-keine „Einreichen“-Funktion für Nutzer). Statuswechsel passieren serverseitig in den
-RPCs. Bibliotheks-Formationen sind auch ohne Login lesbar (`get_library_formations`).
+Nutzer freigegeben wird (`view`/`edit`, Tabelle `formation_shares`). Für die öffentliche
+Bibliothek kann der Owner die Formation einreichen (`submit_custom_formation`,
+`private`/`shared`/`rejected` → `submitted`); ein Admin promotet sie danach
+(`admin_promote_to_library`, erzeugt eine **Kopie** mit `is_library = true`, das
+Original bleibt unverändert beim Owner) oder lehnt sie ab (`admin_reject_custom_formation`,
+→ `rejected`, erneutes Einreichen ist erlaubt). Ein Admin kann unabhängig davon auch ohne
+vorherige Einreichung promoten. Nach dem Promoten setzt der Server den Review-Status des
+Originals zurück (`shared`, falls noch Freigaben bestehen, sonst `private`), damit es nicht
+dauerhaft als `submitted` in der Moderations-Queue (`/admin/formations`, Filter „Eingereicht“)
+hängen bleibt. Statuswechsel passieren serverseitig in den RPCs. Bibliotheks-Formationen sind
+auch ohne Login lesbar (`get_library_formations`).
 
 Die Zugriffslogik im Client ([`lib/formations/permission.ts`](../src/lib/formations/permission.ts))
 folgt der Hierarchie `null < view < edit < owner`; Admins haben auf fremde Formationen
