@@ -242,6 +242,20 @@ export async function duplicateCustomFormation(sourceId: string): Promise<string
   return data as string;
 }
 
+// Schlägt eine eigene Formation (status "private"/"shared"/"rejected") zur Aufnahme
+// in die öffentliche Bibliothek vor — ein Admin entscheidet danach per
+// adminPromoteToLibrary() (→ Kopie) oder adminRejectFormation(). Erneutes Einreichen
+// nach einer Ablehnung ist zulässig (überarbeiten + neu vorschlagen).
+export async function submitCustomFormation(id: string): Promise<void> {
+  const { error } = await supabase.rpc("submit_custom_formation", { p_formation_id: id });
+  if (error) {
+    if (error.message.includes("not_owner"))                   throw new Error("NOT_OWNER");
+    if (error.message.includes("invalid_status_for_submit"))   throw new Error("INVALID_STATUS_FOR_SUBMIT");
+    if (error.message.includes("account_deleted"))             throw new Error("ACCOUNT_DELETED");
+    throw error;
+  }
+}
+
 // --- Profil ---
 
 export async function setDisplayName(displayName: string | null): Promise<void> {
@@ -290,12 +304,15 @@ export async function adminDeleteFormation(id: string): Promise<void> {
   if (error) throw mapError(error.message);
 }
 
-// Übernimmt eine von einem Nutzer eingereichte Formation (typischerweise status="submitted")
-// in die öffentliche Bibliothek. Erzeugt dabei eine eigenständige KOPIE mit is_library=true —
-// das Original bleibt beim ursprünglichen Ersteller unverändert samt Bearbeitungsrechten
-// erhalten (siehe docs/planning/CUSTOM_FORMATIONS_PLAN.md, Abschnitt "Promote-to-Library
-// = Kopie, nicht Verschieben"). Library- und Ursprungs-Eintrag laufen ab hier unabhängig
-// voneinander weiter.
+// Übernimmt eine Formation (typischerweise status="submitted", aber jeder Status ist
+// promotbar — ein Admin soll eine gute Formation nicht erst zur Einreichung zwingen
+// müssen) in die öffentliche Bibliothek. Erzeugt dabei eine eigenständige KOPIE mit
+// is_library=true — das Original bleibt beim ursprünglichen Ersteller unverändert samt
+// Bearbeitungsrechten erhalten (siehe docs/planning/CUSTOM_FORMATIONS_PLAN.md, Abschnitt
+// "Promote-to-Library = Kopie, nicht Verschieben"). Library- und Ursprungs-Eintrag laufen
+// ab hier unabhängig voneinander weiter — der Server setzt lediglich den Review-Status des
+// Originals zurück (auf "shared"/"private", je nach aktiven Freigaben), damit es nicht für
+// immer als "submitted" in der Moderations-Queue hängen bleibt.
 export async function adminPromoteToLibrary(id: string, category: string): Promise<string> {
   const { data, error } = await supabase.rpc("admin_promote_to_library", {
     p_formation_id: id,
@@ -303,6 +320,17 @@ export async function adminPromoteToLibrary(id: string, category: string): Promi
   });
   if (error) throw mapError(error.message);
   return data as string;
+}
+
+// Lehnt eine eingereichte Formation ab (status "submitted" → "rejected") — Gegenstück
+// zu adminPromoteToLibrary(). Der Owner sieht den Status in der eigenen Liste und kann
+// die Formation überarbeiten und erneut einreichen (submitCustomFormation()).
+export async function adminRejectFormation(id: string): Promise<void> {
+  const { error } = await supabase.rpc("admin_reject_custom_formation", { p_formation_id: id });
+  if (error) {
+    if (error.message.includes("invalid_status_for_reject")) throw new Error("INVALID_STATUS_FOR_REJECT");
+    throw mapError(error.message);
+  }
 }
 
 export async function adminUpdateFormation(

@@ -5,3 +5,5 @@ Zusätzlich zu den eingebauten Formationen kannst du eigene Pylonen-Formationen 
 Einmal gespeichert, tauchen deine eigenen Formationen in der Palette der Streckenplanung genauso auf wie eingebaute Formationen — die **Bibliothek** setzt sich zusammen aus eingebauten Formationen, deinen eigenen sowie Formationen, die von einem Administrator als besonders nützlich für alle Nutzer freigegeben wurden.
 
 Du kannst eine eigene Formation außerdem direkt mit einem anderen angemeldeten Nutzer teilen (per E-Mail-Adresse, mit Lese- oder Bearbeitungsrecht) — das ist unabhängig vom Share-Link für ganze Strecken aus Abschnitt „Teilen".
+
+Über **„Zur Bibliothek einreichen"** schlägst du eine bereits gespeicherte, eigene Formation zur Aufnahme in die öffentliche Bibliothek vor — sichtbar für alle Nutzer:innen (auch ohne Anmeldung). Ein Administrator prüft den Vorschlag und nimmt ihn entweder auf (als eigenständige Kopie; deine private Formation bleibt unverändert und bearbeitbar) oder lehnt ihn ab. Bei einer Ablehnung kannst du die Formation überarbeiten und erneut einreichen.
