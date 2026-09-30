@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Security
+- `npm audit`: 8 gemeldete Schwachstellen behoben (3 high: `nanoid`, `postcss`,
+  `react-router`; 5 moderate: `@vitest/mocker`, `dompurify`), zuletzt der Grund für
+  das rote `npm audit`-Gate im `full-test`-Workflow. Reine Patch-/Minor-Updates
+  innerhalb der bestehenden `package.json`-Versionsgrenzen (`react-router-dom`
+  7.17.0 → 7.18.4, `vitest`/`@vitest/coverage-v8` 4.1.9 → 4.1.11 — deklarierte
+  Untergrenze dafür explizit angehoben, damit ein künftiges `npm ci` nicht
+  stillschweigend wieder auf die verwundbare Version zurückfällt — `postcss`,
+  `nanoid`, `dompurify` sind transitiv und ohne `package.json`-Änderung
+  mitgezogen). Kein `--force`, kein Major-Bump von `react-router`.
+
 ### Fixed
 - `docker-compose.yml` (Produktion) liess sich mit mehreren Docker-Compose-Versionen
   (bis mindestens 2.29.7, u. a. dem damaligen GitHub-Actions-Runner-Image) nicht
