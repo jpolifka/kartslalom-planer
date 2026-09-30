@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Security
+- `apply-migrations.sh` (Migrationen auf einem laufenden, bereits produktiven Stack)
+  führte neue Migrationen zuerst als Rolle `postgres` aus. Eine dabei neu angelegte
+  Funktion konnte dadurch `anon`-EXECUTE erben (Postgres' PUBLIC-Default für
+  `postgres`, anders als für `supabase_admin` seit der Grant-Härtung); außerdem
+  konnte ein `revoke`-Statement in einer Migration unbemerkt wirkungslos bleiben,
+  wenn `postgres` das Zielobjekt nicht besitzt. Primärrolle jetzt `supabase_admin`
+  (wie bei der Erstinstallation), `postgres` nur noch Fallback. Neuer Grant-Audit
+  am Skriptende bricht ab, falls `anon` doch Zugriff auf eine nicht dafür
+  vorgesehene RPC hätte. `debug_list_function_grants()` bekommt zusätzlich ein
+  eigenes, explizites Revoke.
+
 ### Changed
 - CI läuft wieder bei reinen Dokumentationsänderungen: der Pfadfilter (`paths-ignore` für
   `docs/**` und `**/*.md`) ist entfernt. Er ließ die Required Checks `build` und
