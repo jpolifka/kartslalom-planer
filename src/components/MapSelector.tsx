@@ -283,12 +283,12 @@ export default function MapSelector({
             onClick={() => { setClosed(true); setDrawMode("none"); }}
             style={{ ...btnStyle, borderColor: "var(--c-primary)", color: "var(--c-primary)", fontWeight: 700 }}
           >
-            Polygon schliessen
+            Polygon schließen
           </button>
         )}
         {(drawnPts.length > 0 || closed) && (
           <button onClick={resetAll} style={{ ...btnStyle, color: "#64748b" }}>
-            <X size={14} /> Zuruecksetzen
+            <X size={14} /> Zurücksetzen
           </button>
         )}
 
@@ -297,7 +297,7 @@ export default function MapSelector({
         {pendingSelection && (
           <button onClick={() => onSelect(pendingSelection)} style={confirmBtnStyle}>
             <Check size={15} />
-            {pendingSelection.widthM.toFixed(0)} m × {pendingSelection.heightM.toFixed(0)} m uebernehmen
+            {pendingSelection.widthM.toFixed(0)} m × {pendingSelection.heightM.toFixed(0)} m übernehmen
           </button>
         )}
         <button onClick={onCancel} style={{ ...btnStyle, color: "#64748b" }}>
@@ -313,7 +313,7 @@ export default function MapSelector({
       )}
       {drawMode === "poly" && (
         <div style={{ fontSize: 12, color: "var(--c-primary)", marginBottom: 6 }}>
-          Klicken um Punkte zu setzen. {drawnPts.length >= 3 ? 'Ersten Punkt erneut anklicken oder "Polygon schliessen".' : `Noch ${3 - drawnPts.length} Punkt(e) bis zum Schliessen.`}
+          Klicken um Punkte zu setzen. {drawnPts.length >= 3 ? 'Ersten Punkt erneut anklicken oder "Polygon schließen".' : `Noch ${3 - drawnPts.length} Punkt(e) bis zum Schliessen.`}
         </div>
       )}
 

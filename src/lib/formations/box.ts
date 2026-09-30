@@ -39,7 +39,7 @@ export const boxStraight: FormationDefinition = {
 export const boxTurn: FormationDefinition = {
   key: "boxTurn",
   label: "Kasten Kurve",
-  description: "Kasten-Kurve gemaess deiner ASCII-Skizze.",
+  description: "Kasten-Kurve gemäß deiner ASCII-Skizze.",
   defaultDirection: "none",
   cones: normalizeCones(
     builder()
