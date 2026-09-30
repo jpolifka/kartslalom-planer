@@ -124,6 +124,21 @@ jobs:
           docker compose -f docker/docker-compose.yml -f docker/docker-compose.edge.yml config -q
           docker compose -f docker/docker-compose.dev.yml config -q
 
+      - name: Frontend-Env für den Dev-Stack erzeugen
+        # docker-compose.dev.yml setzt VITE_SUPABASE_URL/-ANON_KEY NICHT selbst
+        # (anders als die Prod-Compose-Datei, die sie als Build-Args bekommt) --
+        # der Vite-Dev-Server liest sie stattdessen zur Laufzeit aus .env.local
+        # im Projekt-Root (Bind-Mount, siehe docker-compose.dev.yml), genau wie
+        # bei lokaler Entwicklung (README "Setup", Schritt 3). Ohne diese Datei
+        # bleibt VITE_SUPABASE_URL im Browser undefined, supabase.auth.
+        # getSession() in main.tsx loest nie auf, und die App haengt fuer immer
+        # im "Laden…"-Zustand (AppRouter) -- das liess ALLE Playwright-Tests mit
+        # "Test timeout ... waiting for getByRole('button', { name: /neue
+        # strecke/i })" fehlschlagen, weil die Seite nie darueber hinauskam.
+        run: |
+          ANON_KEY=$(grep "^ANON_KEY=" docker/supabase/.env | cut -d= -f2-)
+          printf 'VITE_SUPABASE_URL=http://localhost:8000\nVITE_SUPABASE_ANON_KEY=%s\n' "$ANON_KEY" > .env.local
+
       - name: Stack starten
         # docker-entrypoint-initdb.d/migrate.sh (siehe docker/supabase/docker-compose.yml)
         # wendet bei jeder frischen Postgres-Initialisierung automatisch alle

@@ -17,6 +17,17 @@
   klassischem Mehrdatei-Merge (`-f docker-compose.yml -f docker-compose.edge.yml`) statt
   über `include` ergänzt wird — dieser Mechanismus ist über alle getesteten
   Compose-Versionen hinweg kompatibel.
+- `full-test`-CI-Workflow: Nach obigem Compose-Fix kam der Lauf erstmals bis zum
+  Playwright-Schritt — dort scheiterten alle 12 E2E-Tests beim allerersten
+  Seiteninteraktionsversuch. Ursache: Der Workflow erzeugte `docker/supabase/.env`
+  (Secrets für den Supabase-Stack), aber nie das `.env.local` im Projekt-Root, aus dem
+  der Vite-Dev-Server `VITE_SUPABASE_URL`/`-ANON_KEY` zur Laufzeit liest (Bind-Mount,
+  siehe `docker-compose.dev.yml`). Ohne diese Datei bleibt `VITE_SUPABASE_URL`
+  `undefined`, `supabase.auth.getSession()` in `main.tsx` löst nie auf, und die App
+  hängt dauerhaft im „Laden…“-Zustand — jeder E2E-Test lief dadurch in einen Timeout.
+  Neuer Schritt erzeugt `.env.local` jetzt genauso, wie es lokale Entwicklung laut
+  README manuell tut (`VITE_SUPABASE_URL=http://localhost:8000` + `ANON_KEY` aus
+  `docker/supabase/.env`).
 
 ### Added
 - Formationen können jetzt tatsächlich zur öffentlichen Bibliothek eingereicht werden
