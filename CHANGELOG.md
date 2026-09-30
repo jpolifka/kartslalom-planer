@@ -23,6 +23,10 @@
   Rolle `postgres`) ohne Owner-Konflikt sofort durchläuft. Am lokalen Stack verifiziert.
 
 ### Changed
+- Polygon-Auswahl im Kartenausschnitt-Dialog ist jetzt wie die anderen Premium-Features
+  (Luftbild, Share-Links, Versionshistorie, PNG-Export) für den Free-Tarif gesperrt
+  (`useTier().canUsePolygonArea`, war definiert, aber bisher nicht ausgewertet).
+  Reine UX-Sperre, kein serverseitiges Enforcement.
 - CI läuft wieder bei reinen Dokumentationsänderungen: der Pfadfilter (`paths-ignore` für
   `docs/**` und `**/*.md`) ist entfernt. Er ließ die Required Checks `build` und
   `security-smoke` bei Doku-PRs ausfallen, sodass diese nicht mergebar waren; zudem sind

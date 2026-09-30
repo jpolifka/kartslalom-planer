@@ -133,9 +133,8 @@ Function `send-welcome` auf (idempotent, die Function entscheidet über den Vers
 Drei Tarife: `free`, `pro`, `team`. Zwei rein clientseitige UX-Mechanismen:
 
 - `useTier`: fest einkompilierte Limits (Strecken: 3 / 50 / unbegrenzt) und
-  Feature-Flags (Premium-Kartenanbieter, Share-Links, Versionshistorie, PNG-Export —
-  für `free` gesperrt). `canUsePolygonArea` ist definiert, wird aber aktuell nirgends
-  ausgewertet; der Polygon-Modus im Kartenauswahl-Dialog ist nicht gesperrt.
+  Feature-Flags (Premium-Kartenanbieter, Polygon-Ausschnitt, Share-Links,
+  Versionshistorie, PNG-Export — für `free` gesperrt).
 - `useFeatureGate`: der nötige Tarif für ein Feature steht in `app_config`
   (serverseitig änderbar, ohne Deploy), aktuell für eigene Formationen
   (`custom_formations_required_tier`).
