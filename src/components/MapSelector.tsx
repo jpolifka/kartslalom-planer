@@ -21,6 +21,12 @@ type Props = {
   initialSelection?: AreaSelection;
   onSelect: (sel: AreaSelection) => void;
   onCancel: () => void;
+  // Polygon-Auswahl ist ein Pro/Team-Feature (useTier().canUsePolygonArea) — nur eine
+  // clientseitige UX-Sperre wie premiumMapProviderLocked/shareLocked in EditorPage, kein
+  // serverseitiges Enforcement: save_track() nimmt jede AreaSelection an, unabhängig
+  // davon, ob sie aus einem Rechteck oder einem Polygon abgeleitet wurde (beide werden
+  // vor dem Speichern gleichermaßen zur rotierten Box reduziert, siehe areaSelection.ts).
+  polygonLocked?: boolean;
 };
 
 type LatLng = { lat: number; lng: number };
@@ -38,6 +44,7 @@ export default function MapSelector({
   initialSelection,
   onSelect,
   onCancel,
+  polygonLocked = false,
 }: Props) {
   const [zoom, setZoom] = useState(initialZoom);
   const [centerLat, setCenterLat] = useState(initialLat);
@@ -221,6 +228,9 @@ export default function MapSelector({
   }
 
   function startMode(mode: "rect" | "poly") {
+    // Zusätzlich zur gesperrten Button-Optik hart abgesichert — z.B. falls startMode
+    // je von woanders (Tastatur, künftiger Code) statt nur über den Button ausgelöst wird.
+    if (mode === "poly" && polygonLocked) return;
     setDrawnPts([]);
     setClosed(false);
     setRectStart(null);
@@ -274,9 +284,15 @@ export default function MapSelector({
         </button>
         <button
           onClick={() => startMode("poly")}
-          style={{ ...btnStyle, ...(drawMode === "poly" ? activeBtnStyle : {}) }}
+          disabled={polygonLocked}
+          title={polygonLocked ? "Polygon-Auswahl erfordert mindestens den Pro-Tarif" : undefined}
+          style={{
+            ...btnStyle,
+            ...(drawMode === "poly" ? activeBtnStyle : {}),
+            ...(polygonLocked ? { color: "#94a3b8", cursor: "default" } : {}),
+          }}
         >
-          <Pentagon size={14} /> Polygon
+          <Pentagon size={14} /> Polygon{polygonLocked && " (Pro)"}
         </button>
         {drawMode === "poly" && drawnPts.length >= 3 && (
           <button

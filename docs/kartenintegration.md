@@ -37,7 +37,11 @@ Client und Edge Function auf Konsistenz prüft.
   Ausschnitts. Ein Rechteck lässt sich verschieben, in der Größe anpassen und
   drehen; alternativ zeichnet man ein Polygon (mindestens drei Punkte, Schließen per
   Klick auf den ersten Punkt oder Button), aus dem die kleinste umschließende,
-  gedrehte Box abgeleitet wird (`polygonToAreaSelection`).
+  gedrehte Box abgeleitet wird (`polygonToAreaSelection`). Der Polygon-Modus ist ein
+  Pro/Team-Feature (`useTier().canUsePolygonArea`, Prop `polygonLocked`) — reine
+  UX-Sperre wie bei den Premium-Kartenanbietern, kein serverseitiges Enforcement:
+  `save_track()` erzwingt kein Rechteck, da beide Formen vor dem Speichern ohnehin auf
+  dieselbe rotierte Box reduziert werden.
 - [`areaSelection.ts`](../src/lib/areaSelection.ts): `AreaSelection`
   (Mittelpunkt in Grad, `widthM`/`heightM` in Metern, `rotationDeg` im Uhrzeigersinn
   ab Nord). Rechnet in einem lokalen, ebenen Meter-Koordinatensystem um den
