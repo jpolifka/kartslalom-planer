@@ -2,19 +2,40 @@
 
 ## Unreleased
 
+### Added
+- Formationen können jetzt tatsächlich zur öffentlichen Bibliothek eingereicht werden
+  (`submit_custom_formation`, Button „Zur Bibliothek einreichen" im Formation-Editor).
+  Bisher gab es dafür keinen Weg: `status="submitted"`/`"rejected"` existierten im Schema
+  und in der Admin-Übersicht (`/admin/formations`, Filter „Eingereicht"), aber kein
+  Client-Ablauf setzte sie je, wodurch der Filter nie etwas anzeigte. Neu außerdem
+  `admin_reject_custom_formation` als Gegenstück zum bestehenden „In Bibliothek
+  aufnehmen" — Ablehnung ist kein Löschen, die Formation bleibt beim Owner und kann
+  überarbeitet und erneut eingereicht werden. `admin_promote_to_library` setzt den
+  Review-Status des Originals nach dem Aufnehmen zurück (`shared`/`private`), statt es
+  für immer als „submitted" in der Queue hängen zu lassen.
+
 ### Security
-- `apply-migrations.sh` (Migrationen auf einem laufenden, bereits produktiven Stack)
-  führte neue Migrationen zuerst als Rolle `postgres` aus. Eine dabei neu angelegte
-  Funktion konnte dadurch `anon`-EXECUTE erben (Postgres' PUBLIC-Default für
-  `postgres`, anders als für `supabase_admin` seit der Grant-Härtung); außerdem
-  konnte ein `revoke`-Statement in einer Migration unbemerkt wirkungslos bleiben,
-  wenn `postgres` das Zielobjekt nicht besitzt. Primärrolle jetzt `supabase_admin`
-  (wie bei der Erstinstallation), `postgres` nur noch Fallback. Neuer Grant-Audit
-  am Skriptende bricht ab, falls `anon` doch Zugriff auf eine nicht dafür
-  vorgesehene RPC hätte. `debug_list_function_grants()` bekommt zusätzlich ein
-  eigenes, explizites Revoke.
+- Die beiden neuen RPCs (und die redefinierte `admin_promote_to_library`) revoken
+  `EXECUTE` von `public`/`anon` explizit, statt sich allein auf das globale
+  `alter default privileges` aus der Grant-Härtung (2.6.1) zu verlassen — dessen Wirkung
+  gilt nur für die Rolle, die diese Anweisung ausgeführt hat, nicht für eine frisch per
+  `apply-migrations.sh` angelegte Funktion, wenn deren erster Ausführungsversuch (als
+  Rolle `postgres`) ohne Owner-Konflikt sofort durchläuft. Am lokalen Stack verifiziert.
+- `apply-migrations.sh` führte neue Migrationen zuerst als Rolle `postgres` aus. Eine
+  dabei neu angelegte Funktion konnte dadurch zusätzlich `anon`-EXECUTE erben
+  (Postgres' PUBLIC-Default für `postgres`, anders als für `supabase_admin` seit der
+  Grant-Härtung); außerdem konnte ein `revoke`-Statement in einer Migration unbemerkt
+  wirkungslos bleiben, wenn `postgres` das Zielobjekt nicht besitzt. Primärrolle jetzt
+  `supabase_admin` (wie bei der Erstinstallation), `postgres` nur noch Fallback. Neuer
+  Grant-Audit am Skriptende bricht ab, falls `anon` doch Zugriff auf eine nicht dafür
+  vorgesehene RPC hätte. `debug_list_function_grants()` bekommt zusätzlich ein eigenes,
+  explizites Revoke.
 
 ### Changed
+- Polygon-Auswahl im Kartenausschnitt-Dialog ist jetzt wie die anderen Premium-Features
+  (Luftbild, Share-Links, Versionshistorie, PNG-Export) für den Free-Tarif gesperrt
+  (`useTier().canUsePolygonArea`, war definiert, aber bisher nicht ausgewertet).
+  Reine UX-Sperre, kein serverseitiges Enforcement.
 - CI läuft wieder bei reinen Dokumentationsänderungen: der Pfadfilter (`paths-ignore` für
   `docs/**` und `**/*.md`) ist entfernt. Er ließ die Required Checks `build` und
   `security-smoke` bei Doku-PRs ausfallen, sodass diese nicht mergebar waren; zudem sind

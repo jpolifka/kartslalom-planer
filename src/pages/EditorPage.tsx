@@ -58,11 +58,12 @@ export default function EditorPage() {
   const { session, profile } = useAuthStore();
   const isAdmin = profile?.role === "admin";
   const isCloudMode = !!session; // Kern-Unterscheidung Gast- vs. Cloud-Modus für die ganze Seite
-  const { canUsePremiumMapProviders, canShareLinks, canExportPng } = useTier();
+  const { canUsePremiumMapProviders, canUsePolygonArea, canShareLinks, canExportPng } = useTier();
   // Tarif-Gates greifen nur im Cloud-Modus — im Gast-Modus gibt es keinen Account
   // und damit keinen Tarif, also sind dort alle Funktionen frei nutzbar.
   // SVG-/PDF-Export sind unabhängig davon immer ungated.
   const premiumMapProviderLocked = isCloudMode && !canUsePremiumMapProviders;
+  const polygonAreaLocked = isCloudMode && !canUsePolygonArea;
   const shareLocked = isCloudMode && !canShareLinks;
   const [showShareDialog, setShowShareDialog] = useState(false);
   const pngLocked = isCloudMode && !canExportPng;
@@ -552,6 +553,7 @@ export default function EditorPage() {
               initialSelection={areaSel ?? undefined}
               onSelect={(sel) => { setAreaSel(sel); setShowMapSelector(false); }}
               onCancel={() => setShowMapSelector(false)}
+              polygonLocked={polygonAreaLocked}
             />
           </div>
         </div>

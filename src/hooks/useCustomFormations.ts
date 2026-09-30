@@ -25,12 +25,14 @@ import {
   fetchSharedFormations,
   fetchFormationPermission,
   duplicateCustomFormation,
+  submitCustomFormation,
   setDisplayName,
   isCurrentUserAdmin,
   adminGetFormation,
   adminListFormations,
   adminDeleteFormation,
   adminPromoteToLibrary,
+  adminRejectFormation,
   adminUpdateFormation,
   type CreateFormationParams,
 } from "../lib/api/customFormations";
@@ -164,6 +166,19 @@ export function useDuplicateCustomFormation() {
   });
 }
 
+// Schlägt die eigene Formation zur Aufnahme in die öffentliche Bibliothek vor
+// (siehe submitCustomFormation()).
+export function useSubmitCustomFormation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => submitCustomFormation(id),
+    onSuccess: (_d, id) => {
+      qc.invalidateQueries({ queryKey: ["custom_formation", id] });
+      qc.invalidateQueries({ queryKey: ["custom_formations"] });
+    },
+  });
+}
+
 // --- Profil ---
 
 export function useSetDisplayName() {
@@ -227,6 +242,15 @@ export function useAdminPromoteToLibrary() {
       qc.invalidateQueries({ queryKey: ["admin_formations"] });
       qc.invalidateQueries({ queryKey: ["library_formations"] });
     },
+  });
+}
+
+// Gegenstück zu useAdminPromoteToLibrary — lehnt eine eingereichte Formation ab.
+export function useAdminRejectFormation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => adminRejectFormation(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin_formations"] }),
   });
 }
 

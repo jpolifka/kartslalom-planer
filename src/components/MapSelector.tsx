@@ -21,6 +21,12 @@ type Props = {
   initialSelection?: AreaSelection;
   onSelect: (sel: AreaSelection) => void;
   onCancel: () => void;
+  // Polygon-Auswahl ist ein Pro/Team-Feature (useTier().canUsePolygonArea) — nur eine
+  // clientseitige UX-Sperre wie premiumMapProviderLocked/shareLocked in EditorPage, kein
+  // serverseitiges Enforcement: save_track() nimmt jede AreaSelection an, unabhängig
+  // davon, ob sie aus einem Rechteck oder einem Polygon abgeleitet wurde (beide werden
+  // vor dem Speichern gleichermaßen zur rotierten Box reduziert, siehe areaSelection.ts).
+  polygonLocked?: boolean;
 };
 
 type LatLng = { lat: number; lng: number };
@@ -38,6 +44,7 @@ export default function MapSelector({
   initialSelection,
   onSelect,
   onCancel,
+  polygonLocked = false,
 }: Props) {
   const [zoom, setZoom] = useState(initialZoom);
   const [centerLat, setCenterLat] = useState(initialLat);
@@ -221,6 +228,9 @@ export default function MapSelector({
   }
 
   function startMode(mode: "rect" | "poly") {
+    // Zusätzlich zur gesperrten Button-Optik hart abgesichert — z.B. falls startMode
+    // je von woanders (Tastatur, künftiger Code) statt nur über den Button ausgelöst wird.
+    if (mode === "poly" && polygonLocked) return;
     setDrawnPts([]);
     setClosed(false);
     setRectStart(null);
@@ -274,21 +284,27 @@ export default function MapSelector({
         </button>
         <button
           onClick={() => startMode("poly")}
-          style={{ ...btnStyle, ...(drawMode === "poly" ? activeBtnStyle : {}) }}
+          disabled={polygonLocked}
+          title={polygonLocked ? "Polygon-Auswahl erfordert mindestens den Pro-Tarif" : undefined}
+          style={{
+            ...btnStyle,
+            ...(drawMode === "poly" ? activeBtnStyle : {}),
+            ...(polygonLocked ? { color: "#94a3b8", cursor: "default" } : {}),
+          }}
         >
-          <Pentagon size={14} /> Polygon
+          <Pentagon size={14} /> Polygon{polygonLocked && " (Pro)"}
         </button>
         {drawMode === "poly" && drawnPts.length >= 3 && (
           <button
             onClick={() => { setClosed(true); setDrawMode("none"); }}
             style={{ ...btnStyle, borderColor: "var(--c-primary)", color: "var(--c-primary)", fontWeight: 700 }}
           >
-            Polygon schliessen
+            Polygon schließen
           </button>
         )}
         {(drawnPts.length > 0 || closed) && (
           <button onClick={resetAll} style={{ ...btnStyle, color: "#64748b" }}>
-            <X size={14} /> Zuruecksetzen
+            <X size={14} /> Zurücksetzen
           </button>
         )}
 
@@ -297,7 +313,7 @@ export default function MapSelector({
         {pendingSelection && (
           <button onClick={() => onSelect(pendingSelection)} style={confirmBtnStyle}>
             <Check size={15} />
-            {pendingSelection.widthM.toFixed(0)} m × {pendingSelection.heightM.toFixed(0)} m uebernehmen
+            {pendingSelection.widthM.toFixed(0)} m × {pendingSelection.heightM.toFixed(0)} m übernehmen
           </button>
         )}
         <button onClick={onCancel} style={{ ...btnStyle, color: "#64748b" }}>
@@ -313,7 +329,7 @@ export default function MapSelector({
       )}
       {drawMode === "poly" && (
         <div style={{ fontSize: 12, color: "var(--c-primary)", marginBottom: 6 }}>
-          Klicken um Punkte zu setzen. {drawnPts.length >= 3 ? 'Ersten Punkt erneut anklicken oder "Polygon schliessen".' : `Noch ${3 - drawnPts.length} Punkt(e) bis zum Schliessen.`}
+          Klicken um Punkte zu setzen. {drawnPts.length >= 3 ? 'Ersten Punkt erneut anklicken oder "Polygon schließen".' : `Noch ${3 - drawnPts.length} Punkt(e) bis zum Schliessen.`}
         </div>
       )}
 
