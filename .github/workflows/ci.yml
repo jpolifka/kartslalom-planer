@@ -110,6 +110,17 @@ jobs:
           cp .env.example .env
           sh utils/generate-keys.sh --update-env
           sed -i "s|^CRON_SECRET=.*$|CRON_SECRET=$(openssl rand -hex 16)|" .env
+          # Kong per Default nur auf 127.0.0.1 (siehe KONG_BIND_ADDR, bewusster
+          # P1-Fix -- s. docs/build-und-deployment.md). Der GitHub-Actions-Runner
+          # ist kein Docker Desktop: --add-host=host.docker.internal:host-gateway
+          # (siehe run-playwright-local.sh, fuer den Playwright-Schritt unten)
+          # loest zur Bridge-Gateway-IP auf, nicht zu 127.0.0.1 -- ein nur auf
+          # 127.0.0.1 gebundener Port ist von dort aus unerreichbar. Docker
+          # Desktop (lokal, macOS/Windows) hat dafuer eine eigene, grosszuegigere
+          # host.docker.internal-Sonderbehandlung, die das verdeckt. Betrifft nur
+          # DIESEN ephemeren, danach verworfenen CI-Stack -- lokale/Produktions-
+          # Defaults bleiben unveraendert 127.0.0.1.
+          sed -i "s|^KONG_BIND_ADDR=.*$|KONG_BIND_ADDR=0.0.0.0|" .env
 
       - name: Preflight-Check
         run: (cd docker/supabase && sh preflight-check.sh)

@@ -28,6 +28,19 @@
   Neuer Schritt erzeugt `.env.local` jetzt genauso, wie es lokale Entwicklung laut
   README manuell tut (`VITE_SUPABASE_URL=http://localhost:8000` + `ANON_KEY` aus
   `docker/supabase/.env`).
+- `full-test`-CI-Workflow: Nach obigem `.env.local`-Fix lud die App zwar, aber Klicks
+  auf „Neue Strecke" (ruft sofort `create_track()` per RPC auf) navigierten nie zum
+  Editor. Ursache: Kong ist per Default nur auf `127.0.0.1` gebunden
+  (`KONG_BIND_ADDR`, bewusster P1-Sicherheits-Fix). Der `--add-host=host.docker.
+  internal:host-gateway`-Mechanismus im Playwright-Container (nötig, damit der
+  Browser darin Kong erreicht) löst auf einem echten Linux-Docker-Host (GitHub-
+  Actions-Runner) zur Docker-Bridge-Gateway-IP auf, nicht zu `127.0.0.1` — ein nur
+  auf `127.0.0.1` gebundener Port ist von dort aus unerreichbar. Docker Desktop
+  (lokal, macOS/Windows) hat dafür eine eigene, großzügigere Sonderbehandlung von
+  `host.docker.internal`, die das lange verdeckt hat. Betrifft nur den ephemeren,
+  danach verworfenen CI-Stack — `full-test` setzt `KONG_BIND_ADDR=0.0.0.0` jetzt
+  gezielt für diesen einen Lauf; lokale und Produktions-Defaults bleiben
+  unverändert `127.0.0.1`.
 
 ### Added
 - Formationen können jetzt tatsächlich zur öffentlichen Bibliothek eingereicht werden
