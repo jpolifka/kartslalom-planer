@@ -2,6 +2,46 @@
 
 ## Unreleased
 
+### Fixed
+- `docker-compose.yml` (Produktion) liess sich mit mehreren Docker-Compose-Versionen
+  (bis mindestens 2.29.7, u. a. dem damaligen GitHub-Actions-Runner-Image) nicht
+  validieren/starten: `services.kong conflicts with imported resource`. Ursache: ein
+  zweiter `services.kong:`-Block direkt in `docker-compose.yml`, gedacht als Ergänzung
+  um das `edge`-Netz für den bereits per `include` eingebundenen Kong-Service — von
+  diesen Compose-Versionen nicht als Merge, sondern als Namenskonflikt behandelt. Der
+  `full-test`-CI-Workflow (`workflow_dispatch`) scheiterte dadurch schon im
+  Validierungsschritt, bevor überhaupt ein Stack startete oder eine Migration lief;
+  dasselbe Kommando läuft unverändert bei jedem `sh docker/deploy-prod.sh` — je nach
+  Compose-Version auf dem Docker-Host potenziell auch dort. Behoben durch Auslagern der
+  Netz-Ergänzung in eine separate Datei (`docker/docker-compose.edge.yml`), die per
+  klassischem Mehrdatei-Merge (`-f docker-compose.yml -f docker-compose.edge.yml`) statt
+  über `include` ergänzt wird — dieser Mechanismus ist über alle getesteten
+  Compose-Versionen hinweg kompatibel.
+- `full-test`-CI-Workflow: Nach obigem Compose-Fix kam der Lauf erstmals bis zum
+  Playwright-Schritt — dort scheiterten alle 12 E2E-Tests beim allerersten
+  Seiteninteraktionsversuch. Ursache: Der Workflow erzeugte `docker/supabase/.env`
+  (Secrets für den Supabase-Stack), aber nie das `.env.local` im Projekt-Root, aus dem
+  der Vite-Dev-Server `VITE_SUPABASE_URL`/`-ANON_KEY` zur Laufzeit liest (Bind-Mount,
+  siehe `docker-compose.dev.yml`). Ohne diese Datei bleibt `VITE_SUPABASE_URL`
+  `undefined`, `supabase.auth.getSession()` in `main.tsx` löst nie auf, und die App
+  hängt dauerhaft im „Laden…“-Zustand — jeder E2E-Test lief dadurch in einen Timeout.
+  Neuer Schritt erzeugt `.env.local` jetzt genauso, wie es lokale Entwicklung laut
+  README manuell tut (`VITE_SUPABASE_URL=http://localhost:8000` + `ANON_KEY` aus
+  `docker/supabase/.env`).
+- `full-test`-CI-Workflow: Nach obigem `.env.local`-Fix lud die App zwar, aber Klicks
+  auf „Neue Strecke" (ruft sofort `create_track()` per RPC auf) navigierten nie zum
+  Editor. Ursache: Kong ist per Default nur auf `127.0.0.1` gebunden
+  (`KONG_BIND_ADDR`, bewusster P1-Sicherheits-Fix). Der `--add-host=host.docker.
+  internal:host-gateway`-Mechanismus im Playwright-Container (nötig, damit der
+  Browser darin Kong erreicht) löst auf einem echten Linux-Docker-Host (GitHub-
+  Actions-Runner) zur Docker-Bridge-Gateway-IP auf, nicht zu `127.0.0.1` — ein nur
+  auf `127.0.0.1` gebundener Port ist von dort aus unerreichbar. Docker Desktop
+  (lokal, macOS/Windows) hat dafür eine eigene, großzügigere Sonderbehandlung von
+  `host.docker.internal`, die das lange verdeckt hat. Betrifft nur den ephemeren,
+  danach verworfenen CI-Stack — `full-test` setzt `KONG_BIND_ADDR=0.0.0.0` jetzt
+  gezielt für diesen einen Lauf; lokale und Produktions-Defaults bleiben
+  unverändert `127.0.0.1`.
+
 ### Added
 - Formationen können jetzt tatsächlich zur öffentlichen Bibliothek eingereicht werden
   (`submit_custom_formation`, Button „Zur Bibliothek einreichen" im Formation-Editor).

@@ -110,6 +110,17 @@ jobs:
           cp .env.example .env
           sh utils/generate-keys.sh --update-env
           sed -i "s|^CRON_SECRET=.*$|CRON_SECRET=$(openssl rand -hex 16)|" .env
+          # Kong per Default nur auf 127.0.0.1 (siehe KONG_BIND_ADDR, bewusster
+          # P1-Fix -- s. docs/build-und-deployment.md). Der GitHub-Actions-Runner
+          # ist kein Docker Desktop: --add-host=host.docker.internal:host-gateway
+          # (siehe run-playwright-local.sh, fuer den Playwright-Schritt unten)
+          # loest zur Bridge-Gateway-IP auf, nicht zu 127.0.0.1 -- ein nur auf
+          # 127.0.0.1 gebundener Port ist von dort aus unerreichbar. Docker
+          # Desktop (lokal, macOS/Windows) hat dafuer eine eigene, grosszuegigere
+          # host.docker.internal-Sonderbehandlung, die das verdeckt. Betrifft nur
+          # DIESEN ephemeren, danach verworfenen CI-Stack -- lokale/Produktions-
+          # Defaults bleiben unveraendert 127.0.0.1.
+          sed -i "s|^KONG_BIND_ADDR=.*$|KONG_BIND_ADDR=0.0.0.0|" .env
 
       - name: Preflight-Check
         run: (cd docker/supabase && sh preflight-check.sh)
@@ -121,8 +132,23 @@ jobs:
           VITE_SUPABASE_URL: http://localhost:8000
           VITE_SUPABASE_ANON_KEY: ci-placeholder
         run: |
-          docker compose -f docker/docker-compose.yml config -q
+          docker compose -f docker/docker-compose.yml -f docker/docker-compose.edge.yml config -q
           docker compose -f docker/docker-compose.dev.yml config -q
+
+      - name: Frontend-Env für den Dev-Stack erzeugen
+        # docker-compose.dev.yml setzt VITE_SUPABASE_URL/-ANON_KEY NICHT selbst
+        # (anders als die Prod-Compose-Datei, die sie als Build-Args bekommt) --
+        # der Vite-Dev-Server liest sie stattdessen zur Laufzeit aus .env.local
+        # im Projekt-Root (Bind-Mount, siehe docker-compose.dev.yml), genau wie
+        # bei lokaler Entwicklung (README "Setup", Schritt 3). Ohne diese Datei
+        # bleibt VITE_SUPABASE_URL im Browser undefined, supabase.auth.
+        # getSession() in main.tsx loest nie auf, und die App haengt fuer immer
+        # im "Laden…"-Zustand (AppRouter) -- das liess ALLE Playwright-Tests mit
+        # "Test timeout ... waiting for getByRole('button', { name: /neue
+        # strecke/i })" fehlschlagen, weil die Seite nie darueber hinauskam.
+        run: |
+          ANON_KEY=$(grep "^ANON_KEY=" docker/supabase/.env | cut -d= -f2-)
+          printf 'VITE_SUPABASE_URL=http://localhost:8000\nVITE_SUPABASE_ANON_KEY=%s\n' "$ANON_KEY" > .env.local
 
       - name: Stack starten
         # docker-entrypoint-initdb.d/migrate.sh (siehe docker/supabase/docker-compose.yml)

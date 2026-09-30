@@ -21,4 +21,9 @@ if [ ! -f "$ROOT_ENV" ]; then
 fi
 
 sh "$SCRIPT_DIR/supabase/preflight-check.sh"
-docker compose --env-file "$ROOT_ENV" -f "$SCRIPT_DIR/docker-compose.yml" up -d --build
+# -f docker-compose.edge.yml: haengt Kong zusaetzlich ans edge-Netz, siehe
+# Kommentar dort (Kompatibilitaet aelterer Docker-Compose-Versionen mit `include`).
+docker compose --env-file "$ROOT_ENV" \
+  -f "$SCRIPT_DIR/docker-compose.yml" \
+  -f "$SCRIPT_DIR/docker-compose.edge.yml" \
+  up -d --build

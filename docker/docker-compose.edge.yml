@@ -1,0 +1,28 @@
+# Hängt den bereits über docker-compose.yml (per `include`) eingebundenen
+# Kong-Service zusätzlich an das externe edge-Netz — separates File statt
+# eines zweiten `services.kong:`-Blocks direkt in docker-compose.yml.
+#
+# Grund: docker-compose.yml definiert Kong per `include` (aus
+# supabase/docker-compose.yml). Ein `services.kong:` in derselben Datei, das
+# denselben Service nur um `networks:` ergänzen soll, wird vom Compose-Spec
+# "include" nicht als Merge behandelt, sondern als Namenskonflikt --
+# reproduziert mit mehreren Compose-Versionen bis mindestens 2.29.7:
+#   "services.kong conflicts with imported resource"
+# (in CI zuerst aufgefallen: der ubuntu-24.04-GitHub-Runner bringt eine
+# betroffene Version mit; neuere Compose-Versionen akzeptieren das
+# fälschlich stillschweigend, was den Fehler lange unbemerkt liess).
+#
+# Der klassische Mehrdatei-Merge (zwei separate `-f`-Dateien, keine der
+# beiden nutzt `include` für denselben Service) ist dagegen seit jeher
+# universell unterstützt und ergänzt hier `networks:` additiv, ohne die
+# vorhandene Kong-Konfiguration (inkl. `default`-Netz-Alias aus
+# supabase/docker-compose.yml) zu verlieren -- verifiziert gegen mehrere
+# ältere Compose-Versionen.
+#
+# Immer zusätzlich zu docker-compose.yml übergeben, nie allein:
+#   docker compose -f docker-compose.yml -f docker-compose.edge.yml ...
+services:
+  kong:
+    networks:
+      - default
+      - edge
