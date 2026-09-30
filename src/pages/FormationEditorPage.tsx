@@ -8,7 +8,7 @@ import { useFormationEditor, type EditorSnap, type EditableCone } from "../hooks
 import FormationEditorCanvas, { type EditorTool, type MeasurementLine, type GuideLine } from "../components/formation-editor/FormationEditorCanvas";
 import FormationMetaPanel from "../components/formation-editor/FormationMetaPanel";
 import BasisAuswahl from "../components/formation-editor/BasisAuswahl";
-import { useCustomFormation, useCreateCustomFormation, useUpdateCustomFormation, useFormationPermission, useDuplicateCustomFormation, useAdminFormation, useAdminUpdateFormation } from "../hooks/useCustomFormations";
+import { useCustomFormation, useCreateCustomFormation, useUpdateCustomFormation, useFormationPermission, useDuplicateCustomFormation, useSubmitCustomFormation, useAdminFormation, useAdminUpdateFormation } from "../hooks/useCustomFormations";
 import { resolveFormationAccess, isAccessDenied } from "../lib/formations/permission";
 import { describeSaveError } from "../lib/formations/saveErrorMessage";
 import { useFeatureGate } from "../hooks/useFeatureGate";
@@ -99,6 +99,7 @@ export default function FormationEditorPage() {
   const updateMutation = useUpdateCustomFormation();
   const adminUpdateMutation = useAdminUpdateFormation();
   const duplicateMutation = useDuplicateCustomFormation();
+  const submitMutation = useSubmitCustomFormation();
 
   const { data: permission, isLoading: permissionLoading } = useFormationPermission(isEdit ? id : undefined);
   // get_my_formation_permission kennt Owner/Share/Library (is_library=true -> "view").
@@ -268,6 +269,23 @@ export default function FormationEditorPage() {
     }
   }
 
+  // Schlägt die eigene, bereits gespeicherte Formation zur Aufnahme in die öffentliche
+  // Bibliothek vor. Nur für den echten Owner sichtbar (effectivePermission === "owner",
+  // siehe resolveFormationAccess) und nur aus einem einreichbaren Status heraus — der
+  // Server prüft beides ohnehin erneut (submit_custom_formation), diese Vorbedingung
+  // steuert nur, ob der Button überhaupt angezeigt wird.
+  async function handleSubmitToLibrary() {
+    if (!id) return;
+    try {
+      await submitMutation.mutateAsync(id);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg === "INVALID_STATUS_FOR_SUBMIT") setSaveError("Einreichen fehlgeschlagen: Dieses Hindernis kann in seinem aktuellen Status nicht eingereicht werden.");
+      else if (msg === "NOT_OWNER") setSaveError("Einreichen fehlgeschlagen: Nur der/die Eigentümer:in kann dieses Hindernis einreichen.");
+      else setSaveError("Einreichen fehlgeschlagen. Bitte erneut versuchen.");
+    }
+  }
+
   function handleReset() {
     clearDraft();
     setShowBasis(true);
@@ -406,6 +424,14 @@ export default function FormationEditorPage() {
 
   const lichteBreiteWarning = lichteBreite !== null && lichteBreite < TASK_LANE_WIDTH;
 
+  // Bibliotheks-Einreichung nur für den echten Owner einer bereits gespeicherten
+  // Formation (effectivePermission === "owner" schließt Shared-Edit/Admin-Fremdzugriff
+  // aus, siehe resolveFormationAccess) und nur aus einem der Server-Seite auch
+  // tatsächlich einreichbaren Status heraus (submit_custom_formation prüft das erneut).
+  const isFormationOwner = effectivePermission === "owner";
+  const formationStatus = effectiveFormation?.status;
+  const canSubmitToLibrary = isEdit && isFormationOwner
+    && (formationStatus === "private" || formationStatus === "shared" || formationStatus === "rejected");
 
   if (isEdit && (cloudLoading || permissionLoading || (needAdminFetch && adminLoading))) {
     return <div style={{ padding: 40, color: "#6b7280" }}>Lädt Hindernis…</div>;
@@ -437,6 +463,16 @@ export default function FormationEditorPage() {
             Bearbeitungszugriff
           </span>
         )}
+        {isFormationOwner && formationStatus === "submitted" && (
+          <span style={{ fontSize: 11, background: "#fff7ed", border: "1px solid #fdba74", color: "#c2410c", padding: "3px 10px", borderRadius: 6, flexShrink: 0 }}>
+            Eingereicht — wird geprüft
+          </span>
+        )}
+        {isFormationOwner && formationStatus === "rejected" && (
+          <span style={{ fontSize: 11, background: "#fef2f2", border: "1px solid #fecaca", color: "#991b1b", padding: "3px 10px", borderRadius: 6, flexShrink: 0 }}>
+            Von der Bibliothek abgelehnt
+          </span>
+        )}
 
         {!isReadOnly && !isCloudMode && !isSharedEdit && (
           <span style={{ fontSize: 11, color: "#94a3b8" }}>
@@ -446,6 +482,16 @@ export default function FormationEditorPage() {
         {!isEdit && (
           <button style={s.headerBtn} onClick={handleReset} title="Draft verwerfen und neu anfangen">
             Neu anfangen
+          </button>
+        )}
+        {canSubmitToLibrary && (
+          <button
+            style={{ ...s.headerBtn, opacity: submitMutation.isPending ? 0.6 : 1 }}
+            onClick={handleSubmitToLibrary}
+            disabled={submitMutation.isPending}
+            title="Zur Aufnahme in die öffentliche Bibliothek vorschlagen — ein Admin sichtet den Vorschlag"
+          >
+            {submitMutation.isPending ? "Reiche ein…" : formationStatus === "rejected" ? "Erneut einreichen" : "Zur Bibliothek einreichen"}
           </button>
         )}
 

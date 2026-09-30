@@ -4,11 +4,12 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Trash2, Library, ExternalLink } from "lucide-react";
+import { Trash2, Library, ExternalLink, XCircle } from "lucide-react";
 import {
   useAdminFormationList,
   useAdminDeleteFormation,
   useAdminPromoteToLibrary,
+  useAdminRejectFormation,
 } from "../hooks/useCustomFormations";
 import type { CustomFormationRow } from "../lib/api/customFormations";
 
@@ -50,6 +51,7 @@ const CATEGORY_OPTIONS = ["", "start_ziel", "basis", "kurven", "komplex", "indiv
 
 type PromoteTarget = { id: string; name: string; category: string };
 type DeleteTarget  = { id: string; name: string };
+type RejectTarget  = { id: string; name: string };
 
 function StatusBadge({ status }: { status: string }) {
   const c = STATUS_COLORS[status] ?? { bg: "#f1f5f9", color: "#64748b" };
@@ -72,6 +74,7 @@ export default function AdminFormationsPage() {
   const [page, setPage]                     = useState(0);
   const [promoteTarget, setPromoteTarget]   = useState<PromoteTarget | null>(null);
   const [deleteTarget, setDeleteTarget]     = useState<DeleteTarget | null>(null);
+  const [rejectTarget, setRejectTarget]     = useState<RejectTarget | null>(null);
 
   const { data: formations, isLoading, error } = useAdminFormationList(
     statusFilter || undefined,
@@ -81,6 +84,7 @@ export default function AdminFormationsPage() {
   );
   const deleteMutation  = useAdminDeleteFormation();
   const promoteMutation = useAdminPromoteToLibrary();
+  const rejectMutation  = useAdminRejectFormation();
 
   function handleFilterChange(setter: (v: string) => void, value: string) {
     setter(value);
@@ -97,6 +101,12 @@ export default function AdminFormationsPage() {
     if (!promoteTarget) return;
     await promoteMutation.mutateAsync({ id: promoteTarget.id, category: promoteTarget.category });
     setPromoteTarget(null);
+  }
+
+  async function handleReject() {
+    if (!rejectTarget) return;
+    await rejectMutation.mutateAsync(rejectTarget.id);
+    setRejectTarget(null);
   }
 
   return (
@@ -220,6 +230,20 @@ export default function AdminFormationsPage() {
                         </button>
                       )}
 
+                      {/* Ablehnen — nur für eingereichte Formationen (Gegenstück zum
+                          Aufnehmen-Button oben, Server erlaubt es ohnehin nur aus
+                          status="submitted" heraus). Owner sieht die Ablehnung in der
+                          eigenen Liste und kann erneut einreichen. */}
+                      {f.status === "submitted" && (
+                        <button
+                          title="Einreichung ablehnen"
+                          onClick={() => setRejectTarget({ id: f.id, name: f.name })}
+                          style={{ ...iconBtnStyle, color: "#c2410c", borderColor: "#fed7aa", background: "#fff7ed" }}
+                        >
+                          <XCircle size={13} />
+                        </button>
+                      )}
+
                       {/* Löschen */}
                       <button
                         title="Löschen"
@@ -288,6 +312,30 @@ export default function AdminFormationsPage() {
           </div>
           {promoteMutation.error && (
             <div style={errorStyle}>{(promoteMutation.error as Error).message}</div>
+          )}
+        </Dialog>
+      )}
+
+      {/* Reject Dialog */}
+      {rejectTarget && (
+        <Dialog onClose={() => setRejectTarget(null)}>
+          <h2 style={dialogTitleStyle}>Einreichung ablehnen</h2>
+          <p style={{ fontSize: 14, color: "#374151", marginBottom: 20 }}>
+            <strong>{rejectTarget.name}</strong> wird als „Abgelehnt“ markiert. Die Formation bleibt
+            beim Ersteller erhalten — er kann sie überarbeiten und erneut einreichen.
+          </p>
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <button onClick={() => setRejectTarget(null)} style={cancelBtnStyle}>Abbrechen</button>
+            <button
+              onClick={handleReject}
+              disabled={rejectMutation.isPending}
+              style={confirmBtnStyle("#c2410c")}
+            >
+              {rejectMutation.isPending ? "Wird abgelehnt…" : "Ablehnen"}
+            </button>
+          </div>
+          {rejectMutation.error && (
+            <div style={errorStyle}>{(rejectMutation.error as Error).message}</div>
           )}
         </Dialog>
       )}
