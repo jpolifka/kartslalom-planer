@@ -14,7 +14,7 @@ import { builder } from "./common";
 export const snail: FormationDefinition = {
   key: "snail",
   label: "Schneckenhaus",
-  description: "Die Reihenfolge der Ein- und Ausfahrten kann beliebig gewaehlt werden. Das Schneckenhaus kann von innen nach aussen oder auch umgekehrt befahren werden. Auch ein spiegelbildlicher Aufbau ist moeglich.",
+  description: "Die Reihenfolge der Ein- und Ausfahrten kann beliebig gewählt werden. Das Schneckenhaus kann von innen nach außen oder auch umgekehrt befahren werden. Auch ein spiegelbildlicher Aufbau ist möglich.",
   defaultDirection: "none",
   cones: normalizeCones(
     builder()

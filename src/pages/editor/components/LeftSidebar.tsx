@@ -90,14 +90,14 @@ export default function LeftSidebar({
               background: "#f0fdf4", border: "1px solid #bbf7d0",
               borderRadius: 10, padding: "9px 12px", fontSize: 13,
             }}>
-              <div style={{ fontWeight: 700, color: "#15803d", marginBottom: 2 }}>Bereich ausgewaehlt</div>
+              <div style={{ fontWeight: 700, color: "#15803d", marginBottom: 2 }}>Bereich ausgewählt</div>
               <div style={{ color: "#166534" }}>
                 {areaSel.widthM.toFixed(1)} m × {areaSel.heightM.toFixed(1)} m
                 {areaSel.rotationDeg !== 0 && ` · ${areaSel.rotationDeg}°`}
               </div>
             </div>
             <button onClick={onOpenMapSelector} style={outlineBtn}>
-              <Map size={13} /> Neu waehlen
+              <Map size={13} /> Neu wählen
             </button>
             <button onClick={onClearArea} style={{ ...outlineBtn, color: "#b91c1c", borderColor: "#fecaca" }}>
               <Trash2 size={13} /> Entfernen
@@ -147,7 +147,7 @@ export default function LeftSidebar({
         ) : (
           <div style={{ display: "grid", gap: 8 }}>
             <button onClick={onOpenMapSelector} style={{ ...outlineBtn, borderColor: "var(--c-primary)", color: "var(--c-primary)", fontWeight: 700 }}>
-              <Map size={13} /> Bereich auf Karte waehlen
+              <Map size={13} /> Bereich auf Karte wählen
             </button>
             <div style={{ fontSize: 11, color: "#64748b" }}>Oder manuell eingeben:</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
@@ -162,7 +162,7 @@ export default function LeftSidebar({
                 />
               </label>
               <label style={{ fontSize: 12 }}>
-                Laenge (m)
+                Länge (m)
                 <input style={numInput} type="number" value={manualLengthInput}
                   onChange={(e) => {
                     const v = Number(e.target.value);

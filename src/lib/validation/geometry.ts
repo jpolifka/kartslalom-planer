@@ -70,7 +70,7 @@ export function validateGeometry(ctx: ValidationContext): ValidationIssue[] {
           scope: "geometry",
           formationId: item.id,
           formationKey: item.key,
-          message: "Markierung liegt teilweise ausserhalb der Flaeche.",
+          message: "Markierung liegt teilweise außerhalb der Fläche.",
         });
       }
       continue;
@@ -97,7 +97,7 @@ export function validateGeometry(ctx: ValidationContext): ValidationIssue[] {
         scope: "geometry",
         formationId: item.id,
         formationKey: item.key,
-        message: "Formation liegt teilweise ausserhalb der Flaeche.",
+        message: "Formation liegt teilweise außerhalb der Fläche.",
       });
     }
   }
