@@ -1,5 +1,5 @@
 # Stage 1: Build
-FROM node:22-alpine AS builder
+FROM node:26-alpine AS builder
 WORKDIR /app
 RUN npm install -g npm@11
 COPY package*.json ./
@@ -11,7 +11,7 @@ RUN npm run build
 
 # Stage 2: Serve
 # nginx-unprivileged läuft bereits als non-root auf Port 8080
-FROM nginxinc/nginx-unprivileged:1.30-alpine
+FROM nginxinc/nginx-unprivileged:1.31-alpine
 COPY --from=builder /app/dist /usr/share/nginx/html
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 8080

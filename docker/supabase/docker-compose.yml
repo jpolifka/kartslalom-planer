@@ -292,7 +292,7 @@ services:
   rest:
     container_name: supabase-rest
     logging: *default-logging
-    image: postgrest/postgrest:v14.18
+    image: postgrest/postgrest:v16.5
     restart: unless-stopped
     depends_on:
       db:
@@ -441,7 +441,7 @@ services:
   imgproxy:
     container_name: supabase-imgproxy
     logging: *default-logging
-    image: darthsim/imgproxy:v3
+    image: darthsim/imgproxy:v4
     restart: unless-stopped
     volumes:
       - ./volumes/storage:/var/lib/storage:z
@@ -535,7 +535,7 @@ services:
   db:
     container_name: supabase-db
     logging: *default-logging
-    image: supabase/postgres:15.20.0.000
+    image: supabase/postgres:17.12.0.000
     restart: unless-stopped
     volumes:
       - ./volumes/db/realtime.sql:/docker-entrypoint-initdb.d/migrations/99-realtime.sql:Z
