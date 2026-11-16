@@ -58,9 +58,9 @@ Vorher lag ein großer Teil des Betriebsrisikos (Updates, Backups, Uptime,
 Skalierung) bei Supabase Cloud. Jetzt liegt es vollständig beim Betreiber:
 
 - **Updates:** Images ohne schwebende Tags sind konkret gepinnt (z. B.
-  `supabase/gotrue:v2.197.0`, `supabase/postgres:15.20.0.000`); wo der Hersteller
+  `supabase/gotrue:v2.197.0`, `supabase/postgres:17.12.0.000`); wo der Hersteller
   Minor-/Major-Tags anbietet, wird dieser genutzt (`kong/kong:3.9`,
-  `darthsim/imgproxy:v3`, `axllent/mailpit:v1`, `nginx-unprivileged:1.30-alpine`),
+  `darthsim/imgproxy:v4`, `axllent/mailpit:v1`, `nginx-unprivileged:1.30-alpine`),
   damit Sicherheitspatches ohne Code-Änderung beim nächsten Pull/Build ankommen.
   Dependabot (`.github/dependabot.yml`) öffnet wöchentlich PRs für die übrigen Pins.
   Vor jedem Rollout: Backup, danach Unit → Integration → Security-Smoke.
