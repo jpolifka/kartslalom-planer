@@ -364,7 +364,7 @@ Cron/systemd-Timer einplanen, z. B.:
 
 [`docker/Dockerfile`](../docker/Dockerfile) beschreibt einen zweistufigen Build:
 
-1. **Builder-Stage** (`node:22-alpine`): Abhängigkeiten installieren
+1. **Builder-Stage** (`node:24-alpine`): Abhängigkeiten installieren
    (`npm ci --ignore-scripts`), `npm run build` ausführen (die `VITE_*`-Werte
    kommen als Build-Args).
 2. **Serve-Stage** (`nginxinc/nginx-unprivileged`): läuft als non-root auf Port
