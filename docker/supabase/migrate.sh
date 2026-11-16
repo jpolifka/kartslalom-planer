@@ -2,7 +2,7 @@
 set -eu
 
 #######################################
-# Erweiterung des originalen Supabase migrate.sh (supabase/postgres:15.8.1.085).
+# Erweiterung des originalen Supabase migrate.sh (supabase/postgres:15.x).
 # Zusatz: App-Migrationen aus /app-migrations/*.sql werden nach den internen
 # Supabase-Migrationen als supabase_admin ausgeführt.
 # Neue Migrationsdateien in supabase/migrations/ werden automatisch erkannt.

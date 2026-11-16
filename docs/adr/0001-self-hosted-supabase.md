@@ -57,10 +57,15 @@ Repos). `docker/docker-compose.yml` bindet den Stack per `include` ein
 Vorher lag ein großer Teil des Betriebsrisikos (Updates, Backups, Uptime,
 Skalierung) bei Supabase Cloud. Jetzt liegt es vollständig beim Betreiber:
 
-- **Updates:** Images sind konkret gepinnt (z. B. `supabase/gotrue:v2.189.0`,
-  `supabase/postgres:15.8.1.085`) für Reproduzierbarkeit — Updates sind ein
-  bewusster, manueller Schritt (Versionsnummer ändern, Changelog prüfen,
-  vorher Backup, danach Integrationstests).
+- **Updates:** Images ohne schwebende Tags sind konkret gepinnt (z. B.
+  `supabase/gotrue:v2.197.0`, `supabase/postgres:15.20.0.000`); wo der Hersteller
+  Minor-/Major-Tags anbietet, wird dieser genutzt (`kong/kong:3.9`,
+  `darthsim/imgproxy:v3`, `axllent/mailpit:v1`, `nginx-unprivileged:1.30-alpine`),
+  damit Sicherheitspatches ohne Code-Änderung beim nächsten Pull/Build ankommen.
+  Dependabot (`.github/dependabot.yml`) öffnet wöchentlich PRs für die übrigen Pins.
+  Vor jedem Rollout: Backup, danach Unit → Integration → Security-Smoke.
+  Postgres-Image-Wechsel können eine neue glibc-Collation bringen
+  (`ALTER DATABASE … REFRESH COLLATION VERSION` + `REINDEX`).
 - **Backup:** `docker/supabase/backup.sh` (pg_dump + Storage-Archiv, 14-Tage-
   Rotation, lokal unter `docker/supabase/backups/`, gitignored). Kein
   Offsite-Sync automatisiert — offener Punkt, siehe unten.
