@@ -7,7 +7,8 @@
   Realtime v2.165.0, Storage-API v1.95.0, postgres-meta v0.100.0, edge-runtime v1.79.1,
   Postgres 15.20.0.000, Supavisor 2.10.1. Kong (`3.9`), imgproxy (`v3`), Mailpit (`v1`)
   und nginx (`1.30-alpine`) nutzen jetzt schwebende Minor-/Major-Tags statt Voll-Pins.
-  Dependabot für Docker/Compose/npm ergänzt. Unit, Integration und Security-Smoke grün.
+  Dependabot für Docker/Compose/npm ergänzt.
+- Major-Updates: Postgres 15 → **17.12** (`supabase/postgres`), PostgREST v14 → **v16.5**, imgproxy v3 → **v4**, Node 22 → **24** (Dockerfiles + CI). **Prod-Migration von Postgres 15 → 17 braucht dump/restore (kein In-place-Upgrade des Datenverzeichnisses), vorher Backup** — lokal nur auf frischer DB getestet. Unit, Integration, Security-Smoke und E2E grün. Unit, Integration und Security-Smoke grün.
 
 ### Security
 - `npm audit`: 8 gemeldete Schwachstellen behoben (3 high: `nanoid`, `postcss`,

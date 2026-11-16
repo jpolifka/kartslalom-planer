@@ -535,7 +535,7 @@ services:
   db:
     container_name: supabase-db
     logging: *default-logging
-    image: supabase/postgres:15.20.0.000
+    image: supabase/postgres:17.12.0.000
     restart: unless-stopped
     volumes:
       - ./volumes/db/realtime.sql:/docker-entrypoint-initdb.d/migrations/99-realtime.sql:Z
