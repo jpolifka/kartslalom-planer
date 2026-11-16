@@ -1,0 +1,19 @@
+# Hält die gepinnten Docker-Image-Versionen aktuell (Sicherheitsupdates schnell sichtbar).
+# Schwebende Tags (kong/kong:3.9, imgproxy:v3, mailpit:v1, nginx:1.30-alpine) bekommen
+# Patches beim nächsten `pull`/Build automatisch; Dependabot kümmert sich um die übrigen Pins.
+version: 2
+updates:
+  - package-ecosystem: "docker-compose"
+    directory: "/docker/supabase"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+  - package-ecosystem: "docker"
+    directory: "/docker"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Changed
+- Docker-Images aktualisiert: Studio 2026.11.16, GoTrue v2.197.0, PostgREST v14.18,
+  Realtime v2.165.0, Storage-API v1.95.0, postgres-meta v0.100.0, edge-runtime v1.79.1,
+  Postgres 15.20.0.000, Supavisor 2.10.1. Kong (`3.9`), imgproxy (`v3`), Mailpit (`v1`)
+  und nginx (`1.30-alpine`) nutzen jetzt schwebende Minor-/Major-Tags statt Voll-Pins.
+  Dependabot für Docker/Compose/npm ergänzt. Unit, Integration und Security-Smoke grün.
+
 ### Security
 - `npm audit`: 8 gemeldete Schwachstellen behoben (3 high: `nanoid`, `postcss`,
   `react-router`; 5 moderate: `@vitest/mocker`, `dompurify`), zuletzt der Grund für
