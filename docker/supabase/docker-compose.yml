@@ -377,7 +377,7 @@ services:
   storage:
     container_name: supabase-storage
     logging: *default-logging
-    image: supabase/storage-api:v1.95.0
+    image: supabase/storage-api:v1.97.0
     restart: unless-stopped
     depends_on:
       db:
