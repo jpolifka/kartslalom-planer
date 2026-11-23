@@ -136,7 +136,7 @@ services:
   auth:
     container_name: supabase-auth
     logging: *default-logging
-    image: supabase/gotrue:v2.197.0
+    image: supabase/gotrue:v2.198.0
     restart: unless-stopped
     healthcheck:
       test:
@@ -292,7 +292,7 @@ services:
   rest:
     container_name: supabase-rest
     logging: *default-logging
-    image: postgrest/postgrest:v16.5
+    image: postgrest/postgrest:v16.6
     restart: unless-stopped
     depends_on:
       db:
@@ -330,7 +330,7 @@ services:
     # This container name looks inconsistent but is correct because realtime constructs tenant id by parsing the subdomain
     container_name: realtime-dev.supabase-realtime
     logging: *default-logging
-    image: supabase/realtime:v2.165.0
+    image: supabase/realtime:v2.170.0
     restart: unless-stopped
     depends_on:
       db:
@@ -377,7 +377,7 @@ services:
   storage:
     container_name: supabase-storage
     logging: *default-logging
-    image: supabase/storage-api:v1.95.0
+    image: supabase/storage-api:v1.98.2
     restart: unless-stopped
     depends_on:
       db:
@@ -465,7 +465,7 @@ services:
   meta:
     container_name: supabase-meta
     logging: *default-logging
-    image: supabase/postgres-meta:v0.100.0
+    image: supabase/postgres-meta:v0.100.1
     restart: unless-stopped
     depends_on:
       db:
