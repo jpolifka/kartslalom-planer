@@ -330,7 +330,7 @@ services:
     # This container name looks inconsistent but is correct because realtime constructs tenant id by parsing the subdomain
     container_name: realtime-dev.supabase-realtime
     logging: *default-logging
-    image: supabase/realtime:v2.165.0
+    image: supabase/realtime:v2.170.0
     restart: unless-stopped
     depends_on:
       db:
