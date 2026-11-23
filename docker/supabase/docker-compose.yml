@@ -292,7 +292,7 @@ services:
   rest:
     container_name: supabase-rest
     logging: *default-logging
-    image: postgrest/postgrest:v16.5
+    image: postgrest/postgrest:v16.6
     restart: unless-stopped
     depends_on:
       db:
