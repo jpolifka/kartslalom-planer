@@ -483,7 +483,7 @@ services:
   functions:
     container_name: supabase-edge-functions
     logging: *default-logging
-    image: supabase/edge-runtime:v1.79.1
+    image: supabase/edge-runtime:v1.79.5
     restart: unless-stopped
     volumes:
       - ../../supabase/functions:/home/deno/functions:z
