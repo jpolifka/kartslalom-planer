@@ -465,7 +465,7 @@ services:
   meta:
     container_name: supabase-meta
     logging: *default-logging
-    image: supabase/postgres-meta:v0.100.1
+    image: supabase/postgres-meta:v1.0.0
     restart: unless-stopped
     depends_on:
       db:
