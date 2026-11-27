@@ -23,7 +23,7 @@ services:
   studio:
     container_name: supabase-studio
     logging: *default-logging
-    image: supabase/studio:2026.11.16-sha-51bd16d
+    image: supabase/studio:2026.11.23-sha-4a73166
     restart: unless-stopped
     healthcheck:
       test:
